@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import { usePermissionVersion, useSession } from '@/core/auth/hooks';
-import { PERMISSIONS, permissionService } from '@/core/services/permissionService';
+import { PERMISSIONS, permissionService, type Permission } from '@/core/services/permissionService';
 import './Dashboard.css';
+
+type DashboardCard = { title: string; description: string; route: string; permission?: Permission; sales?: boolean; accounting?: boolean };
 
 export default function Dashboard() {
   const session = useSession();
@@ -9,7 +11,7 @@ export default function Dashboard() {
   const roles = session.roles.map((role) => role.trim().toLowerCase());
   const salesRole = roles.some((role) => ['admin', 'super user', 'counsellor', 'counciler'].includes(role));
   const accountingRole = roles.some((role) => ['admin', 'super user', 'accountant'].includes(role));
-  const cards = [
+  const cards: DashboardCard[] = [
     { title: 'Employees', description: 'Manage system users and access.', route: '/main/user', permission: PERMISSIONS.USER_VIEW },
     { title: 'Leads', description: 'Manage leads and follow-ups.', route: '/main/lead', permission: PERMISSIONS.LEAD_VIEW, sales: true },
     { title: 'Enquiries', description: 'Manage candidate enquiries and follow-ups.', route: '/main/enquiry', permission: PERMISSIONS.ENQUIRY_VIEW, sales: true },
