@@ -344,3 +344,40 @@ html[data-theme="dark"] .cmp-main-layout .ciit-content .table:not(.ciit-professi
   color: #d9e6f5;
   border-color: rgba(120,150,185,.18);
 }
+
+
+/* Modal layout is intentionally independent of Bootstrap's fixed .modal layer.
+   Nesting Bootstrap .modal inside a custom fixed overlay creates competing
+   stacking/positioning contexts and can leave only the backdrop visible. */
+.ciit-modal-window {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100%;
+  pointer-events: none;
+}
+.ciit-modal-dialog {
+  position: relative;
+  width: 100%;
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  pointer-events: auto;
+}
+.ciit-modal-dialog .ciit-glass-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 2rem);
+}
+.ciit-modal-dialog .ciit-glass-modal .modal-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@media (max-width: 575.98px) {
+  .ciit-modal-backdrop { padding: .5rem; }
+  .ciit-modal-dialog,
+  .ciit-modal-dialog .ciit-glass-modal { max-height: calc(100dvh - 1rem); }
+}
