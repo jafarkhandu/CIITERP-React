@@ -4,12 +4,12 @@ import ProtectedRoute from '@/core/auth/ProtectedRoute';
 import { PERMISSIONS, type Permission } from '@/core/services/permissionService';
 import MainLayout from '@/layouts/MainLayout';
 import ComingSoon from '@/features/placeholder/ComingSoon';
-
 import Login from '@/features/account/Login/Login';
 import ForgotPassword from '@/features/account/ForgotPassword/ForgotPassword';
 import ResetPassword from '@/features/account/ResetPassword/ResetPassword';
 import ChangePassword from '@/features/account/ChangePassword/ChangePassword';
 import Profile from '@/features/account/Profile/Profile';
+import Dashboard from '@/features/dashboard/Dashboard';
 import Employee from '@/features/employee/Employee';
 import EditUserRoles from '@/features/employee/EditUserRoles';
 import Lead from '@/features/lead/Lead';
@@ -27,7 +27,7 @@ export default function AppRoutes() {
     <Route path="/forgot-password" element={<ForgotPassword />} />
     <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/main" element={guarded(<MainLayout />)}>
-      <Route path="dashboard" element={guarded(soon('Dashboard', 2), { permission: PERMISSIONS.DASHBOARD_VIEW })} />
+      <Route path="dashboard" element={guarded(<Dashboard />, { permission: PERMISSIONS.DASHBOARD_VIEW })} />
       <Route path="user" element={guarded(<Employee />, { permission: PERMISSIONS.USER_VIEW })} />
       <Route path="edit-user-roles/:userId" element={guarded(<EditUserRoles />, { permission: PERMISSIONS.ROLE_UPDATE })} />
       <Route path="lead" element={guarded(<Lead />, { permission: PERMISSIONS.LEAD_VIEW })} />
