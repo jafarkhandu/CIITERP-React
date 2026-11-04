@@ -23,7 +23,7 @@ const freshForm = () => ({
 });
 
 function Modal({ title, subtitle, onClose, children, large = true }: { title: string; subtitle: string; onClose: () => void; children: ReactNode; large?: boolean }) {
-  return <div className="modal-backdrop show ciit-modal-backdrop" onMouseDown={onClose}>
+  return <div className="ciit-modal-backdrop" onMouseDown={onClose}>
     <div className="modal show d-block" role="dialog" aria-modal="true" aria-labelledby="student-modal-title" onMouseDown={(e) => e.stopPropagation()}>
       <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable" style={{ maxWidth: large ? 980 : 620 }}>
         <div className="modal-content ciit-glass-modal">
