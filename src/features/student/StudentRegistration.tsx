@@ -44,6 +44,8 @@ export default function StudentRegistration() {
     );
   }, [students, search]);
 
+  const field = (row: Record<string, unknown>, ...keys: string[]) => keys.map((key) => row[key]).find((value) => value !== undefined && value !== null && value !== '') ?? '—';
+
   return <section className="container-fluid py-3">
     <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
       <div><h2 className="h4 mb-1">Student Registration</h2><p className="text-muted mb-0">Student profiles and course registration records.</p></div>
@@ -73,6 +75,22 @@ export default function StudentRegistration() {
           </tbody>
         </table>
       </div>
+    </div>
+    <div className="card border-0 shadow-sm mt-3">
+      <div className="card-header bg-white py-3"><h3 className="h6 mb-0">Course Registration Records</h3></div>
+      <div className="table-responsive"><table className="table table-hover align-middle mb-0">
+        <thead className="table-light"><tr><th>Registration ID</th><th>Student</th><th>Course</th><th>Registration Code</th><th>Status</th><th className="text-end">Paid</th></tr></thead>
+        <tbody>{loading ? <tr><td colSpan={6} className="text-center py-4">Loading registrations...</td></tr>
+          : registrations.length ? registrations.map((row, index) => <tr key={String(field(row, 'registrationId', 'registration_id') === '—' ? index : field(row, 'registrationId', 'registration_id'))}>
+            <td>{String(field(row, 'registrationId', 'registration_id'))}</td>
+            <td>{String(field(row, 'studentName', 'student_name'))} {String(field(row, 'lastName', 'last_name') === '—' ? '' : field(row, 'lastName', 'last_name'))}</td>
+            <td>{String(field(row, 'courseName', 'course_name'))}</td>
+            <td>{String(field(row, 'registrationCode', 'registration_code'))}</td>
+            <td>{String(field(row, 'currentStatus', 'current_status', 'status'))}</td>
+            <td className="text-end">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(field(row, 'paymentAmount', 'payment_amount') === '—' ? 0 : field(row, 'paymentAmount', 'payment_amount')) || 0)}</td>
+          </tr>) : <tr><td colSpan={6} className="text-center text-muted py-4">No course registrations found.</td></tr>}
+        </tbody>
+      </table></div>
     </div>
   </section>;
 }
