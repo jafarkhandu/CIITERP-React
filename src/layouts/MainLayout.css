@@ -1,0 +1,104 @@
+
+/* ===== Sidebar User Profile ===== */
+.cmp-main-layout .sidebar-user-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 12px;
+    margin: 0 0 16px;
+    background: linear-gradient(135deg, #f0f8f4, #ffffff);
+    border: 1px solid #e0eee7;
+    border-radius: 12px;
+    box-shadow: 0 3px 8px rgba(20, 60, 45, 0.05);
+}
+
+.cmp-main-layout .profile-avatar {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ciit-primary);
+    color: #ffffff;
+    border-radius: 12px;
+    font-size: 25px;
+}
+
+.cmp-main-layout .profile-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.cmp-main-layout .profile-name {
+    color: #171a3b;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.cmp-main-layout .profile-role {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 6px;
+    padding: 4px 9px;
+    background: #e1f5eb;
+    color: #190f64;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* ===== Sidebar Navigation ===== */
+.cmp-main-layout .ciit-sidebar-header {
+    padding: 0 10px 12px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #edf0ee;
+}
+
+.cmp-main-layout .ciit-sidebar-list {
+    margin-top: 10px;
+}
+
+.cmp-main-layout .ciit-sidebar-list .list-group-item a {
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ===== Responsive Design ===== */
+@media (max-width: 767.98px) {
+    .cmp-main-layout .sidebar-user-profile {
+        padding: 12px;
+    }
+
+    .cmp-main-layout .profile-avatar {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        font-size: 23px;
+    }
+}
+
+
+/* CIIT blue theme: header controls and profile menu */
+.cmp-main-layout .theme-toggle {
+    display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px;
+    border: 1px solid rgba(255,255,255,.22); border-radius: 999px;
+    color: #fff; background: rgba(255,255,255,.09); font-size: 12px; cursor: pointer;
+}
+.cmp-main-layout .theme-toggle > i { font-size: 15px; }
+.cmp-main-layout .theme-switch-track { width: 30px; height: 17px; border-radius: 99px; padding: 2px; background: #7b9bc5; display: inline-flex; align-items: center; }
+.cmp-main-layout .theme-switch-track span { width: 13px; height: 13px; border-radius: 50%; background: #fff; transition: transform .2s ease; }
+.cmp-main-layout .theme-switch-track.is-dark span { transform: translateX(13px); }
+.cmp-main-layout .profile-menu-wrap { position: relative; }
+.cmp-main-layout .profile-menu-trigger { display: flex; align-items: center; gap: 9px; max-width: 260px; padding: 5px 10px 5px 6px; border: 1px solid rgba(255,255,255,.2); border-radius: 10px; color: #fff; background: rgba(255,255,255,.09); }
+.cmp-main-layout .top-profile-avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #e8f1ff; color: #1769d2; font-size: 19px; }
+.cmp-main-layout .top-profile-name { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
+.cmp-main-layout .profile-chevron { font-size: 11px; }
+.cmp-main-layout .profile-dropdown { position: absolute; top: calc(100% + 9px); right: 0; z-index: 1200; width: 210px; padding: 6px; border: 1px solid var(--ciit-border); border-radius: 11px; background: var(--ciit-surface); box-shadow: 0 14px 35px rgba(0,0,0,.18); }
+.cmp-main-layout .profile-dropdown button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 11px; border: 0; border-radius: 7px; background: transparent; color: var(--ciit-text); text-align: left; font-size: 13px; }
+.cmp-main-layout .profile-dropdown button:hover { background: var(--ciit-primary-hover); color: var(--ciit-primary); }
+.cmp-main-layout .profile-dropdown-divider { height: 1px; margin: 5px 4px; background: var(--ciit-border); }
+.cmp-main-layout .profile-dropdown .dropdown-logout { color: #dc3545; }
+@media (max-width: 576px) { .cmp-main-layout .top-profile-name { display: none; } .cmp-main-layout .theme-toggle span:not(.theme-switch-track) { display: none; } .cmp-main-layout .ciit-nav-right { flex-direction: row; align-items: center; } }

@@ -1,0 +1,834 @@
+/* Global styles (ported from Angular src/styles.css) */
+
+/* Wrapper that replaces the Angular host element (<app-xyz>): it must not create a layout box. */
+.ciit-host { display: contents; }
+
+/* ================================
+   CIIT GLOBAL THEME VARIABLES
+   ================================ */
+
+:root {
+    --ciit-bg: #f3f7fc;
+    --ciit-surface: #ffffff;
+    --ciit-border: #dce6f2;
+
+    --ciit-text: #25364d;
+    --ciit-muted: #687b94;
+    --ciit-light-text: #91a0b4;
+
+    --ciit-primary: #1769d2;
+    --ciit-primary-hover: #e8f1ff;
+
+    --ciit-navbar: #104b91;
+    --ciit-navbar-text: #ffffff;
+
+    --ciit-logout: #174f91;
+    --ciit-logout-hover: #0d3b73;
+}
+
+
+/* ================================
+   GLOBAL
+   ================================ */
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+}
+
+body {
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+
+/* ================================
+   LINKS
+   ================================ */
+
+a {
+    text-decoration: none;
+}
+
+
+/* ================================
+   NAVBAR
+   ================================ */
+
+.ciit-navbar {
+    height: 72px;
+
+    background: var(--ciit-navbar);
+
+    padding: 0 28px;
+
+    box-shadow:
+        0 3px 18px rgba(0, 0, 0, 0.14);
+
+    position: sticky;
+    top: 0;
+
+    z-index: 1000;
+}
+
+
+/* ================================
+   BRAND
+   ================================ */
+
+.ciit-brand {
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+    padding: 0;
+    margin: 0;
+
+    cursor: pointer;
+}
+
+.ciit-brand-name {
+    display: flex;
+
+    flex-direction: column;
+
+    justify-content: center;
+
+    line-height: 1.1;
+}
+
+.ciit-title {
+    color: var(--ciit-navbar-text);
+
+    font-size: 19px;
+
+    font-weight: 700;
+
+    letter-spacing: .02em;
+}
+
+.ciit-logo-sub {
+    color: #dceaff;
+
+    font-size: 10px;
+
+    font-weight: 500;
+
+    letter-spacing: .08em;
+
+    text-transform: uppercase;
+
+    margin-top: 4px;
+}
+
+
+/* ================================
+   NAVBAR RIGHT
+   ================================ */
+
+.ciit-nav-right {
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+}
+
+
+/* ================================
+   EMPLOYEE NAME
+   ================================ */
+
+.ciit-user-name {
+    color: var(--ciit-navbar-text);
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+    padding: 8px 12px;
+}
+
+
+/* ================================
+   CHANGE PASSWORD
+   ================================ */
+
+.change-password-link {
+    color: #d6e8df !important;
+
+    border: 1px solid rgba(255, 255, 255, .10);
+
+    padding: 8px 13px !important;
+
+    border-radius: 6px;
+
+    font-size: 13px;
+
+    cursor: pointer;
+
+    transition:
+        background .2s ease,
+        color .2s ease;
+}
+
+.change-password-link:hover {
+    background: rgba(255, 255, 255, .10);
+
+    color: #ffffff !important;
+}
+
+
+/* ================================
+   LOGOUT
+   ================================ */
+
+.ciit-logout {
+    background: var(--ciit-logout);
+
+    color: #ffffff !important;
+
+    border: 1px solid #991b1b;
+
+    padding: 8px 15px !important;
+
+    border-radius: 6px;
+
+    font-size: 13px;
+
+    cursor: pointer;
+
+    transition:
+        background .2s ease,
+        color .2s ease;
+}
+
+.ciit-logout:hover {
+    background: var(--ciit-logout-hover) !important;
+
+    color: #ffffff !important;
+}
+
+
+/* ================================
+   MAIN PAGE
+   ================================ */
+
+.ciit-page {
+    min-height: calc(100vh - 72px);
+
+    padding: 24px;
+
+    background: var(--ciit-bg);
+}
+
+
+/* ================================
+   SIDEBAR
+   ================================ */
+
+.ciit-sidebar {
+    background: var(--ciit-surface);
+
+    border: 1px solid var(--ciit-border);
+
+    border-radius: 12px;
+
+    padding: 16px 12px;
+
+    box-shadow:
+        0 5px 22px rgba(15, 46, 34, .06);
+
+    position: sticky;
+
+    top: 96px;
+}
+
+
+/* ================================
+   SIDEBAR HEADER
+   ================================ */
+
+.ciit-sidebar-header {
+    padding: 4px 10px 14px;
+
+    border-bottom: 1px solid #edf1ef;
+
+    margin-bottom: 10px;
+}
+
+.ciit-sidebar-title {
+    color: var(--ciit-muted);
+
+    font-size: 10px;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    letter-spacing: .10em;
+}
+
+.ciit-sidebar-subtitle {
+    color: var(--ciit-light-text);
+
+    font-size: 10px;
+
+    margin-top: 3px;
+}
+
+
+/* ================================
+   SIDEBAR LIST
+   ================================ */
+
+.ciit-sidebar-list {
+    border: none;
+
+    padding: 0;
+
+    margin: 0;
+}
+
+.ciit-sidebar-list .list-group-item {
+    border: none;
+
+    background: transparent;
+
+    padding: 0;
+
+    margin-bottom: 4px;
+}
+
+
+/* ================================
+   SIDEBAR MENU LINK
+   ================================ */
+
+.ciit-sidebar-list a {
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    width: 100%;
+
+    color: var(--ciit-text);
+
+    font-size: 13px;
+
+    font-weight: 500;
+
+    padding: 10px 11px;
+
+    border-radius: 7px;
+
+    transition:
+        background .18s ease,
+        color .18s ease,
+        transform .18s ease;
+}
+
+.ciit-sidebar-list a:hover {
+    background: var(--ciit-primary-hover);
+
+    color: var(--ciit-primary);
+
+    transform: translateX(2px);
+}
+
+
+/* ================================
+   ACTIVE MENU
+   ================================ */
+
+.ciit-sidebar-list a.active-link {
+    background: var(--ciit-primary);
+
+    color: #ffffff;
+
+    font-weight: 600;
+
+    box-shadow:
+        0 4px 10px rgba(23, 105, 210, .20);
+}
+
+
+/* ================================
+   SIDEBAR ICON
+   ================================ */
+
+.ciit-sidebar-icon {
+    width: 20px;
+
+    height: 20px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 13px;
+
+    flex-shrink: 0;
+}
+
+
+/* ================================
+   CONTENT
+   ================================ */
+
+.ciit-content {
+    min-height: calc(100vh - 120px);
+
+    background: var(--ciit-surface);
+
+    border: 1px solid var(--ciit-border);
+
+    border-radius: 12px;
+
+    padding: 24px;
+
+    box-shadow:
+        0 5px 25px rgba(15, 46, 34, .05);
+
+    overflow: hidden;
+}
+
+
+/* ================================
+   DARK THEME - READY FOR SETTINGS
+   ================================ */
+
+html[data-theme="dark"], [data-theme="dark"] {
+    color-scheme: dark;
+    --ciit-bg: #0b1220;
+    --ciit-surface: #111d2e;
+    --ciit-border: #273950;
+    --ciit-text: #e6eefb;
+    --ciit-muted: #a3b4cc;
+    --ciit-light-text: #8295b0;
+    --ciit-primary: #1677f9;
+    --ciit-primary-hover: #1b3453;
+    --ciit-navbar: #071b35;
+    --ciit-navbar-text: #ffffff;
+    --bg-main: #0b1220;
+    --bg-card: #111d2e;
+    --bg-sidebar: #101b2b;
+    --bg-input: #0e1929;
+    --bg-hover: #1a2c45;
+    --text-main: #e6eefb;
+    --text-secondary: #a3b4cc;
+    --text-muted: #8295b0;
+    --border: #273950;
+    --border-light: #22344b;
+    --primary: #1677f9;
+    --primary-dark: #0c62d6;
+    --navbar: #071b35;
+    --shadow: rgba(0,0,0,.32);
+}
+
+html[data-theme="light"] {
+    color-scheme: light;
+}
+
+/* ================================
+   DARK THEME SIDEBAR
+   ================================ */
+
+[data-theme="dark"] .ciit-sidebar-list a:hover {
+    color: #6ee7b7;
+}
+
+[data-theme="dark"] .ciit-sidebar-header {
+    border-bottom-color: var(--ciit-border);
+}
+
+
+/* ================================
+   RESPONSIVE
+   ================================ */
+
+@media (max-width: 991px) {
+
+    .ciit-navbar {
+        padding: 0 18px;
+    }
+
+    .ciit-page {
+        padding: 18px;
+    }
+
+    .ciit-sidebar {
+        position: static;
+
+        margin-bottom: 15px;
+    }
+
+    .ciit-content {
+        min-height: 70vh;
+    }
+}
+
+
+/* ================================
+   MOBILE
+   ================================ */
+
+@media (max-width: 576px) {
+
+    .ciit-navbar {
+        height: auto;
+
+        min-height: 68px;
+
+        padding: 10px 14px;
+    }
+
+    .ciit-nav-right {
+        flex-direction: column;
+
+        align-items: stretch;
+
+        gap: 4px;
+
+        padding: 12px 0;
+    }
+
+    .ciit-user-name {
+        text-align: center;
+    }
+
+    .change-password-link,
+    .ciit-logout {
+        text-align: center;
+    }
+
+    .ciit-page {
+        padding: 12px;
+    }
+
+    .ciit-content {
+        padding: 16px;
+    }
+}
+
+
+
+:root {
+    --bg-main: #f5f8f6;
+    --bg-card: #ffffff;
+    --bg-sidebar: #ffffff;
+    --bg-input: #ffffff;
+    --bg-hover: #eaf5f0;
+    --text-main: #202a26;
+    --text-secondary: #718078;
+    --text-muted: #89928f;
+    --border: #e2e9e5;
+    --border-light: #e9edeb;
+    --primary: #1769d2;
+    --primary-dark: #1054ae;
+    --navbar: #104b91;
+    --shadow: rgba(15,46,34,.08);
+}
+
+html[data-theme="dark"] {
+    --bg-main: #111817;
+    --bg-card: #18211f;
+    --bg-sidebar: #151e1c;
+    --bg-input: #1c2724;
+    --bg-hover: #20332e;
+    --text-main: #f1f5f3;
+    --text-secondary: #a9b7b1;
+    --text-muted: #82918b;
+    --border: #293936;
+    --border-light: #263532;
+    --primary: #1769d2;
+    --primary-dark: #1769d2;
+    --navbar: #09251c;
+    --shadow: rgba(0,0,0,.35);
+}
+
+html,
+body {
+    background: var(--bg-main);
+    color: var(--text-main);
+}
+
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+    background: var(--bg-main) !important;
+    color: var(--text-main) !important;
+}
+
+/* ================================
+   CIIT BLUE / LIGHT + DARK THEMES
+   ================================ */
+html, body { background: var(--bg-main, var(--ciit-bg)); color: var(--text-main, var(--ciit-text)); transition: background-color .18s ease, color .18s ease; }
+html[data-theme="dark"] body { background: #0b1220 !important; color: #e6eefb !important; }
+html[data-theme="dark"] .ciit-page, html[data-theme="dark"] .ciit-content,
+html[data-theme="dark"] .ciit-sidebar, html[data-theme="dark"] .card,
+html[data-theme="dark"] .modal-content, html[data-theme="dark"] .dropdown-menu,
+html[data-theme="dark"] .list-group-item, html[data-theme="dark"] .table,
+html[data-theme="dark"] .table-light, html[data-theme="dark"] .bg-light {
+    background-color: var(--bg-card, #111d2e) !important; color: var(--text-main, #e6eefb) !important;
+    border-color: var(--border, #273950) !important;
+}
+html[data-theme="dark"] .card-header, html[data-theme="dark"] .modal-header,
+html[data-theme="dark"] .modal-footer { background-color: #16263b !important; color: #e6eefb !important; border-color: #273950 !important; }
+html[data-theme="dark"] .form-control, html[data-theme="dark"] .form-select,
+html[data-theme="dark"] textarea, html[data-theme="dark"] select, html[data-theme="dark"] input {
+    background-color: var(--bg-input, #0e1929); color: var(--text-main, #e6eefb); border-color: var(--border, #273950);
+}
+html[data-theme="dark"] .form-control::placeholder, html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder { color: #8295b0; }
+html[data-theme="dark"] .table { --bs-table-bg: #111d2e; --bs-table-color: #e6eefb; --bs-table-border-color: #273950; --bs-table-striped-bg: #142239; --bs-table-striped-color: #e6eefb; --bs-table-hover-bg: #1a2c45; --bs-table-hover-color: #fff; }
+html[data-theme="dark"] .text-dark, html[data-theme="dark"] .text-body { color: #e6eefb !important; }
+html[data-theme="dark"] .text-muted { color: #a3b4cc !important; }
+html[data-theme="dark"] .btn-close { filter: invert(1) grayscale(1); }
+html[data-theme="dark"] .alert-success { background: #102d45; color: #b9dcff; border-color: #24527c; }
+html[data-theme="dark"] .alert-danger { background: #3a1c2a; color: #ffd4df; border-color: #713149; }
+
+/* Replace the legacy green Bootstrap success palette with CIIT blue. */
+.btn-success, .bg-success { background-color: #1769d2 !important; border-color: #1769d2 !important; color: #fff !important; }
+.btn-success:hover { background-color: #1054ae !important; border-color: #1054ae !important; }
+.btn-outline-success { color: #1769d2 !important; border-color: #1769d2 !important; }
+.btn-outline-success:hover { background-color: #1769d2 !important; color: #fff !important; }
+.text-success { color: #1769d2 !important; }
+html[data-theme="dark"] .btn-success, html[data-theme="dark"] .bg-success { background-color: #1677f9 !important; border-color: #1677f9 !important; color: #fff !important; }
+html[data-theme="dark"] .btn-outline-primary { color: #7eb6ff !important; border-color: #438de7 !important; }
+html[data-theme="dark"] .btn-outline-primary:hover { background: #1677f9 !important; color: #fff !important; }
+html[data-theme="dark"] .bg-white { background-color: #111d2e !important; }
+html[data-theme="dark"] .border, html[data-theme="dark"] hr { border-color: #273950 !important; }
+
+
+
+/* Enquiry form - fix headings in the actual CIIT dark theme */
+html[data-theme="dark"] .enquiry-form-page .form-card {
+    background: var(--bg-card);
+    color: var(--text-main);
+    border-color: var(--border);
+}
+
+html[data-theme="dark"] .enquiry-form-page .form-title,
+html[data-theme="dark"] .enquiry-form-page .check-title {
+    background: #1a2c45 !important;
+    color: #e6eefb !important;
+    border-color: #273950 !important;
+}
+
+html[data-theme="dark"] .enquiry-form-page .form-title h1,
+html[data-theme="dark"] .enquiry-form-page .check-title,
+html[data-theme="dark"] .enquiry-form-page .check-title * {
+    color: #e6eefb !important;
+}
+
+html[data-theme="dark"] .enquiry-form-page .form-group label,
+html[data-theme="dark"] .enquiry-form-page .check-grid label {
+    color: #e6eefb;
+}
+
+html[data-theme="dark"] .enquiry-form-page .form-group input,
+html[data-theme="dark"] .enquiry-form-page .form-group select {
+    background: #0e1929;
+    color: #e6eefb;
+    border-color: #273950;
+}
+
+html[data-theme="dark"] .enquiry-form-page .back-link {
+    color: #8ec0ff;
+}
+
+
+/* =========================================
+   ENQUIRY FORM - CONSISTENT DARK MODE FIELDS
+   ========================================= */
+
+html[data-theme="dark"] .enquiry-form-page {
+    color: #e6eefb;
+}
+
+/* All form fields */
+html[data-theme="dark"] .enquiry-form-page input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme="dark"] .enquiry-form-page select,
+html[data-theme="dark"] .enquiry-form-page textarea {
+    background-color: #0e1929 !important;
+    color: #e6eefb !important;
+    border: 1px solid #475569 !important;
+    border-radius: 5px;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    color-scheme: dark;
+}
+
+/* Date and number fields */
+html[data-theme="dark"] .enquiry-form-page input[type="date"],
+html[data-theme="dark"] .enquiry-form-page input[type="number"],
+html[data-theme="dark"] .enquiry-form-page input[type="tel"] {
+    background-color: #0e1929 !important;
+    color: #e6eefb !important;
+    color-scheme: dark;
+}
+
+/* Placeholder */
+html[data-theme="dark"] .enquiry-form-page input::placeholder,
+html[data-theme="dark"] .enquiry-form-page textarea::placeholder {
+    color: #a3b4cc !important;
+    opacity: 1;
+}
+
+/* Dropdown options */
+html[data-theme="dark"] .enquiry-form-page select option {
+    background-color: #111d2e;
+    color: #e6eefb;
+}
+
+/* Focus */
+html[data-theme="dark"] .enquiry-form-page input:focus,
+html[data-theme="dark"] .enquiry-form-page select:focus,
+html[data-theme="dark"] .enquiry-form-page textarea:focus {
+    border-color: #1677f9 !important;
+    outline: 2px solid rgba(22, 119, 249, .2);
+    outline-offset: 1px;
+}
+
+/* Keep checkbox and radio controls consistent */
+html[data-theme="dark"] .enquiry-form-page input[type="checkbox"],
+html[data-theme="dark"] .enquiry-form-page input[type="radio"] {
+    accent-color: #1677f9;
+}
+
+/* Consistent labels */
+html[data-theme="dark"] .enquiry-form-page .form-group label,
+html[data-theme="dark"] .enquiry-form-page .check-grid label {
+    color: #e6eefb !important;
+}
+
+
+/* ==========================================================
+   SHARED CIIT THEME LAYER
+   Applied consistently to Account, User Management,
+   Group Leader, Trainer and other feature sections.
+   This layer styles presentation only; it does not alter
+   component behavior, routing, forms or API workflows.
+   ========================================================== */
+
+:root {
+  --ciit-control-bg: #ffffff;
+  --ciit-control-text: #25364d;
+  --ciit-control-border: #d5e0ed;
+  --ciit-table-head: #edf3fa;
+  --ciit-hover: #e8f1ff;
+}
+
+html[data-theme="dark"] {
+  --ciit-control-bg: #0e1929;
+  --ciit-control-text: #e6eefb;
+  --ciit-control-border: #273950;
+  --ciit-table-head: #16263b;
+  --ciit-hover: #1b3453;
+}
+
+/* Consistent surfaces across feature modules */
+.ciit-content .card,
+.ciit-content .modal-content,
+.ciit-content .dropdown-menu,
+.ciit-content .list-group-item,
+.ciit-content .accordion-item,
+.ciit-content .nav-tabs,
+.ciit-content .tab-content,
+.ciit-content .table-responsive {
+  border-color: var(--ciit-border);
+}
+
+.ciit-content .card,
+.ciit-content .modal-content,
+.ciit-content .accordion-item {
+  background-color: var(--ciit-surface);
+  color: var(--ciit-text);
+}
+
+/* Consistent form controls */
+.ciit-content input:not([type="checkbox"]):not([type="radio"]),
+.ciit-content select,
+.ciit-content textarea,
+.ciit-content .form-control,
+.ciit-content .form-select {
+  color: var(--ciit-control-text);
+  background-color: var(--ciit-control-bg);
+  border-color: var(--ciit-control-border);
+}
+
+.ciit-content input:focus,
+.ciit-content select:focus,
+.ciit-content textarea:focus,
+.ciit-content .form-control:focus,
+.ciit-content .form-select:focus {
+  border-color: var(--ciit-primary);
+  box-shadow: 0 0 0 .2rem color-mix(in srgb, var(--ciit-primary) 18%, transparent);
+}
+
+/* Consistent table appearance */
+.ciit-content table thead th,
+.ciit-content .table thead th {
+  background-color: var(--ciit-table-head);
+  color: var(--ciit-text);
+  border-color: var(--ciit-border);
+}
+
+.ciit-content table tbody td,
+.ciit-content .table tbody td {
+  color: var(--ciit-text);
+  border-color: var(--ciit-border);
+}
+
+/* Consistent tabs and navigation */
+.ciit-content .nav-tabs .nav-link {
+  color: var(--ciit-muted);
+}
+.ciit-content .nav-tabs .nav-link.active {
+  color: var(--ciit-primary);
+  background-color: var(--ciit-surface);
+  border-color: var(--ciit-border) var(--ciit-border) var(--ciit-surface);
+}
+
+/* Sidebar menu: same active and hover treatment for every role */
+.ciit-sidebar-list a {
+  color: var(--ciit-text);
+}
+.ciit-sidebar-list a:hover {
+  background-color: var(--ciit-primary-hover);
+  color: var(--ciit-primary);
+}
+.ciit-sidebar-list a.active-link {
+  background-color: var(--ciit-primary);
+  color: #ffffff;
+}
+
+/* Dark theme text utilities used by legacy feature templates */
+html[data-theme="dark"] .ciit-content .text-dark,
+html[data-theme="dark"] .ciit-content label,
+html[data-theme="dark"] .ciit-content .form-label,
+html[data-theme="dark"] .ciit-content .card-title {
+  color: var(--ciit-text) !important;
+}
+html[data-theme="dark"] .ciit-content .bg-white,
+html[data-theme="dark"] .ciit-content .bg-light {
+  background-color: var(--ciit-surface) !important;
+  color: var(--ciit-text) !important;
+}
+html[data-theme="dark"] .ciit-content .border,
+html[data-theme="dark"] .ciit-content .border-bottom,
+html[data-theme="dark"] .ciit-content .border-top {
+  border-color: var(--ciit-border) !important;
+}
