@@ -1,3 +1,4 @@
+/* Employee and role assignment screens */
 .employee-page{width:100%;color:var(--ciit-text,#25364d)}
 .employee-page-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
 .employee-page-header h1{margin:0;font-size:28px;font-weight:700}
@@ -45,5 +46,17 @@
 .employee-profile-grid div{display:grid;gap:5px;min-width:0}
 .employee-profile-grid span{color:var(--ciit-muted,#687b94);font-size:12px}
 .employee-profile-grid strong{overflow-wrap:anywhere;font-size:14px}
+.employee-roles-card{padding:20px}
+.employee-roles-heading{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:18px}
+.employee-roles-heading h2{margin:0;font-size:19px}
+.employee-roles-heading input{width:min(280px,100%);min-height:38px;padding:8px 10px;border:1px solid var(--ciit-border,#dce6f2);border-radius:6px;background:var(--ciit-surface,#fff);color:inherit}
+.employee-role-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:16px 0;border-top:1px solid var(--ciit-border,#dce6f2);border-bottom:1px solid var(--ciit-border,#dce6f2)}
+.employee-role-list label{display:flex;align-items:center;gap:9px;min-height:38px;padding:7px 10px;border:1px solid var(--ciit-border,#dce6f2);border-radius:6px;cursor:pointer}
+.employee-role-list input{width:16px;height:16px;accent-color:#1769d2}
+.employee-selected-roles{padding:18px 0}
+.employee-selected-roles>div{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.employee-selected-roles span{padding:5px 10px;border-radius:20px;background:var(--ciit-primary-hover,#e8f1ff);color:var(--ciit-primary,#1769d2);font-size:12px;font-weight:600}
+.employee-selected-roles small{color:var(--ciit-muted,#687b94)}
+.employee-role-footer{display:flex;justify-content:flex-end;gap:9px;padding-top:15px;border-top:1px solid var(--ciit-border,#dce6f2)}
 @media(max-width:1000px){.employee-filters{grid-template-columns:1fr 1fr}.employee-filters input{grid-column:1/-1}}
-@media(max-width:640px){.employee-page-header{align-items:stretch;flex-direction:column}.employee-page-header .employee-primary-btn{width:100%}.employee-filters{grid-template-columns:1fr}.employee-filters input{grid-column:auto}.employee-table-footer{align-items:flex-start;flex-direction:column}.employee-modal-grid,.employee-profile-grid{grid-template-columns:1fr}.employee-full-field{grid-column:auto}.employee-modal-backdrop{align-items:flex-start;padding:10px}.employee-modal{max-height:none;margin:auto 0}}
+@media(max-width:640px){.employee-page-header{align-items:stretch;flex-direction:column}.employee-page-header .employee-primary-btn{width:100%}.employee-filters{grid-template-columns:1fr}.employee-filters input{grid-column:auto}.employee-table-footer{align-items:flex-start;flex-direction:column}.employee-modal-grid,.employee-profile-grid{grid-template-columns:1fr}.employee-full-field{grid-column:auto}.employee-modal-backdrop{align-items:flex-start;padding:10px}.employee-modal{max-height:none;margin:auto 0}.employee-roles-heading{align-items:stretch;flex-direction:column}.employee-roles-heading input{width:100%}.employee-role-list{grid-template-columns:1fr}}
