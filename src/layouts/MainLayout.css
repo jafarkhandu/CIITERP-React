@@ -295,3 +295,40 @@ html[data-theme="dark"] .ciit-glass-modal .btn-close { filter:invert(1); }
   .ciit-table-search { width:100%; }
   .ciit-glass-modal .modal-body { padding:15px; }
 }
+
+/* Shared table polish for existing ERP modules as well as the new account screens. */
+.cmp-main-layout .ciit-content .table:not(.ciit-professional-table) {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--ciit-text);
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-bottom: 0;
+}
+.cmp-main-layout .ciit-content .table:not(.ciit-professional-table) thead th {
+  padding: 12px 14px;
+  background: rgba(225,236,249,.72);
+  color: #38516f;
+  border-bottom: 1px solid rgba(181,201,225,.7);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.cmp-main-layout .ciit-content .table:not(.ciit-professional-table) tbody td {
+  padding: 12px 14px;
+  border-color: rgba(204,218,235,.58);
+  font-size: 13px;
+  vertical-align: middle;
+}
+.cmp-main-layout .ciit-content .table:not(.ciit-professional-table) tbody tr:hover {
+  --bs-table-bg: rgba(225,239,255,.48);
+}
+html[data-theme="dark"] .cmp-main-layout .ciit-content .table:not(.ciit-professional-table) thead th {
+  background: rgba(35,57,82,.88);
+  color: #dce9f8;
+}
+html[data-theme="dark"] .cmp-main-layout .ciit-content .table:not(.ciit-professional-table) tbody td {
+  color: #d9e6f5;
+  border-color: rgba(120,150,185,.18);
+}
