@@ -24,8 +24,8 @@ const freshForm = () => ({
 
 function Modal({ title, subtitle, onClose, children, large = true }: { title: string; subtitle: string; onClose: () => void; children: ReactNode; large?: boolean }) {
   return <div className="ciit-modal-backdrop" onMouseDown={onClose}>
-    <div className="modal show d-block" role="dialog" aria-modal="true" aria-labelledby="student-modal-title" onMouseDown={(e) => e.stopPropagation()}>
-      <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable" style={{ maxWidth: large ? 980 : 620 }}>
+    <div className="ciit-modal-window" role="dialog" aria-modal="true" aria-labelledby="student-modal-title" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="ciit-modal-dialog" style={{ maxWidth: large ? 980 : 620 }}>
         <div className="modal-content ciit-glass-modal">
           <div className="modal-header"><div><span className="ciit-modal-kicker">CIIT · STUDENT MANAGEMENT</span><h2 id="student-modal-title" className="modal-title fs-5">{title}</h2><p className="small text-muted mb-0">{subtitle}</p></div><button className="btn-close" aria-label="Close" onClick={onClose} /></div>
           <div className="modal-body">{children}</div>
