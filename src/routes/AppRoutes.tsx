@@ -15,6 +15,7 @@ import EditUserRoles from '@/features/employee/EditUserRoles';
 import Lead from '@/features/lead/Lead';
 import LeadFollowup from '@/features/lead/LeadFollowup';
 import Course from '@/features/course/Course';
+import Enquiry from '@/features/enquiry/Enquiry';
 
 interface Guard { permission?: Permission; permissions?: Permission[]; roles?: string[]; }
 const guarded = (element: ReactElement, guard: Guard = {}) => <ProtectedRoute {...guard}>{element}</ProtectedRoute>;
@@ -36,7 +37,7 @@ export default function AppRoutes() {
       <Route path="trainer" element={guarded(soon('Trainer Batches', 4), { roles: ['Trainer'], permission: PERMISSIONS.TRAINER_BATCH_VIEW })} />
       <Route path="trainer/batches/:batchId" element={guarded(soon('Trainer Batch Details', 4), { roles: ['Trainer'], permissions: [PERMISSIONS.TRAINER_BATCH_VIEW, PERMISSIONS.TRAINER_ATTENDANCE_VIEW] })} />
       <Route path="profile" element={guarded(<Profile />)} />
-      <Route path="enquiry" element={guarded(soon('Enquiry', 2), { permission: PERMISSIONS.ENQUIRY_VIEW })} />
+      <Route path="enquiry" element={guarded(<Enquiry />, { permission: PERMISSIONS.ENQUIRY_VIEW })} />
       <Route path="enquiry/add" element={guarded(soon('Add Enquiry', 2), { permission: PERMISSIONS.ENQUIRY_CREATE })} />
       <Route path="enquiry/edit/:id" element={guarded(soon('Edit Enquiry', 2), { permission: PERMISSIONS.ENQUIRY_UPDATE })} />
       <Route path="enquiry/followup/:enquiryId" element={guarded(soon('Enquiry Followup', 2), { permission: PERMISSIONS.ENQUIRY_FOLLOWUP })} />
