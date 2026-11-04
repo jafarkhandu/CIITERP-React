@@ -34,7 +34,7 @@ export function extractRows(value: unknown): Record<string, unknown>[] {
   if (Array.isArray(value)) return value.filter((item): item is Record<string, unknown> => !!item && typeof item === 'object');
   if (!value || typeof value !== 'object') return [];
   const record = value as Record<string, unknown>;
-  for (const key of ['data', 'result', 'items', 'records', 'list', 'value', '$values']) {
+  for (const key of ['data', 'result', 'items', 'records', 'list', 'batches', 'students', 'schedules', 'value', '$values']) {
     const nested = record[key];
     if (Array.isArray(nested)) return extractRows(nested);
     if (nested && typeof nested === 'object') {
