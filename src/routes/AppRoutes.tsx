@@ -18,6 +18,10 @@ import Course from '@/features/course/Course';
 import Enquiry from '@/features/enquiry/Enquiry';
 import FunctionManagement from '@/features/function-management/FunctionManagement';
 import Settings from '@/features/settings/Settings';
+import StudentRegistration from '@/features/student/StudentRegistration';
+import StudentPayments from '@/features/student/StudentPayments';
+import TrainerBatches from '@/features/trainer/TrainerBatches';
+import TrainerBatchDetails from '@/features/trainer/TrainerBatchDetails';
 
 interface Guard { permission?: Permission; permissions?: Permission[]; roles?: string[]; }
 const guarded = (element: ReactElement, guard: Guard = {}) => <ProtectedRoute {...guard}>{element}</ProtectedRoute>;
@@ -36,8 +40,8 @@ export default function AppRoutes() {
       <Route path="lead/followup/:leadId" element={guarded(<LeadFollowup />, { permission: PERMISSIONS.LEAD_FOLLOWUP })} />
       <Route path="change-password" element={guarded(<ChangePassword />)} />
       <Route path="batch" element={guarded(soon('Manage Batch', 4), { roles: ['Admin', 'Super User', 'Group Leader'], permission: PERMISSIONS.GROUP_LEADER_BATCH_VIEW })} />
-      <Route path="trainer" element={guarded(soon('Trainer Batches', 4), { roles: ['Trainer'], permission: PERMISSIONS.TRAINER_BATCH_VIEW })} />
-      <Route path="trainer/batches/:batchId" element={guarded(soon('Trainer Batch Details', 4), { roles: ['Trainer'], permissions: [PERMISSIONS.TRAINER_BATCH_VIEW, PERMISSIONS.TRAINER_ATTENDANCE_VIEW] })} />
+      <Route path="trainer" element={guarded(<TrainerBatches />, { roles: ['Trainer'], permission: PERMISSIONS.TRAINER_BATCH_VIEW })} />
+      <Route path="trainer/batches/:batchId" element={guarded(<TrainerBatchDetails />, { roles: ['Trainer'], permissions: [PERMISSIONS.TRAINER_BATCH_VIEW, PERMISSIONS.TRAINER_ATTENDANCE_VIEW] })} />
       <Route path="profile" element={guarded(<Profile />)} />
       <Route path="enquiry" element={guarded(<Enquiry />, { permission: PERMISSIONS.ENQUIRY_VIEW })} />
       <Route path="enquiry/add" element={guarded(soon('Add Enquiry', 2), { permission: PERMISSIONS.ENQUIRY_CREATE })} />
@@ -47,13 +51,13 @@ export default function AppRoutes() {
       <Route path="function-management" element={guarded(<FunctionManagement />, { permission: PERMISSIONS.FUNCTION_MANAGEMENT_VIEW, roles: ['Admin', 'Super User'] })} />
       <Route path="reports" element={guarded(soon('Reports', 4), { permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User'] })} />
       <Route path="settings" element={guarded(<Settings />)} />
-      <Route path="student-registration" element={guarded(soon('Student Registration', 3))} />
+      <Route path="student-registration" element={guarded(<StudentRegistration />)} />
       <Route path="student-details/:studentId" element={guarded(soon('Student Details', 3))} />
-      <Route path="account/student-registration" element={guarded(soon('Student Registration', 3))} />
-      <Route path="student-registration/add" element={guarded(soon('Student Registration', 3))} />
-      <Route path="student-registration/new" element={guarded(soon('New Student Registration', 3))} />
-      <Route path="student-payments" element={guarded(soon('Student Payments', 3))} />
-      <Route path="student-payments/create" element={guarded(soon('Create Payment', 3))} />
+      <Route path="account/student-registration" element={guarded(<StudentRegistration />)} />
+      <Route path="student-registration/add" element={guarded(<StudentRegistration />)} />
+      <Route path="student-registration/new" element={guarded(<StudentRegistration />)} />
+      <Route path="student-payments" element={guarded(<StudentPayments />)} />
+      <Route path="student-payments/create" element={guarded(<StudentPayments />)} />
       <Route index element={<Navigate to="dashboard" replace />} />
     </Route>
     <Route path="/" element={<Navigate to="/login" replace />} />
