@@ -8,6 +8,7 @@ export default function Dashboard() {
   usePermissionVersion();
   const roles = session.roles.map((role) => role.trim().toLowerCase());
   const salesRole = roles.some((role) => ['admin', 'super user', 'counsellor', 'counciler'].includes(role));
+  const accountingRole = roles.some((role) => ['admin', 'super user', 'accountant'].includes(role));
   const cards = [
     { title: 'Employees', description: 'Manage system users and access.', route: '/main/user', permission: PERMISSIONS.USER_VIEW },
     { title: 'Leads', description: 'Manage leads and follow-ups.', route: '/main/lead', permission: PERMISSIONS.LEAD_VIEW, sales: true },
@@ -15,8 +16,10 @@ export default function Dashboard() {
     { title: 'Courses', description: 'Manage training courses and fees.', route: '/main/course', permission: PERMISSIONS.COURSE_VIEW, sales: true },
     { title: 'Manage Batch', description: 'Manage batches, schedules, and attendance.', route: '/main/batch', permission: PERMISSIONS.GROUP_LEADER_BATCH_VIEW },
     { title: 'Trainer Batches', description: 'View assigned training batches.', route: '/main/trainer', permission: PERMISSIONS.TRAINER_BATCH_VIEW },
+    { title: 'Student Registration', description: 'View student profiles and course registrations.', route: '/main/student-registration', accounting: true },
+    { title: 'Student Payments', description: 'Review student payment history and collections.', route: '/main/student-payments', accounting: true },
     { title: 'Reports', description: 'Review operational reports.', route: '/main/reports', permission: PERMISSIONS.REPORTS_VIEW },
-  ].filter((card) => permissionService.hasPermission(card.permission) && (!card.sales || salesRole));
+  ].filter((card) => (!card.permission || permissionService.hasPermission(card.permission)) && (!card.sales || salesRole) && (!card.accounting || accountingRole));
 
   return <section className="dashboard-page">
     <header className="dashboard-header">
