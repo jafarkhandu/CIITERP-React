@@ -102,3 +102,196 @@
 .cmp-main-layout .profile-dropdown-divider { height: 1px; margin: 5px 4px; background: var(--ciit-border); }
 .cmp-main-layout .profile-dropdown .dropdown-logout { color: #dc3545; }
 @media (max-width: 576px) { .cmp-main-layout .top-profile-name { display: none; } .cmp-main-layout .theme-toggle span:not(.theme-switch-track) { display: none; } .cmp-main-layout .ciit-nav-right { flex-direction: row; align-items: center; } }
+
+
+/* ==========================================================
+   CIIT GLASS SYSTEM — shell, navigation and data workspaces
+   ========================================================== */
+.cmp-main-layout {
+  --ciit-glass-border: rgba(255,255,255,.58);
+  --ciit-glass-shadow: 0 18px 48px rgba(22, 49, 83, .10);
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 8% 0%, rgba(59,130,246,.14), transparent 34%),
+    radial-gradient(ellipse at 92% 12%, rgba(14,165,233,.12), transparent 30%),
+    linear-gradient(145deg, #edf4fc 0%, #f7faff 48%, #eaf1fa 100%);
+}
+.cmp-main-layout .ciit-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  background: rgba(13, 66, 126, .82) !important;
+  border-bottom: 1px solid rgba(255,255,255,.24);
+  box-shadow: 0 8px 30px rgba(9, 42, 83, .15);
+  -webkit-backdrop-filter: blur(22px) saturate(165%);
+  backdrop-filter: blur(22px) saturate(165%);
+}
+.cmp-main-layout .ciit-page {
+  background: transparent !important;
+}
+.cmp-main-layout .ciit-sidebar {
+  position: sticky;
+  top: 94px;
+  background: rgba(255,255,255,.68) !important;
+  border: 1px solid rgba(255,255,255,.78) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 16px 42px rgba(35, 67, 105, .09), inset 0 1px 0 rgba(255,255,255,.8) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(155%);
+  backdrop-filter: blur(22px) saturate(155%);
+}
+.cmp-main-layout .sidebar-user-profile {
+  background: linear-gradient(135deg, rgba(255,255,255,.84), rgba(226,240,255,.66)) !important;
+  border: 1px solid rgba(255,255,255,.85) !important;
+  border-radius: 15px !important;
+  box-shadow: 0 8px 22px rgba(31, 78, 130, .08) !important;
+}
+.cmp-main-layout .ciit-sidebar-list .list-group-item {
+  background: transparent !important;
+  margin-bottom: 5px;
+}
+.cmp-main-layout .ciit-sidebar-list a {
+  min-height: 43px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  padding: 10px 12px;
+  transition: background .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.cmp-main-layout .ciit-sidebar-list a:hover {
+  background: rgba(255,255,255,.78) !important;
+  border-color: rgba(59,130,246,.16);
+  transform: translateX(2px);
+}
+.cmp-main-layout .ciit-sidebar-list a.active-link {
+  background: linear-gradient(115deg, rgba(24,105,210,.96), rgba(45,137,237,.88)) !important;
+  border-color: rgba(255,255,255,.3);
+  box-shadow: 0 8px 18px rgba(23,105,210,.22), inset 0 1px 0 rgba(255,255,255,.24);
+}
+.cmp-main-layout .ciit-content {
+  min-height: calc(100vh - 142px);
+  padding: 22px;
+  border: 1px solid rgba(255,255,255,.78);
+  border-radius: 20px;
+  background: rgba(255,255,255,.64);
+  box-shadow: var(--ciit-glass-shadow), inset 0 1px 0 rgba(255,255,255,.78);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+  backdrop-filter: blur(18px) saturate(145%);
+}
+
+/* Data pages */
+.ciit-data-page { color: var(--ciit-text); }
+.ciit-page-heading {
+  display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap;
+}
+.ciit-section-eyebrow, .ciit-modal-kicker {
+  display:block; margin-bottom:7px; color:var(--ciit-primary);
+  font-size:10px; font-weight:800; letter-spacing:.13em;
+}
+.ciit-stat-card, .ciit-data-card {
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.76) !important;
+  border-radius:16px !important;
+  background:rgba(255,255,255,.76) !important;
+  box-shadow:0 10px 30px rgba(33,66,105,.07), inset 0 1px 0 rgba(255,255,255,.85) !important;
+  -webkit-backdrop-filter:blur(16px) saturate(145%);
+  backdrop-filter:blur(16px) saturate(145%);
+}
+.ciit-stat-card .card-body { display:flex; flex-direction:column; gap:6px; padding:19px 21px; }
+.ciit-stat-card span { color:var(--ciit-muted); font-size:12px; font-weight:600; }
+.ciit-stat-card strong { color:var(--ciit-text); font-size:27px; line-height:1.2; letter-spacing:-.03em; }
+.ciit-stat-card small { color:var(--ciit-muted); font-size:11px; }
+.ciit-data-card .card-header {
+  display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+  padding:16px 19px; border-bottom:1px solid var(--ciit-border);
+  background:rgba(255,255,255,.42);
+}
+.ciit-table-search { position:relative; width:min(100%, 390px); }
+.ciit-table-search > i { position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--ciit-muted); z-index:1; }
+.ciit-table-search .form-control { padding-left:37px; border-radius:10px; min-height:40px; }
+.ciit-professional-table { min-width:760px; --bs-table-bg:transparent; --bs-table-color:var(--ciit-text); }
+.ciit-professional-table thead th {
+  padding:13px 14px; background:rgba(225,236,249,.76) !important;
+  color:#38516f !important; border-bottom:1px solid rgba(181,201,225,.7);
+  font-size:11px; font-weight:800; letter-spacing:.045em; text-transform:uppercase; white-space:nowrap;
+}
+.ciit-professional-table tbody td { padding:13px 14px; border-color:rgba(204,218,235,.58); font-size:13px; vertical-align:middle; }
+.ciit-professional-table tbody tr { transition:background .16s ease; }
+.ciit-professional-table tbody tr:hover { --bs-table-bg:rgba(225,239,255,.56); }
+.ciit-table-state { padding:34px 18px !important; text-align:center; color:var(--ciit-muted) !important; }
+.ciit-student-cell { display:flex; align-items:center; gap:10px; min-width:155px; }
+.ciit-student-cell > div { display:flex; flex-direction:column; gap:3px; }
+.ciit-student-cell strong { color:var(--ciit-text); font-size:13px; }
+.ciit-student-cell small { color:var(--ciit-muted); font-size:11px; }
+.ciit-student-avatar {
+  display:grid; place-items:center; flex:0 0 34px; height:34px; border-radius:11px;
+  color:#1769d2; font-weight:800; background:linear-gradient(145deg,#e7f1ff,#cfe3ff);
+}
+.ciit-icon-button { border:1px solid var(--ciit-border); color:var(--ciit-primary); }
+.ciit-icon-button:hover { background:var(--ciit-primary-hover); color:var(--ciit-primary); }
+.ciit-detail-field { height:100%; padding:12px 14px; border:1px solid var(--ciit-border); border-radius:11px; background:rgba(239,245,252,.58); }
+.ciit-detail-field small { display:block; margin-bottom:5px; color:var(--ciit-muted); font-size:11px; }
+.ciit-detail-field strong { display:block; color:var(--ciit-text); font-size:13px; overflow-wrap:anywhere; }
+.ciit-form-section { padding:17px; border:1px solid var(--ciit-border); border-radius:14px; background:rgba(239,245,252,.42); }
+.ciit-form-section h3 { margin:0 0 15px; color:var(--ciit-text); font-size:14px; font-weight:750; }
+.ciit-fee-summary { display:flex; flex-wrap:wrap; gap:14px 28px; padding:14px 16px; border:1px solid rgba(59,130,246,.18); border-radius:12px; background:rgba(226,239,255,.58); }
+.ciit-fee-summary span { display:flex; flex-direction:column; gap:4px; color:var(--ciit-muted); font-size:11px; }
+.ciit-fee-summary strong { color:var(--ciit-text); font-size:15px; }
+.ciit-modal-backdrop { z-index:1080; background:rgba(8,22,42,.54); -webkit-backdrop-filter:blur(7px); backdrop-filter:blur(7px); }
+.ciit-modal-backdrop .modal { z-index:1081; }
+.ciit-glass-modal { overflow:hidden; border:1px solid rgba(255,255,255,.68) !important; border-radius:19px !important; background:rgba(250,253,255,.96) !important; box-shadow:0 28px 90px rgba(4,19,40,.3) !important; }
+.ciit-glass-modal .modal-header { padding:19px 22px; border-bottom:1px solid rgba(190,207,228,.62); background:linear-gradient(120deg,rgba(231,242,255,.95),rgba(255,255,255,.88)); }
+.ciit-glass-modal .modal-body { padding:22px; }
+.ciit-glass-modal .form-label { color:#38516f; font-size:12px; font-weight:700; }
+.ciit-glass-modal .form-control, .ciit-glass-modal .form-select { min-height:41px; border-radius:9px; }
+.ciit-glass-modal textarea.form-control { min-height:unset; }
+.ciit-glass-modal .btn { border-radius:9px; }
+
+/* Dark glass */
+html[data-theme="dark"] .cmp-main-layout {
+  --ciit-glass-border:rgba(148,176,210,.18);
+  --ciit-glass-shadow:0 18px 48px rgba(0,0,0,.22);
+  background:radial-gradient(ellipse at 8% 0%,rgba(37,99,235,.16),transparent 34%),linear-gradient(145deg,#0c1726,#101d2e 58%,#0c1726);
+}
+html[data-theme="dark"] .cmp-main-layout .ciit-sidebar,
+html[data-theme="dark"] .cmp-main-layout .ciit-content,
+html[data-theme="dark"] .ciit-stat-card,
+html[data-theme="dark"] .ciit-data-card {
+  background:rgba(18,34,53,.76) !important;
+  border-color:rgba(148,176,210,.17) !important;
+}
+html[data-theme="dark"] .cmp-main-layout .sidebar-user-profile { background:rgba(29,49,72,.82) !important; border-color:rgba(148,176,210,.16) !important; }
+html[data-theme="dark"] .cmp-main-layout .profile-name,
+html[data-theme="dark"] .cmp-main-layout .profile-role { color:#e6eefb; }
+html[data-theme="dark"] .cmp-main-layout .ciit-sidebar-list a:hover { background:rgba(60,100,150,.25) !important; }
+html[data-theme="dark"] .ciit-data-card .card-header { background:rgba(11,24,40,.38); }
+html[data-theme="dark"] .ciit-professional-table thead th { background:rgba(35,57,82,.88) !important; color:#dce9f8 !important; }
+html[data-theme="dark"] .ciit-professional-table tbody td { color:#d9e6f5; border-color:rgba(120,150,185,.18); }
+html[data-theme="dark"] .ciit-professional-table tbody tr:hover { --bs-table-bg:rgba(43,73,108,.32); }
+html[data-theme="dark"] .ciit-student-cell strong,
+html[data-theme="dark"] .ciit-stat-card strong,
+html[data-theme="dark"] .ciit-detail-field strong,
+html[data-theme="dark"] .ciit-form-section h3 { color:#e6eefb; }
+html[data-theme="dark"] .ciit-detail-field,
+html[data-theme="dark"] .ciit-form-section { background:rgba(10,23,39,.48); border-color:rgba(148,176,210,.18); }
+html[data-theme="dark"] .ciit-fee-summary { background:rgba(30,58,91,.42); border-color:rgba(96,165,250,.22); }
+html[data-theme="dark"] .ciit-fee-summary strong { color:#e6eefb; }
+html[data-theme="dark"] .ciit-glass-modal { background:rgba(17,31,48,.98) !important; color:#e6eefb; border-color:rgba(148,176,210,.22) !important; }
+html[data-theme="dark"] .ciit-glass-modal .modal-header { background:rgba(25,45,68,.96); border-color:rgba(148,176,210,.18); }
+html[data-theme="dark"] .ciit-glass-modal .form-label { color:#dce9f8; }
+html[data-theme="dark"] .ciit-glass-modal .form-control,
+html[data-theme="dark"] .ciit-glass-modal .form-select,
+html[data-theme="dark"] .ciit-glass-modal textarea { background:#0c1a2b; color:#e6eefb; border-color:#344b67; }
+html[data-theme="dark"] .ciit-glass-modal .btn-close { filter:invert(1); }
+
+@media (max-width: 991.98px) {
+  .cmp-main-layout .ciit-sidebar { position:relative; top:auto; margin-bottom:4px; }
+  .cmp-main-layout .ciit-content { min-height:unset; padding:14px; }
+}
+@media (max-width: 575.98px) {
+  .cmp-main-layout .ciit-page { padding:12px !important; }
+  .cmp-main-layout .ciit-content { padding:10px; border-radius:15px; }
+  .ciit-page-heading > div:last-child { width:100%; }
+  .ciit-page-heading .btn { flex:1 1 auto; }
+  .ciit-data-card .card-header { align-items:stretch; }
+  .ciit-table-search { width:100%; }
+  .ciit-glass-modal .modal-body { padding:15px; }
+}
