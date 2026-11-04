@@ -92,14 +92,14 @@ export const studentApi = {
     const { data } = await http.get(`${API_ENDPOINTS.studentDetails}/get-all`);
     return extractRows(data).map((row) => ({
       ...row,
-      studentId: Number(row.studentId ?? row.student_id ?? 0),
-      studentName: String(row.studentName ?? row.student_name ?? ''),
-      lastName: String(row.lastName ?? row.last_name ?? ''),
-      studentCode: String(row.studentCode ?? row.student_code ?? ''),
-      mobileNumber: String(row.mobileNumber ?? row.mobile_number ?? ''),
-      emailAddress: String(row.emailAddress ?? row.email_address ?? ''),
+      studentId: Number(row.studentId ?? row.student_id ?? row.student_Id ?? row.StudentId ?? 0),
+      studentName: String(row.studentName ?? row.student_name ?? row.student_Name ?? row.StudentName ?? ''),
+      lastName: String(row.lastName ?? row.last_name ?? row.last_Name ?? row.LastName ?? ''),
+      studentCode: String(row.studentCode ?? row.student_code ?? row.student_Code ?? ''),
+      mobileNumber: String(row.mobileNumber ?? row.mobile_number ?? row.mobile_Number ?? ''),
+      emailAddress: String(row.emailAddress ?? row.email_address ?? row.email_Address ?? ''),
       qualification: String(row.qualification ?? ''),
-      branchName: String(row.branchName ?? row.branch_name ?? ''),
+      branchName: String(row.branchName ?? row.branch_name ?? row.branch_Name ?? ''),
     })).filter((row) => row.studentId > 0);
   },
 
@@ -154,17 +154,17 @@ export const studentApi = {
     const { data } = await http.get(`${API_ENDPOINTS.studentPayment}/get-all`);
     return extractRows(data).map((row) => ({
       ...row,
-      paymentId: Number(row.paymentId ?? row.payment_id ?? row.payment_Id ?? 0),
-      paymentDate: String(row.paymentDate ?? row.payment_date ?? ''),
-      registrationCode: String(row.registrationCode ?? row.registration_code ?? ''),
-      paymentAmount: Number(row.paymentAmount ?? row.payment_amount ?? 0),
+      paymentId: Number(row.paymentId ?? row.payment_id ?? row.payment_Id ?? row.PaymentId ?? 0),
+      paymentDate: String(row.paymentDate ?? row.payment_date ?? row.payment_Date ?? ''),
+      registrationCode: String(row.registrationCode ?? row.registration_code ?? row.registration_Code ?? ''),
+      paymentAmount: Number(row.paymentAmount ?? row.payment_amount ?? row.payment_Amount ?? 0),
       studentId: Number(row.studentId ?? row.student_id ?? 0),
-      registrationId: Number(row.registrationId ?? row.registration_id ?? 0),
+      registrationId: Number(row.registrationId ?? row.registration_id ?? row.registration_Id ?? 0),
       studentName: String(row.studentName ?? row.student_name ?? ''),
       lastName: String(row.lastName ?? row.last_name ?? ''),
-      paymentMode: String(row.paymentMode ?? row.payment_mode ?? ''),
-      paymentDescription: String(row.paymentDescription ?? row.payment_description ?? ''),
-      courseName: String(row.courseName ?? row.course_name ?? ''),
+      paymentMode: String(row.paymentMode ?? row.payment_mode ?? row.payment_Mode ?? ''),
+      paymentDescription: String(row.paymentDescription ?? row.payment_description ?? row.payment_Description ?? ''),
+      courseName: String(row.courseName ?? row.course_name ?? row.course_Name ?? ''),
       branchName: String(row.branchName ?? row.branch_name ?? ''),
     })).filter((row) => row.paymentId > 0 || row.registrationId > 0);
   },
