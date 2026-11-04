@@ -1,0 +1,14 @@
+.settings-page{width:100%;color:var(--ciit-text,#25364d)}
+.settings-page-header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px}.settings-page-header>div>span{color:var(--ciit-muted,#687b94);font-size:11px;font-weight:800;letter-spacing:.1em}.settings-page-header h1{margin:6px 0 4px;font-size:28px;font-weight:700}.settings-page-header p{margin:0;color:var(--ciit-muted,#687b94);font-size:14px}
+.settings-saved{display:flex;align-items:center;gap:7px;color:var(--ciit-muted,#687b94);font-size:12px}.settings-saved i{width:8px;height:8px;border-radius:50%;background:#1a9a62}
+.settings-card{padding:20px;margin-bottom:14px;border:1px solid var(--ciit-border,#dce6f2);border-radius:10px;background:var(--ciit-surface,#fff)}
+.settings-card-heading{padding-bottom:16px;border-bottom:1px solid var(--ciit-border,#dce6f2)}.settings-card h2{margin:0;font-size:18px}.settings-card p{margin:5px 0 0;color:var(--ciit-muted,#687b94);font-size:13px}
+.settings-theme-options{display:grid;grid-template-columns:repeat(2,minmax(0,220px));gap:15px;padding-top:18px}
+.settings-theme-card{display:grid;gap:6px;padding:10px;border:1px solid var(--ciit-border,#dce6f2);border-radius:9px;background:transparent;color:inherit;text-align:left;cursor:pointer}
+.settings-theme-card.selected{border:2px solid var(--ciit-primary,#1769d2);padding:9px;background:var(--ciit-primary-hover,#e8f1ff)}
+.settings-theme-card strong{font-size:14px}.settings-theme-card small{color:var(--ciit-muted,#687b94);font-size:12px}
+.settings-theme-preview{height:92px;display:grid;grid-template-columns:25% 1fr;grid-template-rows:18px 1fr;gap:5px;padding:7px;border-radius:5px}.settings-theme-preview>span:first-child{grid-column:1/-1}.settings-theme-preview>span:nth-child(2){grid-row:2;grid-column:1}.settings-theme-preview>span:nth-child(3){grid-row:2;grid-column:2}
+.settings-theme-preview.light{background:#edf3fa}.settings-theme-preview.light span{border-radius:3px;background:#fff;border:1px solid #dce6f2}.settings-theme-preview.light span:first-child{background:#164f91}
+.settings-theme-preview.dark{background:#15243a}.settings-theme-preview.dark span{border-radius:3px;background:#263b57;border:1px solid #3a506d}.settings-theme-preview.dark span:first-child{background:#0c1828}
+.settings-info h2{font-size:15px}
+@media(max-width:640px){.settings-page-header{align-items:flex-start;flex-direction:column}.settings-theme-options{grid-template-columns:1fr}.settings-theme-card{max-width:none}}
