@@ -121,6 +121,8 @@ export default function StudentRegistration() {
     if (form.parentNumber && !/^\d{10}$/.test(form.parentNumber)) { setError('Parent number must contain exactly 10 digits.'); return; }
     if (form.aadharCardNumber && !/^\d{12}$/.test(form.aadharCardNumber)) { setError('Aadhaar number must contain exactly 12 digits.'); return; }
     if (form.emailAddress && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.emailAddress)) { setError('Enter a valid email address.'); return; }
+    if (feeLoading) { setError('Wait until the course fee calculation finishes.'); return; }
+    if (form.courseId && !feeInfo) { setError('Course fee details are not available. Please select the course again.'); return; }
     if (feeInfo && (form.discount > feeInfo.actualFees || form.paymentAmount > feeInfo.finalFees)) { setError('Discount or initial payment exceeds the applicable course fee.'); return; }
     const payload: RegistrationRequest = { ...form, registrationDate: iso(form.registrationDate), birthDate: iso(form.birthDate), paymentDate: iso(form.paymentDate), leadId: null };
     setSaving(true);
@@ -187,7 +189,7 @@ export default function StudentRegistration() {
           <div className="col-md-4"><label className="form-label">Payment Mode</label><select className="form-select" value={form.paymentMode} onChange={(e) => setField('paymentMode', e.target.value)}><option>Cash</option><option>UPI</option><option>Online</option><option>Card</option><option>Bank Transfer</option><option>Cheque</option></select></div>
           <div className="col-md-4"><label className="form-label">Payment Description</label><input className="form-control" value={form.paymentDescription} onChange={(e) => setField('paymentDescription', e.target.value)} /></div>
         </div></div>
-        {error && <div className="alert alert-danger mt-3">{error}</div>}<div className="d-flex justify-content-end gap-2 mt-4"><button type="button" className="btn btn-light" disabled={saving} onClick={() => setModal(null)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={saving || dropdownLoading}>{saving ? 'Registering...' : 'Register Student'}</button></div>
+        {error && <div className="alert alert-danger mt-3">{error}</div>}<div className="d-flex justify-content-end gap-2 mt-4"><button type="button" className="btn btn-light" disabled={saving} onClick={() => setModal(null)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={saving || dropdownLoading || feeLoading}>{saving ? 'Registering...' : 'Register Student'}</button></div>
       </form>
     </Modal>}
 
