@@ -33,7 +33,7 @@ export default function MainLayout() {
   const session = useSession();
   usePermissionVersion();
 
-  const [isDarkTheme, setIsDarkTheme] = useState(() => localStorage.getItem('ciit-theme') === 'dark');
+  const [isDarkTheme, setIsDarkTheme] = useState(() => (localStorage.getItem('ciit-theme') || localStorage.getItem('theme')) === 'dark');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   // theme (same data-theme attribute + localStorage key as before)
@@ -41,9 +41,19 @@ export default function MainLayout() {
     document.documentElement.setAttribute('data-theme', isDarkTheme ? 'dark' : 'light');
   }, [isDarkTheme]);
 
+  useEffect(() => {
+    const handleThemeChange = (event: Event) => {
+      const nextTheme = (event as CustomEvent<'light' | 'dark'>).detail;
+      if (nextTheme === 'light' || nextTheme === 'dark') setIsDarkTheme(nextTheme === 'dark');
+    };
+    window.addEventListener('ciit-theme-change', handleThemeChange);
+    return () => window.removeEventListener('ciit-theme-change', handleThemeChange);
+  }, []);
+
   function toggleTheme() {
     const next = !isDarkTheme;
     localStorage.setItem('ciit-theme', next ? 'dark' : 'light');
+    localStorage.setItem('theme', next ? 'dark' : 'light');
     setIsDarkTheme(next);
   }
 
