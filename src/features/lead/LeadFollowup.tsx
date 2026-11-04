@@ -3,14 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { leadApi, type LeadFollowupRecord, type LeadRecord } from '@/api/leadApi';
 import { userSession } from '@/core/auth/session';
 import './Lead.css';
+import './LeadFollowup.css';
 
 function toLocalDateTime(date = new Date()): string {
   const pad = (value: number) => String(value).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
-function toLocalDate(date = new Date()): string {
-  return toLocalDateTime(date).slice(0, 10);
-}
+function toLocalDate(date = new Date()): string { return toLocalDateTime(date).slice(0, 10); }
 function formatDate(value: string | Date, withTime = false): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '-';
@@ -62,13 +61,10 @@ export default function LeadFollowup() {
     if (!lead) { setError('Lead details are not available.'); return; }
     setSaving(true);
     const payload: LeadFollowupRecord = {
-      leadFollowupId: 0,
-      leadId,
-      candidateName: lead.candidateName || '',
+      leadFollowupId: 0, leadId, candidateName: lead.candidateName || '',
       followUpDate: new Date(followupDate),
       followUpBy: userSession.employeeName || userSession.username || '',
-      description: description.trim(),
-      status,
+      description: description.trim(), status,
       nextFollowupDate: nextFollowupDate ? new Date(`${nextFollowupDate}T00:00:00`) : new Date(),
     };
     try {
@@ -97,7 +93,6 @@ export default function LeadFollowup() {
         <div><span>Lead Date</span><strong>{formatDate(lead.leadDate)}</strong></div>
       </div> : <p>Lead details unavailable.</p>}
     </div>
-
     <div className="lead-accordion-card">
       <button className="lead-accordion-header" type="button" aria-expanded={expandedForm} onClick={() => setExpandedForm((value) => !value)}>
         <span><strong>＋ New Follow-up</strong><small>Record the latest communication with this lead</small></span><b>{expandedForm ? '−' : '+'}</b>
@@ -113,7 +108,6 @@ export default function LeadFollowup() {
         <footer><button className="lead-secondary-btn" type="button" onClick={() => navigate('/main/lead')}>Cancel</button><button className="lead-primary-btn" type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Follow-up'}</button></footer>
       </form>}
     </div>
-
     <div className="lead-accordion-card">
       <button className="lead-accordion-header" type="button" aria-expanded={expandedHistory} onClick={() => setExpandedHistory((value) => !value)}>
         <span><strong>◷ Previous Lead Follow-ups</strong><small>View complete follow-up communication history</small></span><b>{expandedHistory ? '−' : '+'}</b>
