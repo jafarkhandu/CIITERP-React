@@ -12,12 +12,19 @@ export default function StudentRegistration() {
     setLoading(true);
     setError('');
     try {
-      const [studentRows, registrationRows] = await Promise.all([
+      const [studentResult, registrationResult] = await Promise.allSettled([
         studentApi.getStudents(),
         studentApi.getRegistrations(),
       ]);
-      setStudents(studentRows);
-      setRegistrations(registrationRows);
+      if (studentResult.status === 'fulfilled') setStudents(studentResult.value);
+      if (registrationResult.status === 'fulfilled') setRegistrations(registrationResult.value);
+      if (studentResult.status === 'rejected' || registrationResult.status === 'rejected') {
+        console.error('Partial student registration data failure:', {
+          students: studentResult.status === 'rejected' ? studentResult.reason : undefined,
+          registrations: registrationResult.status === 'rejected' ? registrationResult.reason : undefined,
+        });
+        setError('Some student data could not be loaded. Successful sections are still displayed; refresh after checking the failed API request.');
+      }
     } catch (err) {
       console.error('Student registration data load failed:', err);
       setError('Unable to load student data. Check the API request and your session, then retry.');
