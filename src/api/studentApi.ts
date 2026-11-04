@@ -45,6 +45,48 @@ export function extractRows(value: unknown): Record<string, unknown>[] {
   return [];
 }
 
+export interface RegistrationRequest {
+  branchId: number;
+  registrationDate: string;
+  studentName: string;
+  lastName: string;
+  gender: string;
+  birthDate: string;
+  emailAddress: string;
+  mobileNumber: string;
+  whatsappNumber: string;
+  parentName: string;
+  parentNumber: string;
+  aadharCardNumber: string;
+  aadharCardPhoto: string;
+  localAddress: string;
+  permanentAddress: string;
+  qualification: string;
+  university: string;
+  passingYear: number;
+  medium: string;
+  percentage: number;
+  discount: number;
+  currentStatus: string;
+  courseId: number;
+  leadId?: number | null;
+  paymentDate: string;
+  paymentAmount: number;
+  paymentMode: string;
+  paymentDescription: string;
+}
+
+export interface PaymentRequest {
+  paymentDate: string;
+  paymentAmount: number;
+  paymentMode: string;
+  paymentDescription: string;
+  registrationId: number;
+}
+
+const registrationBase = API_ENDPOINTS.studentRegistration;
+const paymentBase = API_ENDPOINTS.studentPayment;
+
 export const studentApi = {
   async getStudents(): Promise<StudentRow[]> {
     const { data } = await http.get(`${API_ENDPOINTS.studentDetails}/get-all`);
@@ -61,6 +103,30 @@ export const studentApi = {
     })).filter((row) => row.studentId > 0);
   },
 
+  async registerStudent(payload: RegistrationRequest): Promise<unknown> {
+    const { data } = await http.post(`${registrationBase}/register`, payload);
+    return data;
+  },
+
+  async registerExistingStudentCourse(payload: {
+    studentId: number;
+    courseId: number;
+    discount: number;
+    paymentAmount: number;
+    paymentDate: string;
+    paymentMode: string;
+    paymentDescription: string;
+    leadId: number;
+  }): Promise<unknown> {
+    const { data } = await http.post(`${registrationBase}/register-existing-student-course`, payload);
+    return data;
+  },
+
+  async getCourseFees(courseId: number, discount: number): Promise<Record<string, unknown>> {
+    const { data } = await http.get(`${registrationBase}/course-fees/${courseId}`, { params: { discount } });
+    return (data?.data ?? data?.result ?? data) as Record<string, unknown>;
+  },
+
   async getRegistrations(): Promise<Record<string, unknown>[]> {
     const { data } = await http.get(`${API_ENDPOINTS.studentRegistration}/get-all`);
     return extractRows(data);
@@ -71,11 +137,26 @@ export const studentApi = {
     return data;
   },
 
+  async createPayment(payload: PaymentRequest): Promise<unknown> {
+    const { data } = await http.post(`${paymentBase}/create`, payload);
+    return data;
+  },
+
+  async downloadInvoice(registrationId: number, paymentId: number): Promise<Blob> {
+    const response = await http.get(
+      `${paymentBase}/registration/${registrationId}/payment/${paymentId}/invoice/download`,
+      { responseType: 'blob' },
+    );
+    return response.data as Blob;
+  },
+
   async getPayments(): Promise<PaymentRow[]> {
     const { data } = await http.get(`${API_ENDPOINTS.studentPayment}/get-all`);
     return extractRows(data).map((row) => ({
       ...row,
-      paymentId: Number(row.paymentId ?? row.payment_id ?? 0),
+      paymentId: Number(row.paymentId ?? row.payment_id ?? row.payment_Id ?? 0),
+      paymentDate: String(row.paymentDate ?? row.payment_date ?? ''),
+      registrationCode: String(row.registrationCode ?? row.registration_code ?? ''),
       paymentAmount: Number(row.paymentAmount ?? row.payment_amount ?? 0),
       studentId: Number(row.studentId ?? row.student_id ?? 0),
       registrationId: Number(row.registrationId ?? row.registration_id ?? 0),
