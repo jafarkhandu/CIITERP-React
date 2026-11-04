@@ -26,6 +26,8 @@ const MENUS: SidebarMenu[] = [
   { label: 'Manage Batch', route: '/main/batch', icon: '📅', roles: ['Super User', 'Admin', 'Group Leader'], permission: PERMISSIONS.GROUP_LEADER_BATCH_VIEW },
   { label: 'Batch', route: '/main/trainer', icon: '📘', roles: ['Trainer'], permission: PERMISSIONS.TRAINER_BATCH_VIEW },
   { label: 'Reports', route: '/main/reports', icon: '▤', permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User', 'Accountant'] },
+  { label: 'Function Management', route: '/main/function-management', icon: '⚙', permission: PERMISSIONS.FUNCTION_MANAGEMENT_VIEW, roles: ['Admin', 'Super User'] },
+  { label: 'Settings', route: '/main/settings', icon: '⚙', roles: ['Admin', 'Super User'] },
 ];
 
 export default function MainLayout() {
