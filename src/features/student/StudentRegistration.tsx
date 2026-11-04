@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { FormEvent, ReactNode } from 'react';
 import { API_ENDPOINTS } from '@/core/config/api-endpoints';
 import { http } from '@/core/http/httpClient';
@@ -23,7 +24,7 @@ const freshForm = () => ({
 });
 
 function Modal({ title, subtitle, onClose, children, large = true }: { title: string; subtitle: string; onClose: () => void; children: ReactNode; large?: boolean }) {
-  return <div className="ciit-modal-backdrop" onMouseDown={onClose}>
+  return createPortal(<div className="ciit-modal-backdrop" onMouseDown={onClose}>
     <div className="ciit-modal-window" role="dialog" aria-modal="true" aria-labelledby="student-modal-title" onMouseDown={(e) => e.stopPropagation()}>
       <div className="ciit-modal-dialog" style={{ maxWidth: large ? 980 : 620 }}>
         <div className="modal-content ciit-glass-modal">
@@ -32,7 +33,7 @@ function Modal({ title, subtitle, onClose, children, large = true }: { title: st
         </div>
       </div>
     </div>
-  </div>;
+  </div>, document.body);
 }
 
 export default function StudentRegistration() {
