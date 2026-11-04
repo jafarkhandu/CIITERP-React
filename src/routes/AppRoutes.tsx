@@ -16,6 +16,8 @@ import Lead from '@/features/lead/Lead';
 import LeadFollowup from '@/features/lead/LeadFollowup';
 import Course from '@/features/course/Course';
 import Enquiry from '@/features/enquiry/Enquiry';
+import FunctionManagement from '@/features/function-management/FunctionManagement';
+import Settings from '@/features/settings/Settings';
 
 interface Guard { permission?: Permission; permissions?: Permission[]; roles?: string[]; }
 const guarded = (element: ReactElement, guard: Guard = {}) => <ProtectedRoute {...guard}>{element}</ProtectedRoute>;
@@ -42,9 +44,9 @@ export default function AppRoutes() {
       <Route path="enquiry/edit/:id" element={guarded(soon('Edit Enquiry', 2), { permission: PERMISSIONS.ENQUIRY_UPDATE })} />
       <Route path="enquiry/followup/:enquiryId" element={guarded(soon('Enquiry Followup', 2), { permission: PERMISSIONS.ENQUIRY_FOLLOWUP })} />
       <Route path="course" element={guarded(<Course />, { permission: PERMISSIONS.COURSE_VIEW })} />
-      <Route path="function-management" element={guarded(soon('Function Management', 4), { permission: PERMISSIONS.FUNCTION_MANAGEMENT_VIEW, roles: ['Admin', 'Super User'] })} />
+      <Route path="function-management" element={guarded(<FunctionManagement />, { permission: PERMISSIONS.FUNCTION_MANAGEMENT_VIEW, roles: ['Admin', 'Super User'] })} />
       <Route path="reports" element={guarded(soon('Reports', 4), { permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User'] })} />
-      <Route path="settings" element={guarded(soon('Settings', 4))} />
+      <Route path="settings" element={guarded(<Settings />)} />
       <Route path="student-registration" element={guarded(soon('Student Registration', 3))} />
       <Route path="student-details/:studentId" element={guarded(soon('Student Details', 3))} />
       <Route path="account/student-registration" element={guarded(soon('Student Registration', 3))} />
