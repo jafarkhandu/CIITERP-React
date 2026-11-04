@@ -1,5 +1,4 @@
-// Port of UserApi: GET /User/get-all-users, with the same localStorage cache
-// (cached copy is available instantly, fresh copy is fetched once per page load).
+// Port of UserApi: GET /User/get-all-users with the Angular cache key.
 import { http } from '@/core/http/httpClient';
 import { API_ENDPOINTS } from '@/core/config/api-endpoints';
 import type { User } from '@/types/user';
@@ -18,6 +17,14 @@ export function getCachedUsers(): User[] | null {
   }
 }
 
+function extractUsers(value: any): User[] {
+  let current = value;
+  for (let depth = 0; depth < 5 && current && !Array.isArray(current); depth += 1) {
+    current = current.data ?? current.result ?? current.items ?? current.records ?? current.value ?? current.$values;
+  }
+  return Array.isArray(current) ? current as User[] : [];
+}
+
 function saveCache(users: User[]) {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify(users));
@@ -30,17 +37,17 @@ export function getAllUsers(): Promise<User[]> {
   if (!usersPromise) {
     usersPromise = http
       .get(`${API_ENDPOINTS.user}/get-all-users`)
-      .then((r) => {
-        const users: User[] = Array.isArray(r.data) ? r.data : r.data?.data ?? [];
+      .then((response) => {
+        const users = extractUsers(response.data);
         saveCache(users);
         return users;
       })
       .catch((error) => {
-        usersPromise = null; // don't keep a failed request cached
+        usersPromise = null;
         throw error;
       });
   }
-  return usersPromise;
+  return usersPromise ?? Promise.resolve([]);
 }
 
 export function clearUsersCache() {
@@ -48,13 +55,12 @@ export function clearUsersCache() {
   localStorage.removeItem(CACHE_KEY);
 }
 
-/** Finds the logged-in user in the users list (by employee code, username or email). */
+/** Finds the logged-in user by employee code, username or email. */
 export function findCurrentUser(users: User[], loginName: string): User | undefined {
-  const u = loginName.trim().toLowerCase();
-  return users.find(
-    (x) =>
-      x.employeeCode?.trim().toLowerCase() === u ||
-      x.userName?.trim().toLowerCase() === u ||
-      x.emailAddress?.trim().toLowerCase() === u,
+  const normalized = loginName.trim().toLowerCase();
+  return users.find((user) =>
+    user.employeeCode?.trim().toLowerCase() === normalized ||
+    user.userName?.trim().toLowerCase() === normalized ||
+    user.emailAddress?.trim().toLowerCase() === normalized,
   );
 }
