@@ -475,3 +475,32 @@ html[data-theme="dark"] .batch-detail-grid dd { color: #e6eefb; }
 @media (max-width: 575px) {
   .batch-detail-grid { grid-template-columns: 1fr; padding: 14px; }
 }
+
+
+/* Modal sizing is viewport-driven so overlays remain usable at 100% browser zoom. */
+.batch-modal-backdrop { z-index: 1400; box-sizing: border-box; overscroll-behavior: contain; }
+.batch-modal { width: min(820px, calc(100vw - 36px)); max-height: calc(100dvh - 36px); overscroll-behavior: contain; }
+.batch-modal-small { width: min(500px, calc(100vw - 36px)); }
+.batch-modal-details { width: min(760px, calc(100vw - 36px)); }
+.batch-modal > header { flex-shrink: 0; }
+@media (max-width: 640px) {
+  .batch-modal-backdrop { padding: 10px; }
+  .batch-modal, .batch-modal-small, .batch-modal-details { width: 100%; max-height: calc(100dvh - 20px); }
+}
+
+
+/* These page-scoped tokens must also exist on body-portaled dialogs. */
+.batch-modal-backdrop {
+  --batch-surface: rgba(255,255,255,.82);
+  --batch-panel: rgba(247,250,255,.78);
+  --batch-border: rgba(190,207,229,.7);
+  --batch-text: #263e5b;
+  --batch-muted: #71859f;
+}
+html[data-theme="dark"] .batch-modal-backdrop {
+  --batch-surface: rgba(18,34,53,.82);
+  --batch-panel: rgba(11,25,43,.68);
+  --batch-border: rgba(148,176,210,.17);
+  --batch-text: #e6eefb;
+  --batch-muted: #9db1cb;
+}
