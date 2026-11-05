@@ -27,7 +27,6 @@ const MENUS: SidebarMenu[] = [
   { label: 'My Batches', route: '/main/trainer', icon: 'bi-easel2-fill', roles: ['Trainer'], permission: PERMISSIONS.TRAINER_BATCH_VIEW },
   { label: 'Reports', route: '/main/reports', icon: 'bi-graph-up-arrow', permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User'] },
   { label: 'Function Management', route: '/main/function-management', icon: 'bi-sliders2', permission: PERMISSIONS.FUNCTION_MANAGEMENT_VIEW, roles: ['Admin', 'Super User'] },
-  { label: 'Settings', route: '/main/settings', icon: 'bi-gear-fill', roles: ['Admin', 'Super User'] },
   { label: 'Email Services', route: '/main/email-services', icon: 'bi-envelope-at-fill', roles: ['Admin', 'Super User'] },
 ];
 
