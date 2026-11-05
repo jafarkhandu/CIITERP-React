@@ -214,7 +214,7 @@ export default function StudentRegistration() {
 
     {modal === 'details' && selectedStudent && <Modal title="Student Profile" subtitle={`Student ID: ${selectedStudent.studentId}`} onClose={() => setModal(null)} large={false}><div className="row g-3">{[['Name', `${selectedStudent.studentName} ${selectedStudent.lastName ?? ''}`], ['Student Code', selectedStudent.studentCode], ['Mobile', selectedStudent.mobileNumber], ['Email', selectedStudent.emailAddress], ['Qualification', selectedStudent.qualification], ['Branch', selectedStudent.branchName], ['Gender', selectedStudent.gender], ['Date of Birth', selectedStudent.birthDate], ['Parent', selectedStudent.parentName], ['Parent Mobile', selectedStudent.parentNumber], ['WhatsApp', selectedStudent.whatsappNumber], ['Address', selectedStudent.localAddress]].map(([label, value]) => <div className="col-sm-6" key={label}><div className="ciit-detail-field"><small>{label}</small><strong>{show(value)}</strong></div></div>)}</div><div className="text-end mt-4"><button className="btn btn-secondary" onClick={() => setModal(null)}>Close</button></div></Modal>}
 
-    {modal === 'new' && <Modal title="Register New Student" subtitle="Create a student profile and enroll in a course." onClose={() => !saving && setModal(null)}>
+    {modal === 'new' && <div className="ciit-registration-form-page"><div className="ciit-page-heading mb-3"><div><span className="ciit-section-eyebrow">CIIT · STUDENT MANAGEMENT</span><h1 className="h3 mb-1">Register New Student</h1><p className="text-muted mb-0">Create a student profile and enroll in a course.</p></div><button type="button" className="btn btn-outline-secondary" disabled={saving} onClick={() => setModal(null)}>Back to Student Registration</button></div><div className="card ciit-data-card"><div className="card-body">
       {dropdownLoading && <div className="alert alert-info py-2">Loading branches, qualifications and courses...</div>}
       <form onSubmit={submitNew}>
         <div className="ciit-form-section"><h3>Personal Information</h3><div className="row g-3">
@@ -251,7 +251,7 @@ export default function StudentRegistration() {
         </div></div>
         {error && <div className="alert alert-danger mt-3">{error}</div>}<div className="d-flex justify-content-end gap-2 mt-4"><button type="button" className="btn btn-light" disabled={saving} onClick={() => setModal(null)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={saving || dropdownLoading || feeLoading}>{saving ? 'Registering...' : 'Register Student'}</button></div>
       </form>
-    </Modal>}
+    </div></div>}
 
     {modal === 'existing' && <Modal title="Register Existing Student" subtitle="Enroll an existing student in another course." onClose={() => !saving && setModal(null)} large={false}>
       {dropdownLoading && <div className="alert alert-info py-2">Loading course list...</div>}
