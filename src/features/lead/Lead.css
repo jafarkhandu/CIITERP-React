@@ -64,3 +64,34 @@
 html[data-theme="dark"] .lead-tabs { border-color: rgba(148,176,210,.18); background: rgba(16,31,49,.84); }
 html[data-theme="dark"] .lead-tabs button { color: #a9bfd9; }
 html[data-theme="dark"] .lead-tabs button.active { color: #fff; }
+
+
+/* Refined lead dialog controls and surface. */
+.lead-modal-backdrop { backdrop-filter: blur(9px) saturate(125%); -webkit-backdrop-filter: blur(9px) saturate(125%); background: rgba(9,25,45,.58); }
+.lead-modal {
+  border: 1px solid rgba(255,255,255,.72);
+  background: linear-gradient(145deg, rgba(250,253,255,.98), rgba(239,246,255,.97));
+  box-shadow: 0 28px 75px rgba(7,24,47,.32), inset 0 1px 0 rgba(255,255,255,.9);
+}
+.lead-form-grid { gap: 17px 15px; }
+.lead-form-grid label { color: var(--ciit-text,#25364d); font-size: 12px; font-weight: 650; }
+.lead-form-grid input,.lead-form-grid select,.lead-form-grid textarea {
+  min-height: 42px;
+  border-radius: 10px;
+  border-color: rgba(142,174,214,.48);
+  background: rgba(255,255,255,.78);
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.lead-form-grid input:focus,.lead-form-grid select:focus,.lead-form-grid textarea:focus {
+  outline: none; border-color: #6aa4f8; background: #fff;
+  box-shadow: 0 0 0 3px rgba(59,130,246,.13);
+}
+.lead-modal footer { border-color: rgba(130,166,211,.28); }
+.lead-modal footer .lead-primary-btn,.lead-modal footer .lead-secondary-btn { border-radius: 10px; min-height: 42px; }
+html[data-theme="dark"] .lead-modal {
+  border-color: rgba(130,166,211,.2);
+  background: linear-gradient(145deg, rgba(20,38,59,.98), rgba(11,26,43,.97));
+}
+html[data-theme="dark"] .lead-form-grid input,html[data-theme="dark"] .lead-form-grid select,html[data-theme="dark"] .lead-form-grid textarea {
+  background: rgba(9,23,39,.72); border-color: rgba(130,166,211,.25); color: var(--ciit-text,#e2edfb);
+}
