@@ -53,6 +53,7 @@ export default function BatchManagement() {
   const [editingSessionId, setEditingSessionId] = useState(0);
   const [sessionEditDate, setSessionEditDate] = useState('');
   const [showCreate, setShowCreate] = useState(false);
+  const [detailsBatch, setDetailsBatch] = useState<BatchRow | null>(null);
   const [editingBatchId, setEditingBatchId] = useState(0);
   const [form, setForm] = useState<CreateBatchRequest>(emptyForm());
   const [startTime, setStartTime] = useState('09:00');
@@ -423,11 +424,31 @@ export default function BatchManagement() {
       <div className="batch-tabs"><button type="button" className={tab === 'active' ? 'active' : ''} onClick={() => setTab('active')}>Active Batches <span>{active.length}</span></button><button type="button" className={tab === 'deleted' ? 'active' : ''} onClick={() => setTab('deleted')}>Deleted Batches <span>{removed.length}</span></button></div>
       <section className="batch-table-card"><div className="batch-table-heading"><div><h2>{tab === 'active' ? 'Active Batches' : 'Deleted Batches'}</h2><p>Batch overview and quick actions</p></div><span className="batch-count">{displayed.length} records</span></div>
         <div className="batch-table-scroll"><table className="batch-table"><thead><tr><th>#</th><th>Batch Name</th><th>Topic Name</th><th>Trainer Name</th><th>Start Date</th><th>End Date</th><th>Batch Time</th><th># Students</th><th>Action</th></tr></thead><tbody>
-          {loading ? <tr><td colSpan={9} className="batch-empty">Loading batches...</td></tr> : displayed.map((row, i) => <tr key={row.batchId}><td>{i + 1}</td><td><strong>{row.batchName}</strong><small>ID: {row.batchId}</small></td><td>{String(read(row, 'topic_name', 'topicName') ?? `Topic #${read(row, 'topic_id', 'topicId') ?? '—'}`)}</td><td>{String(read(row, 'employee_name', 'employeeName') ?? `Employee #${read(row, 'employee_id', 'employeeId') ?? '—'}`)}</td><td>{formatDate(read(row, 'start_date', 'startDate'))}</td><td>{formatDate(read(row, 'end_date', 'endDate'))}</td><td>{String(read(row, 'batch_time', 'batchTime') ?? '—')}</td><td><span className="batch-student-count">{counts[row.batchId] ?? '—'}</span></td><td><div className="batch-actions">{tab === 'active' ? <><div><button type="button" disabled={saving} onClick={() => void viewSchedule(row)}>View Schedule</button><button type="button" disabled={saving} onClick={() => void openAddStudents(row)}>Add Students</button><button type="button" disabled={saving} onClick={() => void openAttendance(row)}>Attendance</button><button type="button" disabled={saving} onClick={() => void generateSchedule(row)}>Generate Schedule</button><button type="button" disabled={saving} onClick={() => void openEdit(row)}>Edit</button></div><button className="remove" type="button" disabled={saving} onClick={() => void removeBatch(row)}>Remove</button></> : <button className="restore" type="button" disabled={saving} onClick={() => void restoreBatch(row)}>Restore</button>}</div></td></tr>)}
+          {loading ? <tr><td colSpan={9} className="batch-empty">Loading batches...</td></tr> : displayed.map((row, i) => <tr key={row.batchId}><td>{i + 1}</td><td><strong>{row.batchName}</strong><small>ID: {row.batchId}</small></td><td>{String(read(row, 'topic_name', 'topicName') ?? `Topic #${read(row, 'topic_id', 'topicId') ?? '—'}`)}</td><td>{String(read(row, 'employee_name', 'employeeName') ?? `Employee #${read(row, 'employee_id', 'employeeId') ?? '—'}`)}</td><td>{formatDate(read(row, 'start_date', 'startDate'))}</td><td>{formatDate(read(row, 'end_date', 'endDate'))}</td><td>{String(read(row, 'batch_time', 'batchTime') ?? '—')}</td><td><span className="batch-student-count">{counts[row.batchId] ?? '—'}</span></td><td><div className="batch-actions">{tab === 'active' ? <><div><button type="button" disabled={saving} onClick={() => void viewSchedule(row)}>View Schedule</button><button type="button" disabled={saving} onClick={() => void openAddStudents(row)}>Add Students</button><button type="button" disabled={saving} onClick={() => void openAttendance(row)}>Attendance</button><button type="button" disabled={saving} onClick={() => setDetailsBatch(row)}>View Details</button><button type="button" disabled={saving} onClick={() => void generateSchedule(row)}>Generate Schedule</button><button type="button" disabled={saving} onClick={() => void openEdit(row)}>Edit</button></div><button className="remove" type="button" disabled={saving} onClick={() => void removeBatch(row)}>Remove</button></> : <button className="restore" type="button" disabled={saving} onClick={() => void restoreBatch(row)}>Restore</button>}</div></td></tr>)}
           {!loading && !displayed.length && <tr><td colSpan={9} className="batch-empty">{tab === 'active' ? 'No active batches found.' : 'No deleted batches found.'}</td></tr>}
         </tbody></table></div>
       </section>
     </>}
+    {detailsBatch && <div className="batch-modal-backdrop" onMouseDown={() => setDetailsBatch(null)}>
+      <section className="batch-modal batch-modal-details" role="dialog" aria-modal="true" aria-labelledby="batch-details-title" onMouseDown={(event) => event.stopPropagation()}>
+        <header><div><h2 id="batch-details-title">Batch Details</h2><p className="batch-modal-subtitle">Complete overview for {detailsBatch.batchName}</p></div><button type="button" aria-label="Close batch details" onClick={() => setDetailsBatch(null)}>×</button></header>
+        <div className="batch-detail-grid">
+          <div><dt>Batch Name</dt><dd>{detailsBatch.batchName}</dd></div>
+          <div><dt>Batch ID</dt><dd>{detailsBatch.batchId}</dd></div>
+          <div><dt>Topic</dt><dd>{String(read(detailsBatch, 'topic_name', 'topicName') ?? '—')}</dd></div>
+          <div><dt>Trainer</dt><dd>{String(read(detailsBatch, 'employee_name', 'employeeName') ?? '—')}</dd></div>
+          <div><dt>Branch</dt><dd>{String(read(detailsBatch, 'branch_name', 'branchName') ?? '—')}</dd></div>
+          <div><dt>Students</dt><dd>{counts[detailsBatch.batchId] ?? 'Not available'}</dd></div>
+          <div><dt>Start Date</dt><dd>{formatDate(read(detailsBatch, 'start_date', 'startDate'))}</dd></div>
+          <div><dt>End Date</dt><dd>{formatDate(read(detailsBatch, 'end_date', 'endDate'))}</dd></div>
+          <div><dt>Batch Time</dt><dd>{String(read(detailsBatch, 'batch_time', 'batchTime') ?? '—')}</dd></div>
+          <div><dt>Status</dt><dd>{deleted(detailsBatch) ? 'Deleted' : 'Active'}</dd></div>
+          <div><dt>Playlist Title</dt><dd>{String(read(detailsBatch, 'playlist_title', 'playlistTitle') ?? '—')}</dd></div>
+          <div><dt>Playlist Key</dt><dd>{String(read(detailsBatch, 'playlist_key', 'playlistKey') ?? '—')}</dd></div>
+        </div>
+        <footer><button className="batch-secondary" type="button" onClick={() => setDetailsBatch(null)}>Close</button></footer>
+      </section>
+    </div>}
     {showCreate && <div className="batch-modal-backdrop"><section className="batch-modal" role="dialog" aria-modal="true"><header><h2>{editingBatchId ? 'Edit Batch' : 'New Batch'}</h2><button type="button" disabled={saving} onClick={() => setShowCreate(false)}>×</button></header><form onSubmit={submitBatch}><div className="batch-form-grid">
       <label>Batch Name *<input required value={form.batch_name} onChange={(e) => setForm({ ...form, batch_name: e.target.value })}/></label>
       <label>Topic *<select required value={form.topic_id} onChange={(e) => setForm({ ...form, topic_id: Number(e.target.value) })}><option value={0}>Select Topic</option>{topics.map((item) => { const topicId = Number(read(item, 'topic_id', 'topicId', 'id') ?? 0); return <option key={topicId} value={topicId}>{String(read(item, 'topic_name', 'topicName', 'name') ?? 'Topic')}</option>; })}</select></label>
