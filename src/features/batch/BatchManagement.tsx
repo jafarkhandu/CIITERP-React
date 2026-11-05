@@ -131,8 +131,50 @@ export default function BatchManagement() {
     </>}
     {showCreate && <div className="batch-modal-backdrop"><section className="batch-modal" role="dialog" aria-modal="true"><header><h2>New Batch</h2><button type="button" onClick={() => setShowCreate(false)}>×</button></header><form onSubmit={createBatch}><div className="batch-form-grid">
       <label>Batch Name *<input required value={form.batch_name} onChange={(e) => setForm({...form, batch_name:e.target.value})}/></label>
-      <label>Topic *<select required value={form.topic_id} onChange={(e) => setForm({...form, topic_id:Number(e.target.value)})}><option value={0}>Select Topic</option>{topics.map((item) => <option key={String(read(item,'topic_id','topicId','id'))} value={Number(read(item,'topic_id','topicId','id'))}>{String(read(item,'topic_name','topicName','name') ?? 'Topic')}</option>}</select></label>
-      <label>Trainer *<select required value={form.employee_id} onChange={(e) => setForm({...form, employee_id:Number(e.target.value)})}><option value={0}>Select Trainer</option>{employees.map((item) => <option key={String(read(item,'employee_id','employeeId','id'))} value={Number(read(item,'employee_id','employeeId','id'))}>{String(read(item,'employee_name','employeeName','name') ?? 'Employee')}</option>)}</select></label>
+      <label>
+        Topic *
+        <select
+          required
+          value={form.topic_id}
+          onChange={(event) => setForm((previous) => ({
+            ...previous,
+            topic_id: Number(event.target.value),
+          }))}
+        >
+          <option value={0}>Select Topic</option>
+          {topics.map((item) => {
+            const topicId = read(item, 'topic_id', 'topicId', 'id');
+            const topicName = read(item, 'topic_name', 'topicName', 'name');
+            return (
+              <option key={String(topicId)} value={Number(topicId)}>
+                {String(topicName ?? 'Topic')}
+              </option>
+            );
+          })}
+        </select>
+      </label>
+      <label>
+        Trainer *
+        <select
+          required
+          value={form.employee_id}
+          onChange={(event) => setForm((previous) => ({
+            ...previous,
+            employee_id: Number(event.target.value),
+          }))}
+        >
+          <option value={0}>Select Trainer</option>
+          {employees.map((item) => {
+            const employeeId = read(item, 'employee_id', 'employeeId', 'id');
+            const employeeName = read(item, 'employee_name', 'employeeName', 'name');
+            return (
+              <option key={String(employeeId)} value={Number(employeeId)}>
+                {String(employeeName ?? 'Employee')}
+              </option>
+            );
+          })}
+        </select>
+      </label>
       <label>Branch ID *<input type="number" min="1" required value={form.branch_id || ''} onChange={(e) => setForm({...form, branch_id:Number(e.target.value)})}/></label>
       <label>Start Date *<input type="date" required value={form.start_date} onChange={(e) => setForm({...form, start_date:e.target.value})}/></label><label>End Date *<input type="date" min={form.start_date || undefined} required value={form.end_date} onChange={(e) => setForm({...form, end_date:e.target.value})}/></label>
       <label>Batch Time *<input required value={form.batch_time} onChange={(e) => setForm({...form, batch_time:e.target.value})}/></label><label>Playlist Title<input value={form.playlist_title} onChange={(e) => setForm({...form, playlist_title:e.target.value})}/></label><label>Playlist Key<input value={form.playlist_key} onChange={(e) => setForm({...form, playlist_key:e.target.value})}/></label>
