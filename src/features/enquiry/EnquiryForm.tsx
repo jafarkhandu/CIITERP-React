@@ -43,7 +43,14 @@ export default function EnquiryForm() {
   const [error, setError] = useState('');
   const enquiryForOptions = ['Job Placement', 'College Project', 'Upgrade Skill', 'Other', 'Real Time Project', 'AI', 'Certification'];
   const leadSourceOptions = ['Website', 'Facebook', 'Instagram', 'Google Ads', 'Walk-in', 'Phone Call', 'Online', 'String', 'CIIT Student', 'Banar'];
-  const topicOptions = ['@
+  const topicOptions = ['@$','1','2','Advanced Java','AI','AI ML','Ak','ALML','angular','asdf','C#','Data Analytics','DataScience','devops','Dot Net + AI with Azure','Dot Net with AI','Dotnet','DS','Excel','Excel & power bi','FrontEnd Developer','Full stack developer','Full Stack Java + DevOps + AI','full stack Python'];
+  function toggleSelection(key: 'enquiryFors' | 'leadSources' | 'interestedTopics', option: string) {
+    const selected = form[key].split(',').map((value) => value.trim()).filter(Boolean);
+    change(key, selected.includes(option) ? selected.filter((value) => value !== option).join(', ') : [...selected, option].join(', '));
+  }
+  function isSelected(key: 'enquiryFors' | 'leadSources' | 'interestedTopics', option: string) {
+    return form[key].split(',').map((value) => value.trim()).includes(option);
+  }
 
   useEffect(() => {
     let active = true;
@@ -269,29 +276,33 @@ export default function EnquiryForm() {
     {error && <div className="enquiry-alert" role="alert">{error}</div>}
     <div className="enquiry-table-card" style={{ padding: 24 }}>
       <form onSubmit={submit} className="enquiry-form">
-        <div className="enquiry-filters">
-          <label>Enquiry Date *<input type="date" required value={form.enquiryDate} onChange={(e) => change('enquiryDate', e.target.value)} /></label>
-          <label>Branch *<select required value={form.branchId} onChange={(e) => change('branchId', Number(e.target.value))}><option value={0}>Select Branch</option>{branches.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-          <label>Candidate Name *<input required minLength={2} value={form.candidateName} onChange={(e) => change('candidateName', e.target.value)} /></label>
-          <label>Gender *<select required value={form.gender} onChange={(e) => change('gender', e.target.value)}><option value="">Select Gender</option><option>Male</option><option>Female</option><option>Other</option></select></label>
-          <label>Email *<input type="email" required value={form.emailAddress} onChange={(e) => change('emailAddress', e.target.value)} /></label>
-          <label>Mobile *<input required inputMode="numeric" pattern="[0-9]{10}" maxLength={10} value={form.mobileNumber} onChange={(e) => change('mobileNumber', e.target.value)} /></label>
-          <label>Birth Date<input type="date" value={form.birthDate} onChange={(e) => change('birthDate', e.target.value)} /></label>
-          <label>Qualification *<select required value={form.qualificationId} onChange={(e) => {
-            const selected = qualifications.find((item) => Number(item.qualificationId ?? item.qualification_id ?? item.id) === Number(e.target.value));
-            change('qualificationId', Number(e.target.value));
-            change('qualification', String(selected?.qualificationName ?? selected?.qualification_name ?? selected?.name ?? ''));
-          }}><option value={0}>Select Qualification</option>{qualifications.map((item) => {
-            const qid = Number(item.qualificationId ?? item.qualification_id ?? item.id ?? 0);
-            const name = String(item.qualificationName ?? item.qualification_name ?? item.name ?? 'Qualification');
-            return <option key={qid} value={qid}>{name}</option>;
-          })}</select></label>
-          <label>Enquiry For (comma-separated)<input value={form.enquiryFors} onChange={(e) => change('enquiryFors', e.target.value)} /></label>
-          <label>Lead Sources (comma-separated)<input value={form.leadSources} onChange={(e) => change('leadSources', e.target.value)} /></label>
-          <label>Interested Topics (comma-separated)<input value={form.interestedTopics} onChange={(e) => change('interestedTopics', e.target.value)} /></label>
-          <label>Status<input value={form.status} onChange={(e) => change('status', e.target.value)} /></label>
+        <div className="enquiry-original-layout">
+          <div className="enquiry-original-fields">
+            <label>Enquiry Date:<input type="date" required value={form.enquiryDate} onChange={(e) => change('enquiryDate', e.target.value)} /></label>
+            <label>Branch Name:<select required value={form.branchId} onChange={(e) => change('branchId', Number(e.target.value))}><option value={0}>Select Branch</option>{branches.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+            <label>Candidate Name:<input required minLength={2} placeholder="Enter candidate name" value={form.candidateName} onChange={(e) => change('candidateName', e.target.value)} /></label>
+            <fieldset className="enquiry-gender"><legend>Gender:</legend>{['Male','Female','Other'].map((gender) => <label key={gender}><input type="radio" name="gender" required checked={form.gender === gender} onChange={() => change('gender', gender)} />{gender}</label>)}</fieldset>
+            <label>Local Address:<textarea rows={2} value={form.localAddress} onChange={(e) => change('localAddress', e.target.value)} /></label>
+            <label>Email Address:<input type="email" required value={form.emailAddress} onChange={(e) => change('emailAddress', e.target.value)} /></label>
+            <label>Mobile Number:<input required inputMode="numeric" pattern="[0-9]{10}" maxLength={10} value={form.mobileNumber} onChange={(e) => change('mobileNumber', e.target.value)} /></label>
+            <label>Birth Date:<input type="date" value={form.birthDate} onChange={(e) => change('birthDate', e.target.value)} /></label>
+            <label>Qualification:<select required value={form.qualificationId} onChange={(e) => {
+              const selected = qualifications.find((item) => Number(item.qualificationId ?? item.qualification_id ?? item.id) === Number(e.target.value));
+              change('qualificationId', Number(e.target.value));
+              change('qualification', String(selected?.qualificationName ?? selected?.qualification_name ?? selected?.name ?? ''));
+            }}><option value={0}>Select Qualification</option>{qualifications.map((item) => {
+              const qid = Number(item.qualificationId ?? item.qualification_id ?? item.id ?? 0);
+              const name = String(item.qualificationName ?? item.qualification_name ?? item.name ?? 'Qualification');
+              return <option key={qid} value={qid}>{name}</option>;
+            })}</select></label>
+            <label>Status:<select value={form.status} onChange={(e) => change('status', e.target.value)}><option>New</option><option>In Progress</option><option>Converted</option><option>Closed</option></select></label>
+          </div>
+          <div className="enquiry-original-groups">
+            <section className="enquiry-choice-panel"><h2>Enquiry For</h2><div className="enquiry-choice-grid">{enquiryForOptions.map((option) => <label key={option}><input type="checkbox" checked={isSelected('enquiryFors', option)} onChange={() => toggleSelection('enquiryFors', option)} />{option}</label>)}</div></section>
+            <section className="enquiry-choice-panel"><h2>How did you come to know about us?</h2><div className="enquiry-choice-grid">{leadSourceOptions.map((option) => <label key={option}><input type="checkbox" checked={isSelected('leadSources', option)} onChange={() => toggleSelection('leadSources', option)} />{option}</label>)}</div></section>
+            <section className="enquiry-choice-panel"><h2>Tick your Interesting Training</h2><div className="enquiry-choice-grid enquiry-topic-grid">{topicOptions.map((option) => <label key={option}><input type="checkbox" checked={isSelected('interestedTopics', option)} onChange={() => toggleSelection('interestedTopics', option)} />{option}</label>)}</div></section>
+          </div>
         </div>
-        <label>Local Address<textarea rows={3} value={form.localAddress} onChange={(e) => change('localAddress', e.target.value)} /></label>
         <footer style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 20 }}>
           <button className="enquiry-secondary-btn" type="button" disabled={saving} onClick={() => navigate('/main/enquiry')}>Cancel</button>
           <button className="enquiry-primary-btn" type="submit" disabled={saving}>{saving ? 'Saving...' : editMode ? 'Update Enquiry' : 'Create Enquiry'}</button>
