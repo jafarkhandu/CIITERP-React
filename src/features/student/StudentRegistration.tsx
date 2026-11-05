@@ -251,7 +251,7 @@ export default function StudentRegistration() {
         </div></div>
         {error && <div className="alert alert-danger mt-3">{error}</div>}<div className="d-flex justify-content-end gap-2 mt-4"><button type="button" className="btn btn-light" disabled={saving} onClick={() => setModal(null)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={saving || dropdownLoading || feeLoading}>{saving ? 'Registering...' : 'Register Student'}</button></div>
       </form>
-    </div></div>}
+    </div></div></div>}
 
     {modal === 'existing' && <Modal title="Register Existing Student" subtitle="Enroll an existing student in another course." onClose={() => !saving && setModal(null)} large={false}>
       {dropdownLoading && <div className="alert alert-info py-2">Loading course list...</div>}
