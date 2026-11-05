@@ -25,7 +25,7 @@ const MENUS: SidebarMenu[] = [
   { label: 'Student Payments', route: '/main/student-payments', icon: 'bi-wallet2', roles: ['Accountant', 'Admin', 'Super User'] },
   { label: 'Manage Batch', route: '/main/batch', icon: 'bi-calendar2-week-fill', roles: ['Super User', 'Admin', 'Group Leader'], permission: PERMISSIONS.GROUP_LEADER_BATCH_VIEW },
   { label: 'Batch', route: '/main/trainer', icon: 'bi-easel2-fill', roles: ['Trainer'], permission: PERMISSIONS.TRAINER_BATCH_VIEW },
-  { label: 'Reports', route: '/main/reports', icon: 'bi-graph-up-arrow', permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User', 'Accountant'] },
+  { label: 'Reports', route: '/main/reports', icon: 'bi-graph-up-arrow', permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User'] },
   { label: 'Function Management', route: '/main/function-management', icon: 'bi-sliders2', permission: PERMISSIONS.FUNCTION_MANAGEMENT_VIEW, roles: ['Admin', 'Super User'] },
   { label: 'Settings', route: '/main/settings', icon: 'bi-gear-fill', roles: ['Admin', 'Super User'] },
 ];
