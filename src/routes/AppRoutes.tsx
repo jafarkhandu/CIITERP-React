@@ -22,6 +22,7 @@ import StudentRegistration from '@/features/student/StudentRegistration';
 import StudentPayments from '@/features/student/StudentPayments';
 import TrainerBatches from '@/features/trainer/TrainerBatches';
 import TrainerBatchDetails from '@/features/trainer/TrainerBatchDetails';
+import BatchManagement from '@/features/batch/BatchManagement';
 
 interface Guard { permission?: Permission; permissions?: Permission[]; roles?: string[]; }
 const guarded = (element: ReactElement, guard: Guard = {}) => <ProtectedRoute {...guard}>{element}</ProtectedRoute>;
@@ -39,7 +40,7 @@ export default function AppRoutes() {
       <Route path="lead" element={guarded(<Lead />, { permission: PERMISSIONS.LEAD_VIEW })} />
       <Route path="lead/followup/:leadId" element={guarded(<LeadFollowup />, { permission: PERMISSIONS.LEAD_FOLLOWUP })} />
       <Route path="change-password" element={guarded(<ChangePassword />)} />
-      <Route path="batch" element={guarded(soon('Manage Batch', 4), { roles: ['Admin', 'Super User', 'Group Leader'], permission: PERMISSIONS.GROUP_LEADER_BATCH_VIEW })} />
+      <Route path="batch" element={guarded(<BatchManagement />, { roles: ['Admin', 'Super User', 'Group Leader'], permission: PERMISSIONS.GROUP_LEADER_BATCH_VIEW })} />
       <Route path="trainer" element={guarded(<TrainerBatches />, { roles: ['Trainer'], permission: PERMISSIONS.TRAINER_BATCH_VIEW })} />
       <Route path="trainer/batches/:batchId" element={guarded(<TrainerBatchDetails />, { roles: ['Trainer'], permissions: [PERMISSIONS.TRAINER_BATCH_VIEW, PERMISSIONS.TRAINER_ATTENDANCE_VIEW] })} />
       <Route path="profile" element={guarded(<Profile />)} />
