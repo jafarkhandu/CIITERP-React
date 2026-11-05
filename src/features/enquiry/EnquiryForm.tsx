@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { enquiryApi, type EnquiryRecord } from '@/api/enquiryApi';
 import { directoryApi, type BranchOption } from '@/api/directoryApi';
+import './Enquiry.css';
 
 type FormState = Omit<EnquiryRecord, 'enquiryId'>;
 const initialForm: FormState = {
