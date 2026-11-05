@@ -198,6 +198,11 @@ export const studentApi = {
   },
 };
 
+export const studentDetailsApi = {
+  getAll: async (): Promise<StudentRow[]> => studentApi.getStudents(),
+  refresh: async (): Promise<StudentRow[]> => studentApi.getStudents(),
+};
+
 export const trainerApi = {
   async getMyBatches(): Promise<Record<string, unknown>[]> {
     const { data } = await http.get(`${API_ENDPOINTS.trainer}/Trainer/my-batches`);
