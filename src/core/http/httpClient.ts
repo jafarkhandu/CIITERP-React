@@ -26,7 +26,7 @@ function withShortGetCache(config: InternalAxiosRequestConfig): InternalAxiosReq
   if (!authorization || isPublic(url) || isLeadDirect(url)) return config;
 
   const cacheKey = authorization + ':' + axios.getUri(config) + ':' + (config.responseType ?? 'json');
-  const originalAdapter = axios.getAdapter(config.adapter) as AxiosAdapter;
+  const originalAdapter = axios.getAdapter(axios.defaults.adapter) as AxiosAdapter;
 
   config.adapter = async (requestConfig) => {
     const now = Date.now();
