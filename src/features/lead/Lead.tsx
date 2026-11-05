@@ -24,7 +24,7 @@ function normalizeLead(raw: any): LeadRecord {
     leadDate: raw?.leadDate ?? raw?.createdAt ?? '',
     sourceId: Number(raw?.sourceId ?? raw?.leadSourceId ?? 0),
     sourceName: String(raw?.sourceName ?? ''),
-    deletedAt: raw?.deletedAt ?? raw?.deleted_at ?? null,
+    deletedAt: raw?.deletedAt ?? raw?.deleted_at ?? ((raw?.is_deleted ?? raw?.isDeleted ?? raw?.deleted) ? 'deleted' : null),
   };
 }
 
