@@ -48,6 +48,10 @@ export default function BatchManagement() {
   const [scheduleBatch, setScheduleBatch] = useState<BatchRow | null>(null);
   const [schedules, setSchedules] = useState<Row[]>([]);
   const [roster, setRoster] = useState<StudentRow[]>([]);
+  const [attendanceSessions, setAttendanceSessions] = useState<Row[]>([]);
+  const [studentAttendanceRecords, setStudentAttendanceRecords] = useState<Row[]>([]);
+  const [editingSessionId, setEditingSessionId] = useState(0);
+  const [sessionEditDate, setSessionEditDate] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [editingBatchId, setEditingBatchId] = useState(0);
   const [form, setForm] = useState<CreateBatchRequest>(emptyForm());
@@ -187,8 +191,16 @@ export default function BatchManagement() {
   async function viewSchedule(row: BatchRow) {
     setScheduleBatch(row); setEditingScheduleId(0); setError('');
     try {
-      const [scheduleRows, studentRows] = await Promise.all([batchScheduleApi.getByBatch(row.batchId), batchStudentApi.getByBatch(row.batchId)]);
+      const [scheduleRows, studentRows, allSessions, allAttendance] = await Promise.all([
+        batchScheduleApi.getByBatch(row.batchId), batchStudentApi.getByBatch(row.batchId),
+        batchScheduleAttendanceApi.getAll(), scheduleAttendanceApi.getAll(),
+      ]);
       setSchedules(scheduleRows);
+      const scheduleIds = new Set(scheduleRows.map((item) => Number(read(item, 'batch_schedule_id', 'batchScheduleId', 'id') ?? 0)));
+      const batchSessions = allSessions.filter((item) => scheduleIds.has(Number(read(item, 'batch_schedule_id', 'batchScheduleId') ?? 0)));
+      setAttendanceSessions(batchSessions);
+      const sessionIds = new Set(batchSessions.map((item) => Number(read(item, 'schedule_attendance_id', 'scheduleAttendanceId', 'batch_schedule_attendance_id', 'id') ?? 0)));
+      setStudentAttendanceRecords(allAttendance.filter((item) => sessionIds.has(Number(read(item, 'schedule_attendance_id', 'scheduleAttendanceId') ?? 0))));
       setRoster(studentRows.map((item) => ({
         ...item,
         batchStudentId: Number(read(item, 'batch_student_id', 'batchStudentId', 'id') ?? 0),
@@ -320,6 +332,61 @@ export default function BatchManagement() {
     finally { setSaving(false); }
   }
 
+  async function submitSessionEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingSessionId || !sessionEditDate) return;
+    const row = attendanceSessions.find((item) => Number(read(item, 'schedule_attendance_id', 'scheduleAttendanceId', 'id') ?? 0) === editingSessionId);
+    if (!row) return;
+    setSaving(true); setError('');
+    try {
+      await batchScheduleAttendanceApi.update(editingSessionId, { ...row, attendance_date: new Date(`${sessionEditDate}T00:00:00`).toISOString() });
+      setEditingSessionId(0);
+      if (scheduleBatch) await viewSchedule(scheduleBatch);
+    } catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to update attendance session.'); }
+    finally { setSaving(false); }
+  }
+  async function removeSession(row: Row) {
+    const id = Number(read(row, 'schedule_attendance_id', 'scheduleAttendanceId', 'id') ?? 0);
+    if (!id || !window.confirm('Delete this attendance session?')) return;
+    setSaving(true); setError('');
+    try { await batchScheduleAttendanceApi.remove(id); if (scheduleBatch) await viewSchedule(scheduleBatch); }
+    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to delete attendance session.'); }
+    finally { setSaving(false); }
+  }
+  async function restoreSession(row: Row) {
+    const id = Number(read(row, 'schedule_attendance_id', 'scheduleAttendanceId', 'id') ?? 0);
+    setSaving(true); setError('');
+    try { await batchScheduleAttendanceApi.restore(id); if (scheduleBatch) await viewSchedule(scheduleBatch); }
+    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to restore attendance session.'); }
+    finally { setSaving(false); }
+  }
+  async function toggleStudentAttendance(row: Row) {
+    const id = Number(read(row, 'attendance_id', 'attendanceId', 'id') ?? 0);
+    if (!id) { setError('Attendance record ID is unavailable.'); return; }
+    const present = Number(read(row, 'is_present', 'isPresent') ?? 0) === 1 || read(row, 'is_present', 'isPresent') === true;
+    setSaving(true); setError('');
+    try {
+      await scheduleAttendanceApi.update(id, { ...row, is_present: present ? 0 : 1 });
+      if (scheduleBatch) await viewSchedule(scheduleBatch);
+    } catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to update student attendance.'); }
+    finally { setSaving(false); }
+  }
+  async function removeStudentAttendance(row: Row) {
+    const id = Number(read(row, 'attendance_id', 'attendanceId', 'id') ?? 0);
+    if (!id || !window.confirm('Delete this student attendance record?')) return;
+    setSaving(true); setError('');
+    try { await scheduleAttendanceApi.remove(id); if (scheduleBatch) await viewSchedule(scheduleBatch); }
+    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to delete student attendance.'); }
+    finally { setSaving(false); }
+  }
+  async function restoreStudentAttendance(row: Row) {
+    const id = Number(read(row, 'attendance_id', 'attendanceId', 'id') ?? 0);
+    setSaving(true); setError('');
+    try { await scheduleAttendanceApi.restore(id); if (scheduleBatch) await viewSchedule(scheduleBatch); }
+    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to restore student attendance.'); }
+    finally { setSaving(false); }
+  }
+
   return <section className="batch-page">
     <header className="batch-header"><div><div className="batch-eyebrow">GROUP LEADER / BATCH MANAGEMENT</div><h1>Batch Management</h1><p>Manage active batches, students and class schedules.</p></div>
       <div className="batch-header-actions"><button className="batch-secondary" type="button" onClick={() => void load()} disabled={loading}>↻ Refresh</button><button className="batch-primary" type="button" onClick={openCreate}>＋ New Batch</button></div>
@@ -335,6 +402,11 @@ export default function BatchManagement() {
       {editingScheduleId > 0 && <form onSubmit={submitScheduleEdit} className="batch-modal" style={{ margin: 16 }}><h3>Update Schedule</h3><label>Actual Date<input type="date" value={String(scheduleEdit.actual_date ?? '')} onChange={(e) => setScheduleEdit({ ...scheduleEdit, actual_date: e.target.value ? localMidnightIso(e.target.value) : null })}/></label><label>Status<input value={String(scheduleEdit.status ?? '')} onChange={(e) => setScheduleEdit({ ...scheduleEdit, status: e.target.value })}/></label><footer><button type="button" className="batch-secondary" onClick={() => setEditingScheduleId(0)}>Cancel</button><button type="submit" className="batch-primary" disabled={saving}>Update</button></footer></form>}
       <div className="batch-table-heading"><div><h2>Assigned Students</h2><p>Students currently assigned to this batch</p></div><span className="batch-count">{roster.length} students</span></div>
       <div className="batch-table-scroll"><table className="batch-table"><thead><tr><th>#</th><th>Student</th><th>Registration ID</th><th>Action</th></tr></thead><tbody>{roster.map((student, index) => <tr key={student.batchStudentId}><td>{index + 1}</td><td>{student.studentName}</td><td>{student.registrationId}</td><td><button className="remove" type="button" disabled={saving} onClick={() => void removeStudent(student)}>Remove</button></td></tr>)}{!roster.length && <tr><td colSpan={4} className="batch-empty">No students assigned.</td></tr>}</tbody></table></div>
+      <div className="batch-table-heading"><div><h2>Attendance Sessions</h2><p>Attendance session records for this batch</p></div><span className="batch-count">{attendanceSessions.length} sessions</span></div>
+      <div className="batch-table-scroll"><table className="batch-table"><thead><tr><th>Session ID</th><th>Schedule ID</th><th>Attendance Date</th><th>Actions</th></tr></thead><tbody>{attendanceSessions.map((item, index) => { const sessionId = Number(read(item, 'schedule_attendance_id', 'scheduleAttendanceId', 'batch_schedule_attendance_id', 'id') ?? 0); const isDeleted = deleted(item); return <tr key={sessionId || index}><td>{sessionId}</td><td>{Number(read(item, 'batch_schedule_id', 'batchScheduleId') ?? 0)}</td><td>{formatDate(read(item, 'attendance_date', 'attendanceDate'))}</td><td>{isDeleted ? <button className="restore" type="button" disabled={saving} onClick={() => void restoreSession(item)}>Restore</button> : <><button type="button" disabled={saving} onClick={() => { setEditingSessionId(sessionId); setSessionEditDate(dateInput(read(item, 'attendance_date', 'attendanceDate'))); }}>Edit</button><button className="remove" type="button" disabled={saving} onClick={() => void removeSession(item)}>Delete</button></>}</td></tr>; })}{!attendanceSessions.length && <tr><td colSpan={4} className="batch-empty">No attendance sessions found.</td></tr>}</tbody></table></div>
+      {editingSessionId > 0 && <form onSubmit={submitSessionEdit} className="batch-modal" style={{ margin: 16 }}><h3>Edit Attendance Session</h3><label>Attendance Date<input type="date" required value={sessionEditDate} onChange={(e) => setSessionEditDate(e.target.value)}/></label><footer><button type="button" className="batch-secondary" onClick={() => setEditingSessionId(0)}>Cancel</button><button type="submit" className="batch-primary" disabled={saving}>Update Session</button></footer></form>}
+      <div className="batch-table-heading"><div><h2>Student Attendance Records</h2><p>Toggle present/absent or manage individual records</p></div><span className="batch-count">{studentAttendanceRecords.length} records</span></div>
+      <div className="batch-table-scroll"><table className="batch-table"><thead><tr><th>Record ID</th><th>Session ID</th><th>Registration ID</th><th>Present</th><th>Actions</th></tr></thead><tbody>{studentAttendanceRecords.map((item, index) => { const recordId = Number(read(item, 'attendance_id', 'attendanceId', 'id') ?? 0); const isDeleted = deleted(item); const isPresent = Number(read(item, 'is_present', 'isPresent') ?? 0) === 1 || read(item, 'is_present', 'isPresent') === true; return <tr key={recordId || index}><td>{recordId}</td><td>{Number(read(item, 'schedule_attendance_id', 'scheduleAttendanceId') ?? 0)}</td><td>{Number(read(item, 'registration_id', 'registrationId') ?? 0)}</td><td>{isPresent ? 'Present' : 'Absent'}</td><td>{isDeleted ? <button className="restore" type="button" disabled={saving} onClick={() => void restoreStudentAttendance(item)}>Restore</button> : <><button type="button" disabled={saving} onClick={() => void toggleStudentAttendance(item)}>{isPresent ? 'Mark Absent' : 'Mark Present'}</button><button className="remove" type="button" disabled={saving} onClick={() => void removeStudentAttendance(item)}>Delete</button></>}</td></tr>; })}{!studentAttendanceRecords.length && <tr><td colSpan={5} className="batch-empty">No individual attendance records found.</td></tr>}</tbody></table></div>
     </section> : <>
       <div className="batch-tabs"><button type="button" className={tab === 'active' ? 'active' : ''} onClick={() => setTab('active')}>Active Batches <span>{active.length}</span></button><button type="button" className={tab === 'deleted' ? 'active' : ''} onClick={() => setTab('deleted')}>Deleted Batches <span>{removed.length}</span></button></div>
       <section className="batch-table-card"><div className="batch-table-heading"><div><h2>{tab === 'active' ? 'Active Batches' : 'Deleted Batches'}</h2><p>Batch overview and quick actions</p></div><span className="batch-count">{displayed.length} records</span></div>
