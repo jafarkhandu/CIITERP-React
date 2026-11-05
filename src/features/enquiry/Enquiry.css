@@ -8,3 +8,21 @@
 .enquiry-alert{padding:10px 12px;margin-bottom:12px;border:1px solid #f2caca;border-radius:7px;background:#fff0f0;color:#a12626;font-size:13px}.enquiry-alert button{margin-left:10px;border:0;background:transparent;text-decoration:underline;cursor:pointer}
 @media(max-width:1050px){.enquiry-filters{grid-template-columns:1fr 1fr}.enquiry-filters>input{grid-column:1/-1}}
 @media(max-width:640px){.enquiry-header{align-items:stretch;flex-direction:column}.enquiry-header>div:last-child>*{flex:1}.enquiry-filters{grid-template-columns:1fr}.enquiry-filters>input{grid-column:auto}}
+
+/* Angular-parity enquiry form layout */
+.enquiry-form .enquiry-original-layout{display:grid;grid-template-columns:minmax(300px,1fr) minmax(420px,1.8fr);gap:24px;align-items:start}
+.enquiry-original-fields{display:flex;flex-direction:column;gap:18px}
+.enquiry-original-fields>label{display:flex;flex-direction:column;gap:7px;color:var(--ciit-text,#25364d);font-family:Georgia,serif;font-size:14px}
+.enquiry-original-fields input:not([type=radio]),.enquiry-original-fields select,.enquiry-original-fields textarea{width:100%;min-height:38px;padding:8px 10px;border:1px solid #cbd6e3;border-radius:4px;background:var(--ciit-surface,#fff);color:var(--ciit-text,#25364d);font:inherit}
+.enquiry-gender{display:flex;align-items:center;gap:9px;border:0;padding:0;margin:0;color:var(--ciit-text,#25364d);font-family:Georgia,serif;font-size:14px}
+.enquiry-gender legend{float:left;margin-right:8px;padding:0}
+.enquiry-gender label{display:inline-flex;align-items:center;gap:4px}
+.enquiry-original-groups{display:flex;flex-direction:column;gap:16px}
+.enquiry-choice-panel{overflow:hidden;border:1px solid #d9d9d9;border-radius:4px;background:var(--ciit-surface,#fff)}
+.enquiry-choice-panel h2{margin:0;padding:13px 16px;border-bottom:1px solid #ddd;background:#f6f6f6;color:var(--ciit-text,#25364d);font-family:Georgia,serif;font-size:20px;font-weight:700}
+.enquiry-choice-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 16px;padding:16px}
+.enquiry-choice-grid label{display:flex;align-items:flex-start;gap:6px;min-width:0;color:var(--ciit-text,#25364d);font-family:Georgia,serif;font-size:14px;line-height:1.35}
+.enquiry-choice-grid input[type=checkbox]{flex:0 0 auto;margin:2px 0 0;accent-color:#1769d2}
+.enquiry-topic-grid{max-height:290px;overflow-y:auto;align-content:start}
+@media(max-width:1100px){.enquiry-form .enquiry-original-layout{grid-template-columns:1fr}.enquiry-original-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.enquiry-original-fields{grid-template-columns:1fr}.enquiry-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.enquiry-form .enquiry-original-layout{grid-template-columns:minmax(0,1fr)}}
