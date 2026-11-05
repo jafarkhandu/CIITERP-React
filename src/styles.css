@@ -832,3 +832,172 @@ html[data-theme="dark"] .ciit-content .border-bottom,
 html[data-theme="dark"] .ciit-content .border-top {
   border-color: var(--ciit-border) !important;
 }
+
+
+/* ----------------------------------------------------------
+   Shared feature tables: fixed viewport with a sticky header.
+   Approximately five standard rows remain visible; overflow
+   is contained inside each feature table, not the page.
+   ---------------------------------------------------------- */
+.ciit-content :is(
+  .table-responsive,
+  .table-wrap,
+  .report-table,
+  .batch-table-scroll,
+  .employee-table-scroll,
+  .course-table-scroll,
+  .enquiry-table-scroll,
+  .lead-table-scroll,
+  .fm-table-scroll
+) {
+  position: relative;
+  max-width: 100%;
+  max-height: min(280px, 52vh);
+  overflow: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(103, 132, 169, .38) transparent;
+}
+.ciit-content :is(
+  .table-responsive,
+  .table-wrap,
+  .report-table,
+  .batch-table-scroll,
+  .employee-table-scroll,
+  .course-table-scroll,
+  .enquiry-table-scroll,
+  .lead-table-scroll,
+  .fm-table-scroll
+) table { margin-bottom: 0; }
+.ciit-content :is(
+  .table-responsive,
+  .table-wrap,
+  .report-table,
+  .batch-table-scroll,
+  .employee-table-scroll,
+  .course-table-scroll,
+  .enquiry-table-scroll,
+  .lead-table-scroll,
+  .fm-table-scroll
+) thead th {
+  position: sticky !important;
+  top: 0;
+  z-index: 5;
+  background: var(--ciit-table-head, #edf3fa) !important;
+  box-shadow: 0 1px 0 var(--ciit-border, #dce6f2);
+}
+.ciit-content :is(
+  .table-responsive,
+  .table-wrap,
+  .report-table,
+  .batch-table-scroll,
+  .employee-table-scroll,
+  .course-table-scroll,
+  .enquiry-table-scroll,
+  .lead-table-scroll,
+  .fm-table-scroll
+) tbody tr:last-child td { border-bottom-width: 0; }
+.ciit-content :is(
+  .table-responsive,
+  .table-wrap,
+  .report-table,
+  .batch-table-scroll,
+  .employee-table-scroll,
+  .course-table-scroll,
+  .enquiry-table-scroll,
+  .lead-table-scroll,
+  .fm-table-scroll
+):focus-visible { outline: 2px solid var(--ciit-primary, #1769d2); outline-offset: 2px; }
+html[data-theme="dark"] .ciit-content :is(
+  .table-responsive,
+  .table-wrap,
+  .report-table,
+  .batch-table-scroll,
+  .employee-table-scroll,
+  .course-table-scroll,
+  .enquiry-table-scroll,
+  .lead-table-scroll,
+  .fm-table-scroll
+) thead th {
+  background: var(--ciit-table-head, #16263b) !important;
+}
+@media (max-width: 640px) {
+  .ciit-content :is(
+    .table-responsive,
+    .table-wrap,
+    .report-table,
+    .batch-table-scroll,
+    .employee-table-scroll,
+    .course-table-scroll,
+    .enquiry-table-scroll,
+    .lead-table-scroll,
+    .fm-table-scroll
+  ) { max-height: min(260px, 56vh); }
+}
+
+/* Consistent, accessible controls across feature modules.
+   Variant colors remain semantic: primary, secondary, danger. */
+.ciit-content .btn {
+  min-height: 36px;
+  border-radius: 10px;
+  font-weight: 700;
+  letter-spacing: .005em;
+  transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease, border-color .16s ease, color .16s ease;
+}
+.ciit-content .btn:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 15px rgba(28, 61, 101, .09);
+}
+.ciit-content .btn:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
+.ciit-content button:not(.btn-close):not(.btn-link) {
+  transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease, border-color .16s ease, color .16s ease;
+}
+.ciit-content button:focus-visible,
+.ciit-content a:focus-visible,
+.ciit-content input:focus-visible,
+.ciit-content select:focus-visible,
+.ciit-content textarea:focus-visible {
+  outline: 2px solid rgba(37,99,235,.55);
+  outline-offset: 2px;
+}
+.ciit-content :is(
+  .batch-primary, .course-primary-btn, .enquiry-primary-btn, .lead-primary-btn,
+  .employee-primary-btn, .fm-primary, .dashboard-refresh, .refresh-btn, .export-btn
+) {
+  min-height: 38px;
+  border-radius: 10px;
+  font-weight: 750;
+  letter-spacing: .005em;
+}
+.ciit-content :is(
+  .batch-secondary, .course-secondary-btn, .enquiry-secondary-btn, .lead-secondary-btn,
+  .employee-secondary-btn, .employee-clear-btn, .clear-btn
+) {
+  min-height: 36px;
+  border-radius: 9px;
+  font-weight: 700;
+}
+.ciit-content :is(
+  .batch-primary, .batch-secondary, .course-primary-btn, .course-secondary-btn,
+  .enquiry-primary-btn, .enquiry-secondary-btn, .lead-primary-btn, .lead-secondary-btn,
+  .employee-primary-btn, .employee-secondary-btn, .employee-clear-btn, .fm-primary
+):not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 17px rgba(35, 65, 105, .12);
+}
+.ciit-content :is(.batch-actions button, .course-actions button, .enquiry-actions button, .employee-actions button, .lead-followup-btn, .employee-pagination button) {
+  min-height: 30px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 750;
+}
+.ciit-content button:disabled { cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) {
+  .ciit-content *, .ciit-content *::before, .ciit-content *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
