@@ -34,12 +34,25 @@ export default function EnquiryFollowup() {
   async function load() {
     setLoading(true);
     try {
-      const [record, followups] = await Promise.all([
+      const [recordResult, byEnquiryResult, allResult] = await Promise.allSettled([
         enquiryApi.getById(enquiryId),
         enquiryFollowupApi.getByEnquiryId(enquiryId),
+        enquiryFollowupApi.getAll(),
       ]);
+      if (recordResult.status === 'rejected') throw recordResult.reason;
+      const record = recordResult.value;
+      const byEnquiry = byEnquiryResult.status === 'fulfilled' ? byEnquiryResult.value : [];
+      const allForEnquiry = allResult.status === 'fulfilled'
+        ? allResult.value.filter((item) => Number(item.enquiryId ?? (item as any).enquiry_id ?? 0) === enquiryId)
+        : [];
+      if (byEnquiryResult.status === 'rejected' && allResult.status === 'rejected') throw byEnquiryResult.reason;
+      const merged = new Map<number, Record<string, unknown>>();
+      [...byEnquiry, ...allForEnquiry].forEach((item) => {
+        const id = idOf(item);
+        if (id > 0) merged.set(id, { ...item, followupId: id, enquiryId: Number(item.enquiryId ?? (item as any).enquiry_id ?? enquiryId), deletedAt: item.deletedAt ?? (item as any).deleted_at ?? null });
+      });
       setEnquiry(record);
-      setItems(followups);
+      setItems(Array.from(merged.values()));
       setForm((previous) => ({ ...previous, candidateName: String(record.candidateName ?? ''), sourceName: String(record.leadSources ?? '') }));
       setError('');
     } catch (requestError: any) {
