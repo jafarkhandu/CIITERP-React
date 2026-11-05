@@ -16,6 +16,8 @@ import Lead from '@/features/lead/Lead';
 import LeadFollowup from '@/features/lead/LeadFollowup';
 import Course from '@/features/course/Course';
 import Enquiry from '@/features/enquiry/Enquiry';
+import EnquiryForm from '@/features/enquiry/EnquiryForm';
+import EnquiryFollowup from '@/features/enquiry/EnquiryFollowup';
 import FunctionManagement from '@/features/function-management/FunctionManagement';
 import Settings from '@/features/settings/Settings';
 import StudentRegistration from '@/features/student/StudentRegistration';
@@ -45,9 +47,9 @@ export default function AppRoutes() {
       <Route path="trainer/batches/:batchId" element={guarded(<TrainerBatchDetails />, { roles: ['Trainer'], permissions: [PERMISSIONS.TRAINER_BATCH_VIEW, PERMISSIONS.TRAINER_ATTENDANCE_VIEW] })} />
       <Route path="profile" element={guarded(<Profile />)} />
       <Route path="enquiry" element={guarded(<Enquiry />, { permission: PERMISSIONS.ENQUIRY_VIEW })} />
-      <Route path="enquiry/add" element={guarded(soon('Add Enquiry', 2), { permission: PERMISSIONS.ENQUIRY_CREATE })} />
-      <Route path="enquiry/edit/:id" element={guarded(soon('Edit Enquiry', 2), { permission: PERMISSIONS.ENQUIRY_UPDATE })} />
-      <Route path="enquiry/followup/:enquiryId" element={guarded(soon('Enquiry Followup', 2), { permission: PERMISSIONS.ENQUIRY_FOLLOWUP })} />
+      <Route path="enquiry/add" element={guarded(<EnquiryForm />, { permission: PERMISSIONS.ENQUIRY_CREATE })} />
+      <Route path="enquiry/edit/:id" element={guarded(<EnquiryForm />, { permission: PERMISSIONS.ENQUIRY_UPDATE })} />
+      <Route path="enquiry/followup/:enquiryId" element={guarded(<EnquiryFollowup />, { permission: PERMISSIONS.ENQUIRY_FOLLOWUP })} />
       <Route path="course" element={guarded(<Course />, { permission: PERMISSIONS.COURSE_VIEW })} />
       <Route path="function-management" element={guarded(<FunctionManagement />, { permission: PERMISSIONS.FUNCTION_MANAGEMENT_VIEW, roles: ['Admin', 'Super User'] })} />
       <Route path="reports" element={guarded(soon('Reports', 4), { permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User'] })} />
