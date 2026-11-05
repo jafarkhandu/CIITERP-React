@@ -84,8 +84,8 @@ export default function BatchManagement() {
       const allBatchStudents = await batchStudentApi.getAll();
       const nextCounts: Record<number, number | null> = {};
       allBatchStudents.forEach((student) => {
-        const batchId = Number(read(student, 'batch_id', 'batchId', 'batch?.batch_id', 'batch?.batchId') ?? 0);
-        if (batchId > 0) nextCounts[batchId] = (nextCounts[batchId] ?? 0) === null ? 1 : (nextCounts[batchId] ?? 0) + 1;
+        const batchId = Number(read(student, 'batch_id', 'batchId') ?? student.batch?.batch_id ?? student.batch?.batchId ?? 0);
+        if (batchId > 0) nextCounts[batchId] = (nextCounts[batchId] ?? 0) + 1;
       });
       mapped.filter((row) => !deleted(row)).forEach((row) => {
         if (nextCounts[row.batchId] === undefined) nextCounts[row.batchId] = 0;
