@@ -123,6 +123,7 @@ export default function LeadFollowup() {
       if (editingFollowupId) await leadApi.updateFollowup(editingFollowupId, payload);
       else await leadApi.createFollowup(payload);
       setDescription(''); setStatus(''); setEditingFollowupId(0);
+      setFollowupDate(toLocalDateTime()); setFollowupBy(userSession.employeeName || userSession.username || ''); setNextFollowupDate(toLocalDate());
       await loadFollowups();
     } catch (requestError: any) {
       setError(requestError?.response?.data?.message || 'Unable to save follow-up.');
