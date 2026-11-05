@@ -57,14 +57,21 @@ export default function EnquiryForm() {
         setForm({
           ...initialForm,
           ...item,
-          enquiryDate: String(item.enquiryDate ?? '').slice(0, 10),
-          birthDate: String(item.birthDate ?? '').slice(0, 10),
+          enquiryDate: String(item.enquiryDate ?? item.enquiry_date ?? '').slice(0, 10),
+          candidateName: String(item.candidateName ?? item.candidate_name ?? ''),
+          gender: String(item.gender ?? ''),
+          localAddress: String(item.localAddress ?? item.local_address ?? ''),
+          emailAddress: String(item.emailAddress ?? item.email_address ?? item.email ?? ''),
+          mobileNumber: String(item.mobileNumber ?? item.mobile_number ?? item.mobile ?? ''),
+          birthDate: String(item.birthDate ?? item.birth_date ?? '').slice(0, 10),
           branchId: Number(item.branchId ?? item.branch_id ?? 0),
+          branchName: String(item.branchName ?? item.branch_name ?? ''),
           qualificationId: Number(item.qualificationId ?? item.qualification_id ?? 0),
           qualification: String(item.qualification ?? ''),
           leadSources: String(item.leadSources ?? item.lead_sources ?? ''),
           enquiryFors: String(item.enquiryFors ?? item.enquiry_fors ?? ''),
           interestedTopics: String(item.interestedTopics ?? item.interested_topics ?? ''),
+          status: String(item.status ?? 'New'),
         });
       } else if (editMode && enquiryResult.status === 'rejected') {
         setError('Unable to load enquiry details.');
