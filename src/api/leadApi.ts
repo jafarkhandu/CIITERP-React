@@ -13,6 +13,7 @@ export interface LeadRecord {
   leadDate: string | Date;
   sourceId: number;
   sourceName?: string;
+  deletedAt?: string | null;
 }
 export interface LeadSourceRecord {
   sourceId: number;
@@ -29,6 +30,7 @@ export interface LeadFollowupRecord {
   description: string;
   status: string;
   nextFollowupDate: string | Date;
+  deletedAt?: string | null;
 }
 
 function unwrap<T>(value: any): T {
