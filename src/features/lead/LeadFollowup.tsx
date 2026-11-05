@@ -44,8 +44,24 @@ export default function LeadFollowup() {
   async function loadFollowups() {
     setLoading(true);
     try {
-      const items = await leadApi.getFollowups(leadId);
-      setFollowups(items.sort((a, b) => Number(a.leadFollowupId || 0) - Number(b.leadFollowupId || 0)));
+      const [byLeadResult, allResult] = await Promise.allSettled([
+        leadApi.getFollowups(leadId),
+        leadApi.getAllFollowups(),
+      ]);
+      const byLead = byLeadResult.status === 'fulfilled' ? byLeadResult.value : [];
+      const allForLead = allResult.status === 'fulfilled'
+        ? allResult.value.filter((item) => Number((item as any).leadId ?? (item as any).lead_id ?? 0) === leadId)
+        : [];
+      if (byLeadResult.status === 'rejected' && allResult.status === 'rejected') {
+        throw byLeadResult.reason;
+      }
+      const merged = new Map<number, LeadFollowupRecord>();
+      [...byLead, ...allForLead].forEach((item) => {
+        const id = Number(item.leadFollowupId ?? (item as any).lead_followup_id ?? (item as any).id ?? 0);
+        if (id > 0) merged.set(id, item);
+      });
+      setFollowups(Array.from(merged.values()).sort((a, b) => Number(a.leadFollowupId || (a as any).id || 0) - Number(b.leadFollowupId || (b as any).id || 0)));
+      setError('');
     } catch { setFollowups([]); setError('Unable to load follow-up history.'); }
     finally { setLoading(false); }
   }
