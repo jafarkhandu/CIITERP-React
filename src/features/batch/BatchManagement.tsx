@@ -131,7 +131,28 @@ export default function BatchManagement() {
     </>}
     {showCreate && <div className="batch-modal-backdrop"><section className="batch-modal" role="dialog" aria-modal="true"><header><h2>New Batch</h2><button type="button" onClick={() => setShowCreate(false)}>×</button></header><form onSubmit={createBatch}><div className="batch-form-grid">
       <label>Batch Name *<input required value={form.batch_name} onChange={(e) => setForm({...form, batch_name:e.target.value})}/></label>
-      <label>Topic *<select required value={form.topic_id} onChange={(e) => setForm({...form, topic_id:Number(e.target.value)})}><option value={0}>Select Topic</option>{topics.map((item) => <option key={String(read(item,'topic_id','topicId','id'))} value={Number(read(item,'topic_id','topicId','id'))}>{String(read(item,'topic_name','topicName','name') ?? 'Topic')}</option>}</select></label>
+      <label>
+        Topic *
+        <select
+          required
+          value={form.topic_id}
+          onChange={(event) => setForm((previous) => ({
+            ...previous,
+            topic_id: Number(event.target.value),
+          }))}
+        >
+          <option value={0}>Select Topic</option>
+          {topics.map((item) => {
+            const topicId = read(item, 'topic_id', 'topicId', 'id');
+            const topicName = read(item, 'topic_name', 'topicName', 'name');
+            return (
+              <option key={String(topicId)} value={Number(topicId)}>
+                {String(topicName ?? 'Topic')}
+              </option>
+            );
+          })}
+        </select>
+      </label>
       <label>
         Trainer *
         <select
