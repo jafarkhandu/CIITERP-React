@@ -1,0 +1,162 @@
+import { useEffect, useState, type FormEvent } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { enquiryApi, type EnquiryRecord } from '@/api/enquiryApi';
+import { enquiryFollowupApi, type EnquiryFollowupRecord } from '@/api/enquiryFollowupApi';
+
+function localDateTime(date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+function dateValue(value?: string): string {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value).slice(0, 10) : date.toLocaleDateString('en-GB');
+}
+function idOf(item: Record<string, unknown>): number {
+  return Number(item.followupId ?? item.followup_id ?? item.enquiryFollowupId ?? item.enquiry_followup_id ?? item.id ?? 0);
+}
+
+export default function EnquiryFollowup() {
+  const navigate = useNavigate();
+  const { enquiryId: rawId } = useParams();
+  const enquiryId = Number(rawId ?? 0);
+  const [enquiry, setEnquiry] = useState<EnquiryRecord | null>(null);
+  const [items, setItems] = useState<Record<string, unknown>[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState(0);
+  const [form, setForm] = useState({
+    candidateName: '', sourceId: 0, sourceName: '', followUpDate: localDateTime(),
+    followUpBy: '', description: '', status: 'Hot', nextFollowupDate: new Date().toISOString().slice(0, 10),
+  });
+
+  async function load() {
+    setLoading(true);
+    try {
+      const [record, followups] = await Promise.all([
+        enquiryApi.getById(enquiryId),
+        enquiryFollowupApi.getByEnquiryId(enquiryId),
+      ]);
+      setEnquiry(record);
+      setItems(followups);
+      setForm((previous) => ({ ...previous, candidateName: String(record.candidateName ?? ''), sourceName: String(record.leadSources ?? '') }));
+      setError('');
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message || 'Unable to load enquiry follow-ups.');
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => { if (enquiryId > 0) void load(); else { setLoading(false); setError('Invalid enquiry ID.'); } }, [enquiryId]);
+
+  function resetForm() {
+    setEditingId(0);
+    setForm({
+      candidateName: String(enquiry?.candidateName ?? ''),
+      sourceId: Number((enquiry as any)?.sourceId ?? 0),
+      sourceName: String(enquiry?.leadSources ?? ''),
+      followUpDate: localDateTime(),
+      followUpBy: '',
+      description: '',
+      status: 'Hot',
+      nextFollowupDate: new Date().toISOString().slice(0, 10),
+    });
+  }
+
+  async function edit(item: Record<string, unknown>) {
+    const id = idOf(item);
+    setSaving(true);
+    try {
+      const raw = await enquiryFollowupApi.getById(id) as Record<string, unknown>;
+      const record = (raw.data ?? raw.result ?? raw) as Record<string, unknown>;
+      setEditingId(id);
+      setForm({
+        candidateName: String(record.candidateName ?? enquiry?.candidateName ?? ''),
+        sourceId: Number(record.sourceId ?? 0),
+        sourceName: String(record.sourceName ?? enquiry?.leadSources ?? ''),
+        followUpDate: String(record.followUpDate ?? localDateTime()).slice(0, 16),
+        followUpBy: String(record.followUpBy ?? ''),
+        description: String(record.description ?? ''),
+        status: String(record.status ?? 'Hot'),
+        nextFollowupDate: String(record.nextFollowupDate ?? '').slice(0, 10),
+      });
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message || 'Unable to load follow-up for editing.');
+    } finally { setSaving(false); }
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!form.description.trim() || !form.status) { setError('Status and description are required.'); return; }
+    setSaving(true); setError('');
+    const payload: EnquiryFollowupRecord = {
+      ...form,
+      enquiryId,
+      candidateName: String(enquiry?.candidateName ?? form.candidateName).trim(),
+      followUpDate: new Date(form.followUpDate).toISOString(),
+      nextFollowupDate: form.nextFollowupDate ? new Date(`${form.nextFollowupDate}T00:00:00`).toISOString() : form.followUpDate,
+    };
+    try {
+      if (editingId) await enquiryFollowupApi.update(editingId, payload);
+      else await enquiryFollowupApi.create(payload);
+      resetForm();
+      await load();
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message || (editingId ? 'Unable to update follow-up.' : 'Unable to create follow-up.'));
+    } finally { setSaving(false); }
+  }
+
+  async function remove(item: Record<string, unknown>) {
+    const id = idOf(item);
+    if (!id || !window.confirm(`Delete follow-up for ${String(item.candidateName ?? enquiry?.candidateName ?? 'candidate')}?`)) return;
+    setSaving(true); setError('');
+    try { await enquiryFollowupApi.remove(id); await load(); }
+    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to delete follow-up.'); }
+    finally { setSaving(false); }
+  }
+  async function restore(item: Record<string, unknown>) {
+    const id = idOf(item);
+    setSaving(true); setError('');
+    try { await enquiryFollowupApi.restore(id); await load(); }
+    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to restore follow-up.'); }
+    finally { setSaving(false); }
+  }
+
+  if (loading) return <section className="enquiry-page"><p>Loading follow-ups...</p></section>;
+  return <section className="enquiry-page">
+    <header className="enquiry-header"><div><h1>Enquiry Follow-up</h1><p>{enquiry?.candidateName ?? `Enquiry #${enquiryId}`}</p></div>
+      <button className="enquiry-secondary-btn" type="button" onClick={() => navigate('/main/enquiry')}>Back to Enquiries</button>
+    </header>
+    {error && <div className="enquiry-alert" role="alert">{error}<button type="button" onClick={() => void load()}>Retry</button></div>}
+    <div className="enquiry-table-card" style={{ padding: 24, marginBottom: 20 }}>
+      <h2>{editingId ? 'Update Follow-up' : 'Add Follow-up'}</h2>
+      <form onSubmit={submit}>
+        <div className="enquiry-filters">
+          <label>Candidate *<input required value={form.candidateName} readOnly /></label>
+          <label>Follow-up Date *<input type="datetime-local" required value={form.followUpDate} onChange={(e) => setForm({ ...form, followUpDate: e.target.value })} /></label>
+          <label>Follow-up By *<input required value={form.followUpBy} onChange={(e) => setForm({ ...form, followUpBy: e.target.value })} /></label>
+          <label>Status *<select required value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>{['Hot', 'Warm', 'Cold', 'Interested', 'Not Interested', 'Converted'].map((status) => <option key={status}>{status}</option>)}</select></label>
+          <label>Next Follow-up Date *<input type="date" required value={form.nextFollowupDate} onChange={(e) => setForm({ ...form, nextFollowupDate: e.target.value })} /></label>
+        </div>
+        <label>Description *<textarea required rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
+        <footer style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 16 }}>
+          {editingId > 0 && <button className="enquiry-secondary-btn" type="button" disabled={saving} onClick={resetForm}>Cancel Edit</button>}
+          <button className="enquiry-primary-btn" type="submit" disabled={saving}>{saving ? 'Saving...' : editingId ? 'Update Follow-up' : 'Save Follow-up'}</button>
+        </footer>
+      </form>
+    </div>
+    <div className="enquiry-table-card"><div className="enquiry-table-scroll"><table className="enquiry-table">
+      <thead><tr><th>ID</th><th>Follow-up Date</th><th>Follow-up By</th><th>Status</th><th>Next Date</th><th>Description</th><th>Actions</th></tr></thead>
+      <tbody>{items.map((item, index) => {
+        const deleted = Boolean(item.deletedAt ?? item.deleted_at);
+        return <tr key={idOf(item) || index}><td>{idOf(item)}</td><td>{dateValue(String(item.followUpDate ?? item.follow_up_date ?? ''))}</td>
+          <td>{String(item.followUpBy ?? item.follow_up_by ?? '-')}</td><td>{String(item.status ?? '-')}</td>
+          <td>{dateValue(String(item.nextFollowupDate ?? item.next_followup_date ?? ''))}</td><td>{String(item.description ?? '-')}</td>
+          <td><div className="enquiry-actions">{deleted ? <button type="button" disabled={saving} onClick={() => void restore(item)}>Restore</button> : <>
+            <button type="button" disabled={saving} onClick={() => void edit(item)}>Edit</button><button type="button" disabled={saving} onClick={() => void remove(item)}>Delete</button>
+          </>}</div></td></tr>;
+      })}{!items.length && <tr><td colSpan={7} className="enquiry-empty">No follow-ups found.</td></tr>}</tbody>
+    </table></div></div>
+  </section>;
+}
