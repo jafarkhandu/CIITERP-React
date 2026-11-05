@@ -6,6 +6,7 @@ import { http } from '@/core/http/httpClient';
 import { courseApi, type TrainingCourseRecord } from '@/api/courseApi';
 import { directoryApi, type BranchOption } from '@/api/directoryApi';
 import { studentApi, type RegistrationRequest, type StudentRow } from '@/api/studentApi';
+import { enquiryApi, type EnquiryRecord } from '@/api/enquiryApi';
 
 type Row = Record<string, unknown>;
 type Qualification = { qualificationId: number; qualification: string };
@@ -42,6 +43,8 @@ export default function StudentRegistration() {
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [qualifications, setQualifications] = useState<Qualification[]>([]);
   const [courses, setCourses] = useState<TrainingCourseRecord[]>([]);
+  const [enquiries, setEnquiries] = useState<EnquiryRecord[]>([]);
+  const [selectedEnquiryId, setSelectedEnquiryId] = useState(0);
   const [search, setSearch] = useState('');
   const [regSearch, setRegSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -100,7 +103,17 @@ export default function StudentRegistration() {
   async function openForm(kind: 'new' | 'existing', studentId = 0) {
     setError(''); setSuccess(''); setFeeInfo(null); setModal(kind);
     if (!branches.length || !courses.length || !qualifications.length) await loadDropdowns();
-    if (kind === 'new') setForm(freshForm());
+    if (kind === 'new') {
+      setForm(freshForm());
+      setSelectedEnquiryId(0);
+      try {
+        setEnquiries((await enquiryApi.getAll()).filter((item) => !item.deletedAt));
+      } catch (requestError) {
+        console.error('Enquiry prefill list failed:', requestError);
+        setEnquiries([]);
+        setError('Enquiry list could not be loaded. You can still enter student details manually.');
+      }
+    }
     else { setExistingStudentId(studentId); setExistingCourseId(0); setExistingDiscount(0); setExistingPayment({ paymentAmount: 0, paymentDate: today(), paymentMode: 'Cash', paymentDescription: '' }); }
   }
   async function loadFees(courseId: number, discount: number) {
@@ -113,6 +126,23 @@ export default function StudentRegistration() {
     finally { setFeeLoading(false); }
   }
   const setField = (key: keyof ReturnType<typeof freshForm>, value: string | number) => setForm((f) => ({ ...f, [key]: value }));
+  function prefillFromEnquiry(enquiryId: number) {
+    setSelectedEnquiryId(enquiryId);
+    const enquiry = enquiries.find((item) => Number(item.enquiryId) === enquiryId);
+    if (!enquiry) return;
+    const birthDate = String(pick(enquiry as unknown as Row, 'birthDate', 'birth_Date') ?? '');
+    setForm((previous) => ({
+      ...previous,
+      studentName: String(pick(enquiry as unknown as Row, 'candidateName', 'candidate_name', 'studentName') ?? previous.studentName),
+      gender: String(pick(enquiry as unknown as Row, 'gender') ?? previous.gender),
+      emailAddress: String(pick(enquiry as unknown as Row, 'emailAddress', 'email_address') ?? previous.emailAddress),
+      mobileNumber: String(pick(enquiry as unknown as Row, 'mobileNumber', 'mobile_number') ?? previous.mobileNumber),
+      localAddress: String(pick(enquiry as unknown as Row, 'localAddress', 'local_address') ?? previous.localAddress),
+      birthDate: birthDate ? birthDate.slice(0, 10) : previous.birthDate,
+      qualification: String(pick(enquiry as unknown as Row, 'qualification', 'qualificationName') ?? previous.qualification),
+      branchId: Number(pick(enquiry as unknown as Row, 'branchId', 'branch_id') ?? previous.branchId),
+    }));
+  }
 
   async function submitNew(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); setError('');
@@ -160,6 +190,7 @@ export default function StudentRegistration() {
       {dropdownLoading && <div className="alert alert-info py-2">Loading branches, qualifications and courses...</div>}
       <form onSubmit={submitNew}>
         <div className="ciit-form-section"><h3>Personal Information</h3><div className="row g-3">
+          <div className="col-12"><label className="form-label">Search Enquiry Student</label><select className="form-select" value={selectedEnquiryId} onChange={(e) => prefillFromEnquiry(Number(e.target.value))}><option value={0}>Select enquiry to auto-fill details (optional)</option>{enquiries.map((item) => <option key={item.enquiryId} value={item.enquiryId}>{item.candidateName} · {item.mobileNumber}</option>)}</select><small className="text-muted">Selecting an enquiry fills available personal details. You can edit them before registering.</small></div>
           <div className="col-md-6"><label className="form-label">First Name *</label><input className="form-control" required value={form.studentName} onChange={(e) => setField('studentName', e.target.value)} /></div>
           <div className="col-md-6"><label className="form-label">Last Name *</label><input className="form-control" required value={form.lastName} onChange={(e) => setField('lastName', e.target.value)} /></div>
           <div className="col-md-4"><label className="form-label">Gender *</label><select className="form-select" required value={form.gender} onChange={(e) => setField('gender', e.target.value)}><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div>
