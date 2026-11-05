@@ -134,9 +134,10 @@ export default function StudentRegistration() {
     setForm((previous) => ({
       ...previous,
       studentName: String(pick(enquiry as unknown as Row, 'candidateName', 'candidate_name', 'studentName', 'name') ?? previous.studentName).trim().split(/\\s+/)[0] || previous.studentName,
+      lastName: String(pick(enquiry as unknown as Row, 'candidateName', 'candidate_name', 'studentName', 'name') ?? previous.studentName).trim().split(/\\s+/).slice(1).join(' ') || previous.lastName,
       gender: String(pick(enquiry as unknown as Row, 'gender') ?? previous.gender),
       emailAddress: String(pick(enquiry as unknown as Row, 'emailAddress', 'email_address') ?? previous.emailAddress),
-      mobileNumber: String(pick(enquiry as unknown as Row, 'mobileNumber', 'mobile_number') ?? previous.mobileNumber),
+      mobileNumber: String(pick(enquiry as unknown as Row, 'mobileNumber', 'mobile_number', 'mobile', 'phone') ?? previous.mobileNumber).replace(/\\D/g, '').slice(-10) || previous.mobileNumber,
       localAddress: String(pick(enquiry as unknown as Row, 'localAddress', 'local_address') ?? previous.localAddress),
       birthDate: birthDate ? birthDate.slice(0, 10) : previous.birthDate,
       qualification: String(pick(enquiry as unknown as Row, 'qualification', 'qualificationName') ?? previous.qualification),
