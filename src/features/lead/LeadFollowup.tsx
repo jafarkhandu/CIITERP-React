@@ -28,9 +28,11 @@ export default function LeadFollowup() {
   const [error, setError] = useState('');
   const [expandedForm, setExpandedForm] = useState(false);
   const [expandedHistory, setExpandedHistory] = useState(false);
+  const [editingFollowupId, setEditingFollowupId] = useState(0);
   const [status, setStatus] = useState('');
   const [description, setDescription] = useState('');
-  const [followupDate] = useState(toLocalDateTime());
+  const [followupDate, setFollowupDate] = useState(toLocalDateTime());
+  const [followupBy, setFollowupBy] = useState(userSession.employeeName || userSession.username || '');
   const [nextFollowupDate, setNextFollowupDate] = useState(toLocalDate());
 
   async function loadLead() {
@@ -42,8 +44,24 @@ export default function LeadFollowup() {
   async function loadFollowups() {
     setLoading(true);
     try {
-      const items = await leadApi.getFollowups(leadId);
-      setFollowups(items.sort((a, b) => Number(a.leadFollowupId || 0) - Number(b.leadFollowupId || 0)));
+      const [byLeadResult, allResult] = await Promise.allSettled([
+        leadApi.getFollowups(leadId),
+        leadApi.getAllFollowups(),
+      ]);
+      const byLead = byLeadResult.status === 'fulfilled' ? byLeadResult.value : [];
+      const allForLead = allResult.status === 'fulfilled'
+        ? allResult.value.filter((item) => Number((item as any).leadId ?? (item as any).lead_id ?? 0) === leadId)
+        : [];
+      if (byLeadResult.status === 'rejected' && allResult.status === 'rejected') {
+        throw byLeadResult.reason;
+      }
+      const merged = new Map<number, LeadFollowupRecord>();
+      [...byLead, ...allForLead].forEach((item) => {
+        const id = Number(item.leadFollowupId ?? (item as any).lead_followup_id ?? (item as any).id ?? 0);
+        if (id > 0) merged.set(id, { ...item, leadFollowupId: id, leadId: Number((item as any).leadId ?? (item as any).lead_id ?? leadId), deletedAt: (item as any).deletedAt ?? (item as any).deleted_at ?? (((item as any).is_deleted ?? (item as any).isDeleted ?? (item as any).deleted) ? 'deleted' : null) });
+      });
+      setFollowups(Array.from(merged.values()).sort((a, b) => Number(a.leadFollowupId || (a as any).id || 0) - Number(b.leadFollowupId || (b as any).id || 0)));
+      setError('');
     } catch { setFollowups([]); setError('Unable to load follow-up history.'); }
     finally { setLoading(false); }
   }
@@ -55,23 +73,58 @@ export default function LeadFollowup() {
     void loadLead(); void loadFollowups();
   }, [leadId]);
 
+  async function editFollowup(item: LeadFollowupRecord) {
+    const id = Number(item.leadFollowupId ?? 0);
+    if (!id) { setError('Invalid follow-up ID.'); return; }
+    setSaving(true); setError('');
+    try {
+      const raw = await leadApi.getFollowupById(id) as any;
+      const record = raw?.data ?? raw?.result ?? raw;
+      setEditingFollowupId(id);
+      setFollowupDate(String(record.followUpDate ?? item.followUpDate ?? toLocalDateTime()).slice(0, 16));
+      setFollowupBy(String(record.followUpBy ?? item.followUpBy ?? userSession.employeeName ?? userSession.username ?? ''));
+      setStatus(String(record.status ?? item.status ?? ''));
+      setDescription(String(record.description ?? item.description ?? ''));
+      setNextFollowupDate(String(record.nextFollowupDate ?? item.nextFollowupDate ?? '').slice(0, 10));
+      setExpandedForm(true);
+    } catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to load follow-up.'); }
+    finally { setSaving(false); }
+  }
+
+  async function removeFollowup(item: LeadFollowupRecord) {
+    const id = Number(item.leadFollowupId ?? 0);
+    if (!id || !window.confirm('Delete this lead follow-up?')) return;
+    setSaving(true); setError('');
+    try { await leadApi.removeFollowup(id); await loadFollowups(); }
+    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to delete follow-up.'); }
+    finally { setSaving(false); }
+  }
+  async function restoreFollowup(item: LeadFollowupRecord) {
+    const id = Number(item.leadFollowupId ?? 0);
+    setSaving(true); setError('');
+    try { await leadApi.restoreFollowup(id); await loadFollowups(); }
+    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to restore follow-up.'); }
+    finally { setSaving(false); }
+  }
+
   async function saveFollowup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError('');
     if (!status || !description.trim()) { setError('Select a status and enter follow-up details.'); return; }
     if (!lead) { setError('Lead details are not available.'); return; }
     setSaving(true);
     const payload: LeadFollowupRecord = {
-      leadFollowupId: 0, leadId, candidateName: lead.candidateName || '',
+      leadFollowupId: editingFollowupId || 0, leadId, candidateName: lead.candidateName || '',
       followUpDate: new Date(followupDate),
-      followUpBy: userSession.employeeName || userSession.username || '',
+      followUpBy,
       description: description.trim(), status,
       nextFollowupDate: nextFollowupDate ? new Date(`${nextFollowupDate}T00:00:00`) : new Date(),
     };
     try {
-      await leadApi.createFollowup(payload);
-      setDescription(''); setStatus('');
+      if (editingFollowupId) await leadApi.updateFollowup(editingFollowupId, payload);
+      else await leadApi.createFollowup(payload);
+      setDescription(''); setStatus(''); setEditingFollowupId(0);
+      setFollowupDate(toLocalDateTime()); setFollowupBy(userSession.employeeName || userSession.username || ''); setNextFollowupDate(toLocalDate());
       await loadFollowups();
-      navigate('/main/lead');
     } catch (requestError: any) {
       setError(requestError?.response?.data?.message || 'Unable to save follow-up.');
     } finally { setSaving(false); }
@@ -95,17 +148,17 @@ export default function LeadFollowup() {
     </div>
     <div className="lead-accordion-card">
       <button className="lead-accordion-header" type="button" aria-expanded={expandedForm} onClick={() => setExpandedForm((value) => !value)}>
-        <span><strong>＋ New Follow-up</strong><small>Record the latest communication with this lead</small></span><b>{expandedForm ? '−' : '+'}</b>
+        <span><strong>{editingFollowupId ? 'Edit Follow-up' : '＋ New Follow-up'}</strong><small>Record or update communication with this lead</small></span><b>{expandedForm ? '−' : '+'}</b>
       </button>
       {expandedForm && <form onSubmit={saveFollowup} className="lead-followup-form">
         <div className="lead-form-grid">
-          <label>Follow-up Date<input type="datetime-local" value={followupDate} disabled /></label>
-          <label>Follow-up By<input value={userSession.employeeName || userSession.username || ''} disabled /></label>
+          <label>Follow-up Date<input type="datetime-local" value={followupDate} disabled={!editingFollowupId} onChange={(event) => setFollowupDate(event.target.value)} /></label>
+          <label>Follow-up By<input required value={followupBy} disabled={!editingFollowupId} onChange={(event) => setFollowupBy(event.target.value)} /></label>
           <label>Status<select required value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Select Status</option><option>Hot</option><option>Warm</option><option>Cold</option></select></label>
           <label>Next Follow-up Date<input type="date" min={toLocalDate()} value={nextFollowupDate} onChange={(event) => setNextFollowupDate(event.target.value)} /></label>
           <label className="lead-full-field">Description<textarea required rows={4} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Enter follow-up details..." /></label>
         </div>
-        <footer><button className="lead-secondary-btn" type="button" onClick={() => navigate('/main/lead')}>Cancel</button><button className="lead-primary-btn" type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Follow-up'}</button></footer>
+        <footer><button className="lead-secondary-btn" type="button" onClick={() => { setEditingFollowupId(0); setDescription(''); setStatus(''); setExpandedForm(false); }}>Cancel</button><button className="lead-primary-btn" type="submit" disabled={saving}>{saving ? 'Saving...' : editingFollowupId ? 'Update Follow-up' : 'Save Follow-up'}</button></footer>
       </form>}
     </div>
     <div className="lead-accordion-card">
@@ -113,10 +166,10 @@ export default function LeadFollowup() {
         <span><strong>◷ Previous Lead Follow-ups</strong><small>View complete follow-up communication history</small></span><b>{expandedHistory ? '−' : '+'}</b>
       </button>
       {expandedHistory && <div className="lead-table-scroll"><table className="lead-table">
-        <thead><tr><th>#</th><th>Follow-up Date</th><th>Follow-up By</th><th>Status</th><th>Description</th><th>Next Follow-up</th></tr></thead>
-        <tbody>{loading ? <tr><td colSpan={6} className="lead-empty">Loading follow-ups...</td></tr> :
-          followups.map((item, index) => <tr key={item.leadFollowupId ?? index}><td>{index + 1}</td><td>{formatDate(item.followUpDate, true)}</td><td>{item.followUpBy}</td><td>{item.status}</td><td>{item.description}</td><td>{formatDate(item.nextFollowupDate)}</td></tr>)}
-          {!loading && followups.length === 0 && <tr><td colSpan={6} className="lead-empty">No previous follow-ups found.</td></tr>}
+        <thead><tr><th>#</th><th>Follow-up Date</th><th>Follow-up By</th><th>Status</th><th>Description</th><th>Next Follow-up</th><th>Actions</th></tr></thead>
+        <tbody>{loading ? <tr><td colSpan={7} className="lead-empty">Loading follow-ups...</td></tr> :
+          followups.map((item, index) => { const deleted = Boolean((item as any).deletedAt ?? (item as any).deleted_at); return <tr key={item.leadFollowupId ?? index}><td>{index + 1}</td><td>{formatDate(item.followUpDate, true)}</td><td>{item.followUpBy}</td><td>{item.status}</td><td>{item.description}</td><td>{formatDate(item.nextFollowupDate)}</td><td>{deleted ? <button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => void restoreFollowup(item)}>Restore</button> : <><button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => void editFollowup(item)}>Edit</button><button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => void removeFollowup(item)}>Delete</button></>}</td></tr>; })}
+          {!loading && followups.length === 0 && <tr><td colSpan={7} className="lead-empty">No previous follow-ups found.</td></tr>}
         </tbody>
       </table></div>}
     </div>

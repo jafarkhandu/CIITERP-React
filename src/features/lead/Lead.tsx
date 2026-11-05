@@ -24,6 +24,7 @@ function normalizeLead(raw: any): LeadRecord {
     leadDate: raw?.leadDate ?? raw?.createdAt ?? '',
     sourceId: Number(raw?.sourceId ?? raw?.leadSourceId ?? 0),
     sourceName: String(raw?.sourceName ?? ''),
+    deletedAt: raw?.deletedAt ?? raw?.deleted_at ?? ((raw?.is_deleted ?? raw?.isDeleted ?? raw?.deleted) ? 'deleted' : null),
   };
 }
 
@@ -55,13 +56,18 @@ export default function Lead() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [editingLeadId, setEditingLeadId] = useState(0);
+  const [tab, setTab] = useState<'active' | 'deleted'>('active');
   const [showExport, setShowExport] = useState(false);
   const [form, setForm] = useState({
     candidateName: '', emailAddress: '', mobileNumber: '', trainingType: 'Online',
-    description: '', leadDate: localDateValue(), sourceId: 0, sourceName: '',
+    description: '', status: 'New', leadDate: localDateValue(), sourceId: 0, sourceName: '',
   });
 
   const canCreate = permissionService.hasPermission(PERMISSIONS.LEAD_CREATE);
+  const canUpdate = permissionService.hasPermission(PERMISSIONS.LEAD_UPDATE);
+  const canDelete = permissionService.hasPermission(PERMISSIONS.LEAD_DELETE);
+  const canRestore = permissionService.hasPermission(PERMISSIONS.LEAD_RESTORE);
   const canFollowup = userSession.isSuperUser() || !userSession.isAdmin() ||
     permissionService.isAdminFunctionEnabled(PERMISSIONS.LEAD_FOLLOWUP);
   const canExport = permissionService.hasPermission(PERMISSIONS.LEAD_EXPORT);
@@ -100,12 +106,41 @@ export default function Lead() {
   }
 
   function openCreate() {
+    setEditingLeadId(0);
     setFormError('');
     setForm({
       candidateName: '', emailAddress: '', mobileNumber: '', trainingType: 'Online',
-      description: '', leadDate: localDateValue(), sourceId: 0, sourceName: '',
+      description: '', status: 'New', leadDate: localDateValue(), sourceId: 0, sourceName: '',
     });
     setShowForm(true);
+  }
+
+  async function openEdit(lead: LeadRecord) {
+    setFormError(''); setError(''); setSaving(true);
+    try {
+      const raw = await leadApi.getById(lead.leadId);
+      const item = normalizeLead(raw as any);
+      setEditingLeadId(item.leadId);
+      setForm({ candidateName: item.candidateName, emailAddress: item.emailAddress, mobileNumber: item.mobileNumber,
+        trainingType: item.trainingType || 'Online', description: item.description, status: item.status || 'New', leadDate: localDateValue(new Date(item.leadDate)),
+        sourceId: item.sourceId, sourceName: item.sourceName || '' });
+      setShowForm(true);
+    } catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to load lead for editing.'); }
+    finally { setSaving(false); }
+  }
+
+  async function removeLead(lead: LeadRecord) {
+    if (!window.confirm(`Delete lead for ${lead.candidateName}?`)) return;
+    setSaving(true); setError('');
+    try { await leadApi.remove(lead.leadId); await loadData(); }
+    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to delete lead.'); }
+    finally { setSaving(false); }
+  }
+  async function restoreLead(lead: LeadRecord) {
+    setSaving(true); setError('');
+    try { await leadApi.restore(lead.leadId); await loadData(); }
+    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to restore lead.'); }
+    finally { setSaving(false); }
   }
 
   async function createLead(event: FormEvent<HTMLFormElement>) {
@@ -115,10 +150,13 @@ export default function Lead() {
     if (!/^\\d{10}$/.test(form.mobileNumber)) { setFormError('Enter a valid 10-digit mobile number.'); return; }
     setSaving(true);
     try {
-      await leadApi.create({
+      const payload = {
         ...form, leadDate: new Date(`${form.leadDate}T00:00:00`),
-        status: 'New', sourceName: source.sourceName,
-      });
+        status: editingLeadId ? form.status : 'New',
+        sourceName: source.sourceName,
+      };
+      if (editingLeadId) await leadApi.update(editingLeadId, { leadId: editingLeadId, ...payload } as LeadRecord);
+      else await leadApi.create(payload);
       setShowForm(false);
       await loadData();
     } catch (requestError: any) {
@@ -166,6 +204,7 @@ export default function Lead() {
       </div>
     </header>
     {error && <div className="lead-alert" role="alert">{error}<button type="button" onClick={() => void loadData()}>Retry</button></div>}
+    <div className="lead-tabs"><button type="button" className={tab === 'active' ? 'active' : ''} onClick={() => setTab('active')}>Active Leads</button><button type="button" className={tab === 'deleted' ? 'active' : ''} onClick={() => setTab('deleted')}>Deleted Leads</button></div>
     <div className="lead-filters">
       <input aria-label="Search leads" placeholder="Search name, email or mobile" value={search} onChange={(event) => setSearch(event.target.value)} />
       <select aria-label="Filter lead status" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All Status</option>{STATUS_OPTIONS.map((item) => <option key={item}>{item}</option>)}</select>
@@ -176,25 +215,26 @@ export default function Lead() {
     <div className="lead-table-card"><div className="lead-table-scroll"><table className="lead-table">
       <thead><tr><th>#</th><th>ID</th><th>Candidate Name</th><th>Email</th><th>Mobile</th><th>Training</th><th>Status</th><th>Lead Date</th><th>Action</th></tr></thead>
       <tbody>{loading ? <tr><td colSpan={9} className="lead-empty">Loading leads...</td></tr> :
-        filtered.map((lead, index) => <tr key={lead.leadId}><td>{index + 1}</td><td>{lead.leadId}</td><td className="lead-candidate">{lead.candidateName}</td><td>{lead.emailAddress}</td><td>{lead.mobileNumber}</td><td>{lead.trainingType}</td><td><span className={`lead-status ${lead.status.toLowerCase().replace(/\\s+/g, '-')}`}>{lead.status}</span></td><td>{formatDate(lead.leadDate)}</td><td>{canFollowup && <button className="lead-followup-btn" type="button" onClick={() => navigate(`/main/lead/followup/${lead.leadId}`)}>Follow-up</button>}</td></tr>)}
-        {!loading && filtered.length === 0 && <tr><td colSpan={9} className="lead-empty">No leads found.</td></tr>}
+        filtered.filter((lead) => tab === 'deleted' ? Boolean((lead as any).deletedAt) : !(lead as any).deletedAt).map((lead, index) => <tr key={lead.leadId}><td>{index + 1}</td><td>{lead.leadId}</td><td className="lead-candidate">{lead.candidateName}</td><td>{lead.emailAddress}</td><td>{lead.mobileNumber}</td><td>{lead.trainingType}</td><td><span className={`lead-status ${lead.status.toLowerCase().replace(/\\s+/g, '-')}`}>{lead.status}</span></td><td>{formatDate(lead.leadDate)}</td><td><div className="lead-row-actions">{tab === 'deleted' ? (canRestore && <button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => void restoreLead(lead)}>Restore</button>) : <>{canFollowup && <button className="lead-followup-btn" type="button" onClick={() => navigate(`/main/lead/followup/${lead.leadId}`)}>Follow-up</button>}{canUpdate && <button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => void openEdit(lead)}>Edit</button>}{canDelete && <button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => void removeLead(lead)}>Delete</button>}</>}</div></td></tr>)}
+        {!loading && filtered.filter((lead) => tab === 'deleted' ? Boolean((lead as any).deletedAt) : !(lead as any).deletedAt).length === 0 && <tr><td colSpan={9} className="lead-empty">No leads found.</td></tr>}
       </tbody>
     </table></div></div>
 
     {showForm && <div className="lead-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setShowForm(false); }}>
       <section className="lead-modal" role="dialog" aria-modal="true" aria-labelledby="lead-modal-title">
-        <header><div><h2 id="lead-modal-title">Add Lead</h2><p>Create a new lead</p></div><button type="button" aria-label="Close" disabled={saving} onClick={() => setShowForm(false)}>×</button></header>
+        <header><div><h2 id="lead-modal-title">{editingLeadId ? 'Edit Lead' : 'Add Lead'}</h2><p>{editingLeadId ? 'Update lead details' : 'Create a new lead'}</p></div><button type="button" aria-label="Close" disabled={saving} onClick={() => setShowForm(false)}>×</button></header>
         <form onSubmit={createLead}><div className="lead-form-grid">
           <label>Candidate Name *<input required value={form.candidateName} onChange={(event) => setForm({ ...form, candidateName: event.target.value })} /></label>
           <label>Email Address *<input type="email" required value={form.emailAddress} onChange={(event) => setForm({ ...form, emailAddress: event.target.value })} /></label>
           <label>Mobile Number *<input required inputMode="numeric" maxLength={10} value={form.mobileNumber} onChange={(event) => setForm({ ...form, mobileNumber: event.target.value.replace(/\\D/g, '').slice(0, 10) })} /></label>
           <label>Training Type *<select value={form.trainingType} onChange={(event) => setForm({ ...form, trainingType: event.target.value })}><option>Online</option><option>Offline</option></select></label>
           <label>Lead Date<input type="date" value={form.leadDate} disabled /></label>
+          <label>Status *<select required value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>{STATUS_OPTIONS.map((item) => <option key={item}>{item}</option>)}</select></label>
           <label>Lead Source *<select required value={form.sourceId} onChange={(event) => setForm({ ...form, sourceId: Number(event.target.value) })}><option value={0}>Select Lead Source</option>{sources.map((source) => <option value={source.sourceId} key={source.sourceId}>{source.sourceName}</option>)}</select></label>
           <label className="lead-full-field">Description<textarea rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
         </div>
         {formError && <div className="lead-alert" role="alert">{formError}</div>}
-        <footer><button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => setShowForm(false)}>Cancel</button><button className="lead-primary-btn" type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Lead'}</button></footer></form>
+        <footer><button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => setShowForm(false)}>Cancel</button><button className="lead-primary-btn" type="submit" disabled={saving}>{saving ? 'Saving...' : editingLeadId ? 'Update Lead' : 'Save Lead'}</button></footer></form>
       </section>
     </div>}
   </section>;
