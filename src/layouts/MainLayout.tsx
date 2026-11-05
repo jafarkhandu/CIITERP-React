@@ -55,7 +55,7 @@ export default function MainLayout() {
   const location = useLocation();
   const session = useSession();
   usePermissionVersion();
-  const isSuperUser = session.roles.some((role) => role.trim().toLowerCase().replace(/[\\s_-]+/g, '') === 'superuser');
+  const isSuperUser = session.roles.some((role) => role.trim().toLowerCase().replace(/[\s_-]+/g, '') === 'superuser');
 
   const [isDarkTheme, setIsDarkTheme] = useState(
     () => (localStorage.getItem('ciit-theme') || localStorage.getItem('theme')) === 'dark',
@@ -195,16 +195,16 @@ export default function MainLayout() {
     );
 
     return availableRoles.map((role) => {
-      const normalizedRole = role.roleName.trim().toLowerCase().replace(/[\\s_-]+/g, '');
+      const normalizedRole = role.roleName.trim().toLowerCase().replace(/[\s_-]+/g, '');
       const menus = permissionVisibleMenus.filter((menu) => (
         normalizedRole === 'superuser'
           || menu.roles?.some((menuRole) =>
-            menuRole.trim().toLowerCase().replace(/[\\s_-]+/g, '') === normalizedRole)
+            menuRole.trim().toLowerCase().replace(/[\s_-]+/g, '') === normalizedRole)
       ));
 
       return { ...role, menus };
     });
-  }, [availableRoles, session.roles, permissionService.getPermissions().join('|')]);
+  }, [availableRoles, permissionService.getPermissions().join('|')]);
 
   useEffect(() => {
     if (!isSuperUser) return;
@@ -369,7 +369,7 @@ export default function MainLayout() {
                     const isExpanded = expandedRole === group.roleId;
                     const hasActiveMenu = group.menus.some((menu) =>
                       location.pathname === menu.route || location.pathname.startsWith(menu.route + '/'));
-                    const normalizedRole = group.roleName.trim().toLowerCase().replace(/[\\s_-]+/g, '');
+                    const normalizedRole = group.roleName.trim().toLowerCase().replace(/[\s_-]+/g, '');
                     const roleIcon = normalizedRole === 'superuser' ? 'bi-shield-lock-fill'
                       : normalizedRole === 'admin' ? 'bi-person-gear'
                       : normalizedRole === 'accountant' ? 'bi-calculator-fill'
