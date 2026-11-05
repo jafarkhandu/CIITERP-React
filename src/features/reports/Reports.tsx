@@ -50,18 +50,36 @@ export default function Reports() {
     setLoading(true);
     setError('');
     try {
-      const [leadRows, leadFollowupRows, enquiryRows, enquiryFollowupRows, userRows] = await Promise.all([
+      const results = await Promise.allSettled([
         leadApi.getAll(),
         leadApi.getAllFollowups(),
         enquiryApi.getAll(),
         enquiryFollowupApi.getAll(),
         getAllUsers(),
       ]);
-      setLeads(leadRows.filter(active));
-      setLeadFollowups(leadFollowupRows.filter(active));
-      setEnquiries(enquiryRows.filter(active));
-      setEnquiryFollowups((enquiryFollowupRows as FollowupRow[]).filter(active));
-      setUsers(userRows);
+
+      const failedSections: string[] = [];
+      const [leadResult, leadFollowupResult, enquiryResult, enquiryFollowupResult, userResult] = results;
+
+      if (leadResult.status === 'fulfilled') setLeads(leadResult.value.filter(active));
+      else failedSections.push('leads');
+
+      if (leadFollowupResult.status === 'fulfilled') setLeadFollowups(leadFollowupResult.value.filter(active));
+      else failedSections.push('lead follow-ups');
+
+      if (enquiryResult.status === 'fulfilled') setEnquiries(enquiryResult.value.filter(active));
+      else failedSections.push('enquiries');
+
+      if (enquiryFollowupResult.status === 'fulfilled') {
+        setEnquiryFollowups((enquiryFollowupResult.value as FollowupRow[]).filter(active));
+      } else failedSections.push('enquiry follow-ups');
+
+      if (userResult.status === 'fulfilled') setUsers(userResult.value);
+      else failedSections.push('user directory');
+
+      setError(failedSections.length
+        ? `Some report data could not be loaded (${failedSections.join(', ')}). Available sections are still displayed; retry to refresh the missing data.`
+        : '');
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : 'Some report data could not be loaded. Please try again.');
     } finally {
@@ -264,8 +282,9 @@ export default function Reports() {
         <button type="button" className="clear-btn" onClick={clearFilters}>Clear Filters</button>
         <button type="button" className="clear-btn" onClick={setCurrentMonth}>Current Month</button>
       </section>
-      {loading ? <div className="state">Loading business reports…</div> : error ? <div className="error" role="alert">{error}<button type="button" onClick={() => void loadReports()}>Retry</button></div> : (
+      {loading ? <div className="state">Loading business reports…</div> : (
         <>
+          {error && <div className="error" role="alert"><span>{error}</span><button type="button" onClick={() => void loadReports()}>Retry</button></div>}
           <section className="section">
             <div className="section-title"><div><h2>1. Lead Follow-up Report</h2><p>Latest follow-up for each lead within the selected period.</p></div><div className="section-actions"><button className="export-btn" onClick={() => exportExcel('lead')}>Excel</button><button className="export-btn" onClick={() => exportPdf('lead')}>PDF</button></div></div>
             <div className="kpi-grid follow-kpis">
