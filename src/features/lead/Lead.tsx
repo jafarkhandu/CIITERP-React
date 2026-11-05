@@ -61,7 +61,7 @@ export default function Lead() {
   const [showExport, setShowExport] = useState(false);
   const [form, setForm] = useState({
     candidateName: '', emailAddress: '', mobileNumber: '', trainingType: 'Online',
-    description: '', leadDate: localDateValue(), sourceId: 0, sourceName: '',
+    description: '', status: 'New', leadDate: localDateValue(), sourceId: 0, sourceName: '',
   });
 
   const canCreate = permissionService.hasPermission(PERMISSIONS.LEAD_CREATE);
@@ -110,7 +110,7 @@ export default function Lead() {
     setFormError('');
     setForm({
       candidateName: '', emailAddress: '', mobileNumber: '', trainingType: 'Online',
-      description: '', leadDate: localDateValue(), sourceId: 0, sourceName: '',
+      description: '', status: 'New', leadDate: localDateValue(), sourceId: 0, sourceName: '',
     });
     setShowForm(true);
   }
@@ -122,7 +122,7 @@ export default function Lead() {
       const item = normalizeLead(raw as any);
       setEditingLeadId(item.leadId);
       setForm({ candidateName: item.candidateName, emailAddress: item.emailAddress, mobileNumber: item.mobileNumber,
-        trainingType: item.trainingType || 'Online', description: item.description, leadDate: localDateValue(new Date(item.leadDate)),
+        trainingType: item.trainingType || 'Online', description: item.description, status: item.status || 'New', leadDate: localDateValue(new Date(item.leadDate)),
         sourceId: item.sourceId, sourceName: item.sourceName || '' });
       setShowForm(true);
     } catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to load lead for editing.'); }
@@ -152,7 +152,7 @@ export default function Lead() {
     try {
       const payload = {
         ...form, leadDate: new Date(`${form.leadDate}T00:00:00`),
-        status: editingLeadId ? (leads.find((item) => item.leadId === editingLeadId)?.status || 'New') : 'New',
+        status: editingLeadId ? form.status : 'New',
         sourceName: source.sourceName,
       };
       if (editingLeadId) await leadApi.update(editingLeadId, { leadId: editingLeadId, ...payload } as LeadRecord);
@@ -229,6 +229,7 @@ export default function Lead() {
           <label>Mobile Number *<input required inputMode="numeric" maxLength={10} value={form.mobileNumber} onChange={(event) => setForm({ ...form, mobileNumber: event.target.value.replace(/\\D/g, '').slice(0, 10) })} /></label>
           <label>Training Type *<select value={form.trainingType} onChange={(event) => setForm({ ...form, trainingType: event.target.value })}><option>Online</option><option>Offline</option></select></label>
           <label>Lead Date<input type="date" value={form.leadDate} disabled /></label>
+          <label>Status *<select required value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>{STATUS_OPTIONS.map((item) => <option key={item}>{item}</option>)}</select></label>
           <label>Lead Source *<select required value={form.sourceId} onChange={(event) => setForm({ ...form, sourceId: Number(event.target.value) })}><option value={0}>Select Lead Source</option>{sources.map((source) => <option value={source.sourceId} key={source.sourceId}>{source.sourceName}</option>)}</select></label>
           <label className="lead-full-field">Description<textarea rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
         </div>
