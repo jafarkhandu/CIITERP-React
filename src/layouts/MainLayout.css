@@ -825,3 +825,39 @@ html[data-theme="dark"] .ciit-app-shell .ciit-content {
     transition-duration: .01ms !important;
   }
 }
+
+
+/* Purposeful motion for Accountant dialogs rendered into document.body. */
+.ciit-modal-backdrop {
+  animation: ciit-modal-overlay-in .2s ease both;
+}
+.ciit-modal-dialog {
+  animation: ciit-modal-panel-in .24s cubic-bezier(.2,.7,.2,1) both;
+}
+.ciit-data-card, .ciit-stat-card {
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+.ciit-data-card:hover {
+  border-color: rgba(59,130,246,.2) !important;
+  box-shadow: 0 14px 34px rgba(33,66,105,.09), inset 0 1px 0 rgba(255,255,255,.88) !important;
+}
+.ciit-glass-modal .modal-header h2 { color: var(--ciit-text); font-weight: 800; }
+.ciit-glass-modal .modal-header .text-muted { color: var(--ciit-muted) !important; }
+@keyframes ciit-modal-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ciit-modal-panel-in {
+  from { opacity: 0; transform: translateY(9px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+html[data-theme="dark"] .ciit-data-card:hover {
+  border-color: rgba(96,165,250,.28) !important;
+  box-shadow: 0 14px 34px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.04) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ciit-modal-backdrop, .ciit-modal-dialog, .ciit-data-card, .ciit-stat-card {
+    animation: none !important;
+    transition: none !important;
+  }
+}
