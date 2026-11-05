@@ -32,8 +32,14 @@ export default function Reports() {
   const [enquiries, setEnquiries] = useState<EnquiryRecord[]>([]);
   const [enquiryFollowups, setEnquiryFollowups] = useState<FollowupRow[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateFrom, setDateFrom] = useState(() => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+  });
+  const [dateTo, setDateTo] = useState(() => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  });
   const [branchFilter, setBranchFilter] = useState<FilterOption>('All');
   const [courseFilter, setCourseFilter] = useState<FilterOption>('All');
   const [counsellorFilter, setCounsellorFilter] = useState<FilterOption>('All');
