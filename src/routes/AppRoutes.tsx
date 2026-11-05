@@ -44,8 +44,8 @@ export default function AppRoutes() {
       <Route path="lead/followup/:leadId" element={guarded(<LeadFollowup />, { permission: PERMISSIONS.LEAD_FOLLOWUP })} />
       <Route path="change-password" element={guarded(<ChangePassword />)} />
       <Route path="batch" element={guarded(<BatchManagement />, { roles: ['Admin', 'Super User', 'Group Leader'], permission: PERMISSIONS.GROUP_LEADER_BATCH_VIEW })} />
-      <Route path="trainer" element={guarded(<TrainerBatches />, { roles: ['Trainer'], permission: PERMISSIONS.TRAINER_BATCH_VIEW })} />
-      <Route path="trainer/batches/:batchId" element={guarded(<TrainerBatchDetails />, { roles: ['Trainer'], permissions: [PERMISSIONS.TRAINER_BATCH_VIEW, PERMISSIONS.TRAINER_ATTENDANCE_VIEW] })} />
+      <Route path="trainer" element={guarded(<TrainerBatches />, { roles: ['Admin', 'Super User', 'Trainer'], permission: PERMISSIONS.TRAINER_BATCH_VIEW })} />
+      <Route path="trainer/batches/:batchId" element={guarded(<TrainerBatchDetails />, { roles: ['Admin', 'Super User', 'Trainer'], permissions: [PERMISSIONS.TRAINER_BATCH_VIEW, PERMISSIONS.TRAINER_ATTENDANCE_VIEW] })} />
       <Route path="profile" element={guarded(<Profile />)} />
       <Route path="enquiry" element={guarded(<Enquiry />, { permission: PERMISSIONS.ENQUIRY_VIEW })} />
       <Route path="enquiry/add" element={guarded(<EnquiryForm />, { permission: PERMISSIONS.ENQUIRY_CREATE })} />
