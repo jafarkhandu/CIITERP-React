@@ -866,3 +866,30 @@ html[data-theme="dark"] .ciit-data-card:hover {
     transition: none !important;
   }
 }
+
+
+/* Profile menu: frosted glass with enough opacity to prevent background bleed. */
+.cmp-main-layout .profile-dropdown {
+  background: linear-gradient(145deg, rgba(247,251,255,.97), rgba(228,239,253,.96)) !important;
+  border: 1px solid rgba(255,255,255,.78) !important;
+  border-radius: 17px !important;
+  box-shadow: 0 22px 48px rgba(14,39,72,.24), inset 0 1px 0 rgba(255,255,255,.95) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(170%) !important;
+  backdrop-filter: blur(28px) saturate(170%) !important;
+}
+.cmp-main-layout .profile-dropdown button {
+  color: #263b56 !important;
+  border-radius: 10px !important;
+}
+.cmp-main-layout .profile-dropdown button:hover {
+  background: rgba(71,132,218,.15) !important;
+  color: #174f9a !important;
+}
+.cmp-main-layout .profile-dropdown .dropdown-logout { color: #c9364d !important; }
+html[data-theme="dark"] .cmp-main-layout .profile-dropdown {
+  background: linear-gradient(145deg, rgba(20,38,59,.97), rgba(11,26,43,.96)) !important;
+  border-color: rgba(133,166,207,.32) !important;
+  box-shadow: 0 22px 48px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06) !important;
+}
+html[data-theme="dark"] .cmp-main-layout .profile-dropdown button { color: #e2edfb !important; }
+html[data-theme="dark"] .cmp-main-layout .profile-dropdown button:hover { background: rgba(76,139,220,.22) !important; color: #fff !important; }
