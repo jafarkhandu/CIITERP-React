@@ -1,38 +1,38 @@
-import type { ReactElement } from 'react';
+import { lazy, Suspense, type ReactElement } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from '@/core/auth/ProtectedRoute';
 import { PERMISSIONS, type Permission } from '@/core/services/permissionService';
-import MainLayout from '@/layouts/MainLayout';
+const MainLayout = lazy(() => import('@/layouts/MainLayout'));
 import ComingSoon from '@/features/placeholder/ComingSoon';
-import Reports from '@/features/reports/Reports';
-import Login from '@/features/account/Login/Login';
-import ForgotPassword from '@/features/account/ForgotPassword/ForgotPassword';
-import ResetPassword from '@/features/account/ResetPassword/ResetPassword';
-import ChangePassword from '@/features/account/ChangePassword/ChangePassword';
-import Profile from '@/features/account/Profile/Profile';
-import Dashboard from '@/features/dashboard/Dashboard';
-import Employee from '@/features/employee/Employee';
-import EditUserRoles from '@/features/employee/EditUserRoles';
-import Lead from '@/features/lead/Lead';
-import LeadFollowup from '@/features/lead/LeadFollowup';
-import Course from '@/features/course/Course';
-import Enquiry from '@/features/enquiry/Enquiry';
-import EnquiryForm from '@/features/enquiry/EnquiryForm';
-import EnquiryFollowup from '@/features/enquiry/EnquiryFollowup';
-import FunctionManagement from '@/features/function-management/FunctionManagement';
-import Settings from '@/features/settings/Settings';
-import StudentRegistration from '@/features/student/StudentRegistration';
-import StudentPayments from '@/features/student/StudentPayments';
-import TrainerBatches from '@/features/trainer/TrainerBatches';
-import TrainerBatchDetails from '@/features/trainer/TrainerBatchDetails';
-import BatchManagement from '@/features/batch/BatchManagement';
+const Reports = lazy(() => import('@/features/reports/Reports'));
+const Login = lazy(() => import('@/features/account/Login/Login'));
+const ForgotPassword = lazy(() => import('@/features/account/ForgotPassword/ForgotPassword'));
+const ResetPassword = lazy(() => import('@/features/account/ResetPassword/ResetPassword'));
+const ChangePassword = lazy(() => import('@/features/account/ChangePassword/ChangePassword'));
+const Profile = lazy(() => import('@/features/account/Profile/Profile'));
+const Dashboard = lazy(() => import('@/features/dashboard/Dashboard'));
+const Employee = lazy(() => import('@/features/employee/Employee'));
+const EditUserRoles = lazy(() => import('@/features/employee/EditUserRoles'));
+const Lead = lazy(() => import('@/features/lead/Lead'));
+const LeadFollowup = lazy(() => import('@/features/lead/LeadFollowup'));
+const Course = lazy(() => import('@/features/course/Course'));
+const Enquiry = lazy(() => import('@/features/enquiry/Enquiry'));
+const EnquiryForm = lazy(() => import('@/features/enquiry/EnquiryForm'));
+const EnquiryFollowup = lazy(() => import('@/features/enquiry/EnquiryFollowup'));
+const FunctionManagement = lazy(() => import('@/features/function-management/FunctionManagement'));
+const Settings = lazy(() => import('@/features/settings/Settings'));
+const StudentRegistration = lazy(() => import('@/features/student/StudentRegistration'));
+const StudentPayments = lazy(() => import('@/features/student/StudentPayments'));
+const TrainerBatches = lazy(() => import('@/features/trainer/TrainerBatches'));
+const TrainerBatchDetails = lazy(() => import('@/features/trainer/TrainerBatchDetails'));
+const BatchManagement = lazy(() => import('@/features/batch/BatchManagement'));
 
 interface Guard { permission?: Permission; permissions?: Permission[]; roles?: string[]; }
 const guarded = (element: ReactElement, guard: Guard = {}) => <ProtectedRoute {...guard}>{element}</ProtectedRoute>;
 const soon = (title: string, phase: 2 | 3 | 4) => <ComingSoon title={title} phase={phase} />;
 
 export default function AppRoutes() {
-  return <Routes>
+  return <Suspense fallback={<div role="status" aria-live="polite" style={{ minHeight: '40vh', display: 'grid', placeItems: 'center', padding: '2rem', color: 'var(--text-muted, #6b7280)' }}>Loading module…</div>}><Routes>
     <Route path="/login" element={<Login />} />
     <Route path="/forgot-password" element={<ForgotPassword />} />
     <Route path="/reset-password" element={<ResetPassword />} />
@@ -66,5 +66,5 @@ export default function AppRoutes() {
     </Route>
     <Route path="/" element={<Navigate to="/login" replace />} />
     <Route path="*" element={<Navigate to="/login" replace />} />
-  </Routes>;
+  </Routes></Suspense>;
 }
