@@ -1640,3 +1640,67 @@ html[data-theme="dark"] .mat-mdc-option:hover {
     transition: none !important;
   }
 }
+
+
+/* Refined dropdown surfaces: more opaque for readable controls and menus. */
+.cmp-main-layout .profile-dropdown,
+.profile-dropdown,
+.dropdown-menu {
+  background: linear-gradient(145deg, rgba(250,253,255,.97), rgba(232,242,255,.95)) !important;
+  border: 1px solid rgba(148,181,220,.58) !important;
+  border-radius: 15px !important;
+  box-shadow: 0 18px 42px rgba(24,53,91,.22), inset 0 1px 0 rgba(255,255,255,.92) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(165%) !important;
+  backdrop-filter: blur(24px) saturate(165%) !important;
+}
+.cmp-main-layout .profile-dropdown button,
+.profile-dropdown button,
+.dropdown-menu .dropdown-item {
+  color: #263b56 !important;
+  border-radius: 10px !important;
+}
+.cmp-main-layout .profile-dropdown button:hover,
+.profile-dropdown button:hover,
+.dropdown-menu .dropdown-item:hover,
+.dropdown-menu .dropdown-item:focus {
+  background: rgba(74,137,222,.15) !important;
+  color: #174f9a !important;
+}
+.cmp-main-layout .profile-dropdown .dropdown-logout,
+.profile-dropdown .dropdown-logout {
+  color: #c9364d !important;
+}
+html[data-theme="dark"] .cmp-main-layout .profile-dropdown,
+html[data-theme="dark"] .profile-dropdown,
+html[data-theme="dark"] .dropdown-menu {
+  background: linear-gradient(145deg, rgba(20,38,59,.97), rgba(11,26,43,.96)) !important;
+  border-color: rgba(133,166,207,.3) !important;
+  box-shadow: 0 20px 46px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.055) !important;
+}
+html[data-theme="dark"] .cmp-main-layout .profile-dropdown button,
+html[data-theme="dark"] .profile-dropdown button,
+html[data-theme="dark"] .dropdown-menu .dropdown-item {
+  color: #e2edfb !important;
+}
+html[data-theme="dark"] .cmp-main-layout .profile-dropdown button:hover,
+html[data-theme="dark"] .profile-dropdown button:hover,
+html[data-theme="dark"] .dropdown-menu .dropdown-item:hover {
+  background: rgba(76,139,220,.22) !important;
+  color: #fff !important;
+}
+
+/* Native OS select popups cannot render backdrop blur; give option rows
+   stronger contrast and consistent selection colors instead. */
+select option, select optgroup {
+  color: #263b56 !important;
+  background-color: #edf4fc !important;
+}
+select option:checked {
+  color: #fff !important;
+  background: #286bd0 !important;
+}
+html[data-theme="dark"] select option,
+html[data-theme="dark"] select optgroup {
+  color: #e2edfb !important;
+  background-color: #14243a !important;
+}
