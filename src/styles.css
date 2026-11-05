@@ -1489,3 +1489,154 @@ html[data-theme="dark"] .ciit-row-single-action.is-danger {
     backdrop-filter: none;
   }
 }
+
+
+/* =========================================================
+   GLOBAL FROSTED CONTROLS: dropdowns, list panels and scrollbars
+   Applied centrally so every ERP module shares the same finish.
+   ========================================================= */
+:root {
+  --ciit-glass-light: rgba(248, 252, 255, .88);
+  --ciit-glass-border: rgba(158, 188, 224, .48);
+  --ciit-glass-shadow: 0 14px 38px rgba(23, 53, 91, .16), inset 0 1px 0 rgba(255,255,255,.78);
+  --ciit-scroll-thumb: rgba(93, 128, 171, .48);
+  --ciit-scroll-thumb-hover: rgba(55, 101, 160, .68);
+}
+html, body, *, *::before, *::after {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ciit-scroll-thumb) transparent;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-track {
+  background: rgba(143, 171, 207, .08);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--ciit-scroll-thumb);
+  background-clip: padding-box;
+  transition: background-color .18s ease;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--ciit-scroll-thumb-hover);
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-corner { background: transparent; }
+
+/* Native select controls receive a consistent glass surface.
+   Native OS option popups have browser/platform styling limitations. */
+select, .form-select {
+  color: var(--ciit-text, #25364d);
+  border: 1px solid rgba(151, 181, 218, .48) !important;
+  border-radius: 10px !important;
+  background-color: rgba(248, 252, 255, .78) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.72), 0 2px 8px rgba(31,67,112,.035);
+  transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+}
+select:hover, .form-select:hover {
+  border-color: rgba(87, 142, 211, .66) !important;
+  background-color: rgba(241, 248, 255, .94) !important;
+}
+select:focus, .form-select:focus {
+  border-color: rgba(47, 126, 226, .76) !important;
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(47,126,226,.14), inset 0 1px 0 rgba(255,255,255,.7) !important;
+}
+select option, select optgroup {
+  color: #263b56;
+  background: #f5f9ff;
+}
+select option:checked { color: #fff; background: #246bd0; }
+
+/* Framework and app-rendered dropdown/list surfaces */
+.dropdown-menu, .listbox, [role="listbox"], [role="menu"],
+.select-dropdown, .autocomplete-panel, .typeahead-menu,
+.react-select__menu, .react-select__menu-list,
+.ng-dropdown-panel, .cdk-overlay-pane .mat-mdc-select-panel,
+.popover, .tooltip {
+  border: 1px solid var(--ciit-glass-border) !important;
+  border-radius: 13px !important;
+  background: linear-gradient(145deg, rgba(255,255,255,.88), rgba(232,243,255,.78)) !important;
+  box-shadow: var(--ciit-glass-shadow) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(155%);
+  backdrop-filter: blur(18px) saturate(155%);
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ciit-scroll-thumb) transparent;
+}
+.dropdown-item, [role="option"], [role="menuitem"],
+.react-select__option, .ng-option, .mat-mdc-option {
+  border-radius: 8px;
+  transition: background-color .14s ease, color .14s ease;
+}
+.dropdown-item:hover, .dropdown-item:focus,
+[role="option"]:hover, [role="menuitem"]:hover,
+.react-select__option--is-focused, .ng-option:hover, .mat-mdc-option:hover {
+  color: #174f9a !important;
+  background: rgba(94, 155, 235, .16) !important;
+}
+.dropdown-item.active, .dropdown-item:active,
+[role="option"][aria-selected="true"], .react-select__option--is-selected {
+  color: #fff !important;
+  background: linear-gradient(120deg, #2369ce, #4389e8) !important;
+}
+html[data-theme="dark"] {
+  --ciit-glass-light: rgba(16, 31, 49, .9);
+  --ciit-glass-border: rgba(143, 174, 211, .22);
+  --ciit-glass-shadow: 0 16px 42px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.045);
+  --ciit-scroll-thumb: rgba(123, 157, 199, .42);
+  --ciit-scroll-thumb-hover: rgba(151, 186, 229, .62);
+}
+html[data-theme="dark"] select, html[data-theme="dark"] .form-select {
+  color: #e4eefb !important;
+  border-color: rgba(134,165,205,.28) !important;
+  background-color: rgba(17,32,50,.86) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+}
+html[data-theme="dark"] select:hover, html[data-theme="dark"] .form-select:hover {
+  background-color: rgba(25,44,67,.96) !important;
+}
+html[data-theme="dark"] select option, html[data-theme="dark"] select optgroup {
+  color: #e2edfb;
+  background: #14243a;
+}
+html[data-theme="dark"] .dropdown-menu,
+html[data-theme="dark"] .listbox,
+html[data-theme="dark"] [role="listbox"],
+html[data-theme="dark"] [role="menu"],
+html[data-theme="dark"] .select-dropdown,
+html[data-theme="dark"] .autocomplete-panel,
+html[data-theme="dark"] .typeahead-menu,
+html[data-theme="dark"] .react-select__menu,
+html[data-theme="dark"] .react-select__menu-list,
+html[data-theme="dark"] .ng-dropdown-panel,
+html[data-theme="dark"] .cdk-overlay-pane .mat-mdc-select-panel,
+html[data-theme="dark"] .popover,
+html[data-theme="dark"] .tooltip {
+  color: #e2edfb !important;
+  background: linear-gradient(145deg, rgba(22,39,60,.94), rgba(12,27,44,.9)) !important;
+}
+html[data-theme="dark"] .dropdown-item,
+html[data-theme="dark"] [role="option"],
+html[data-theme="dark"] [role="menuitem"],
+html[data-theme="dark"] .react-select__option,
+html[data-theme="dark"] .ng-option,
+html[data-theme="dark"] .mat-mdc-option { color: #d9e7f8; }
+html[data-theme="dark"] .dropdown-item:hover,
+html[data-theme="dark"] [role="option"]:hover,
+html[data-theme="dark"] [role="menuitem"]:hover,
+html[data-theme="dark"] .react-select__option--is-focused,
+html[data-theme="dark"] .ng-option:hover,
+html[data-theme="dark"] .mat-mdc-option:hover {
+  color: #fff !important;
+  background: rgba(76,139,220,.22) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  select, .form-select, .dropdown-item, [role="option"], [role="menuitem"] {
+    transition: none !important;
+  }
+}
