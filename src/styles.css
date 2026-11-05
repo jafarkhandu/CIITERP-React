@@ -1775,6 +1775,9 @@ html[data-theme="dark"] .ciit-registration-form-page .ciit-fee-summary { backgro
   align-items: start;
   gap: 14px;
 }
+.ciit-registration-form-page .ciit-registration-columns > .ciit-registration-course {
+  grid-column: 2;
+}
 .ciit-registration-form-page .ciit-registration-columns > .ciit-form-section {
   min-width: 0;
   margin-top: 0 !important;
