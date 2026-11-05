@@ -58,7 +58,7 @@ export default function LeadFollowup() {
       const merged = new Map<number, LeadFollowupRecord>();
       [...byLead, ...allForLead].forEach((item) => {
         const id = Number(item.leadFollowupId ?? (item as any).lead_followup_id ?? (item as any).id ?? 0);
-        if (id > 0) merged.set(id, item);
+        if (id > 0) merged.set(id, { ...item, leadFollowupId: id, leadId: Number((item as any).leadId ?? (item as any).lead_id ?? leadId), deletedAt: (item as any).deletedAt ?? (item as any).deleted_at ?? null });
       });
       setFollowups(Array.from(merged.values()).sort((a, b) => Number(a.leadFollowupId || (a as any).id || 0) - Number(b.leadFollowupId || (b as any).id || 0)));
       setError('');
