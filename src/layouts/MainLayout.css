@@ -757,6 +757,7 @@ html[data-theme="dark"] .ciit-app-shell .ciit-content {
     padding: 15px;
   }
   .ciit-shell-sidebar {
+    visibility: hidden;
     position: fixed;
     top: 78px;
     bottom: 12px;
@@ -766,9 +767,13 @@ html[data-theme="dark"] .ciit-app-shell .ciit-content {
     min-height: 0;
     max-height: none;
     transform: translateX(calc(-100% - 24px));
-    transition: transform .28s cubic-bezier(.2,.7,.2,1);
+    transition: transform .28s cubic-bezier(.2,.7,.2,1), visibility 0s linear .28s;
   }
-  .ciit-shell-main.is-mobile-sidebar-open .ciit-shell-sidebar { transform: translateX(0); }
+  .ciit-shell-main.is-mobile-sidebar-open .ciit-shell-sidebar {
+    visibility: visible;
+    transform: translateX(0);
+    transition: transform .28s cubic-bezier(.2,.7,.2,1), visibility 0s;
+  }
   .ciit-sidebar-backdrop {
     position: fixed;
     inset: 68px 0 0;
