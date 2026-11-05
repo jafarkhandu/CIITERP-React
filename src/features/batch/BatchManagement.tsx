@@ -80,16 +80,23 @@ export default function BatchManagement() {
       setLoading(false);
       return;
     }
-    const countResults = await Promise.allSettled(mapped.filter((row) => !deleted(row)).map((row) => batchStudentApi.getByBatch(row.batchId)));
-    const nextCounts: Record<number, number | null> = {};
-    let countFailures = 0;
-    countResults.forEach((result, index) => {
-      const batchId = mapped.filter((row) => !deleted(row))[index].batchId;
-      if (result.status === 'fulfilled') nextCounts[batchId] = result.value.length;
-      else { nextCounts[batchId] = null; countFailures += 1; }
-    });
-    setCounts(nextCounts);
-    if (countFailures) setError(`Loaded batches, but student counts failed for ${countFailures} batch(es).`);
+    try {
+      const allBatchStudents = await batchStudentApi.getAll();
+      const nextCounts: Record<number, number | null> = {};
+      allBatchStudents.forEach((student) => {
+        const batchId = Number(read(student, 'batch_id', 'batchId', 'batch?.batch_id', 'batch?.batchId') ?? 0);
+        if (batchId > 0) nextCounts[batchId] = (nextCounts[batchId] ?? 0) === null ? 1 : (nextCounts[batchId] ?? 0) + 1;
+      });
+      mapped.filter((row) => !deleted(row)).forEach((row) => {
+        if (nextCounts[row.batchId] === undefined) nextCounts[row.batchId] = 0;
+      });
+      setCounts(nextCounts);
+    } catch (requestError: any) {
+      const unavailableCounts: Record<number, number | null> = {};
+      mapped.filter((row) => !deleted(row)).forEach((row) => { unavailableCounts[row.batchId] = null; });
+      setCounts(unavailableCounts);
+      setError(requestError?.response?.data?.message || 'Loaded batches, but student counts could not be retrieved.');
+    }
     setLoading(false);
   }
 
