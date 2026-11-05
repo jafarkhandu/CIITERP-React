@@ -49,7 +49,7 @@ export default function EnquiryFollowup() {
       const merged = new Map<number, Record<string, unknown>>();
       [...byEnquiry, ...allForEnquiry].forEach((item) => {
         const id = idOf(item);
-        if (id > 0) merged.set(id, { ...item, followupId: id, enquiryId: Number(item.enquiryId ?? (item as any).enquiry_id ?? enquiryId), deletedAt: item.deletedAt ?? (item as any).deleted_at ?? null });
+        if (id > 0) merged.set(id, { ...item, followupId: id, enquiryId: Number(item.enquiryId ?? (item as any).enquiry_id ?? enquiryId), deletedAt: item.deletedAt ?? (item as any).deleted_at ?? (((item as any).is_deleted ?? (item as any).isDeleted ?? (item as any).deleted) ? 'deleted' : null) });
       });
       setEnquiry(record);
       setItems(Array.from(merged.values()));
