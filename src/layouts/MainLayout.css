@@ -893,3 +893,77 @@ html[data-theme="dark"] .cmp-main-layout .profile-dropdown {
 }
 html[data-theme="dark"] .cmp-main-layout .profile-dropdown button { color: #e2edfb !important; }
 html[data-theme="dark"] .cmp-main-layout .profile-dropdown button:hover { background: rgba(76,139,220,.22) !important; color: #fff !important; }
+
+
+/* Compact role accordion navigation for the Super User sidebar. */
+.ciit-shell-sidebar .ciit-role-trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 43px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: #526984;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: color .18s ease, background .18s ease, border-color .18s ease;
+}
+.ciit-shell-sidebar .ciit-role-trigger > i:first-child {
+  display: grid;
+  place-items: center;
+  flex: 0 0 20px;
+  width: 20px;
+  color: #7188a5;
+  font-size: 16px;
+}
+.ciit-shell-sidebar .ciit-role-trigger:hover,
+.ciit-shell-sidebar .ciit-role-trigger.has-active-menu {
+  border-color: rgba(59,130,246,.12);
+  color: #1e5bab;
+  background: rgba(226,239,255,.66);
+}
+.ciit-shell-sidebar .ciit-role-trigger:hover > i:first-child,
+.ciit-shell-sidebar .ciit-role-trigger.has-active-menu > i:first-child { color: #2563eb; }
+.ciit-shell-sidebar .ciit-role-chevron { margin-left: auto; font-size: 10px; }
+.ciit-shell-sidebar .ciit-role-submenu {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 3px 0 7px 12px;
+  padding: 0 0 0 9px;
+  border-left: 1px solid rgba(123,151,184,.28);
+  list-style: none;
+}
+.ciit-shell-sidebar .ciit-role-submenu a {
+  min-height: 39px;
+  padding: 8px 9px;
+  gap: 9px;
+  font-size: 11px;
+}
+.ciit-shell-sidebar .ciit-role-submenu a > i { font-size: 14px; }
+.ciit-shell-sidebar .ciit-role-submenu .ciit-sidebar-empty { padding: 8px 9px; }
+.ciit-app-shell.is-sidebar-collapsed .ciit-role-trigger {
+  justify-content: center;
+  padding-inline: 8px;
+}
+.ciit-app-shell.is-sidebar-collapsed .ciit-role-trigger .ciit-role-chevron { display: none; }
+.ciit-app-shell.is-sidebar-collapsed .ciit-role-submenu { margin-left: 0; padding-left: 0; border-left: 0; }
+html[data-theme="dark"] .ciit-shell-sidebar .ciit-role-trigger { color: #b8c8dc; }
+html[data-theme="dark"] .ciit-shell-sidebar .ciit-role-trigger > i:first-child { color: #93a9c4; }
+html[data-theme="dark"] .ciit-shell-sidebar .ciit-role-trigger:hover,
+html[data-theme="dark"] .ciit-shell-sidebar .ciit-role-trigger.has-active-menu {
+  border-color: rgba(96,165,250,.18);
+  color: #fff;
+  background: rgba(59,130,246,.18);
+}
+html[data-theme="dark"] .ciit-shell-sidebar .ciit-role-trigger:hover > i:first-child,
+html[data-theme="dark"] .ciit-shell-sidebar .ciit-role-trigger.has-active-menu > i:first-child { color: #bfdbfe; }
+@media (prefers-reduced-motion: reduce) {
+  .ciit-shell-sidebar .ciit-role-trigger { transition: none; }
+}

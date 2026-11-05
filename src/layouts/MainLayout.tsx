@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { findCurrentUser, getAllUsers } from '@/api/userApi';
 import { usePermissionVersion, useSession } from '@/core/auth/hooks';
 import { userSession } from '@/core/auth/session';
 import { authService } from '@/core/auth/authService';
 import { PERMISSIONS, permissionService, type Permission } from '@/core/services/permissionService';
+import { directoryApi, type RoleOption } from '@/api/directoryApi';
 import './MainLayout.css';
 
 interface SidebarMenu {
@@ -20,11 +21,11 @@ const MENUS: SidebarMenu[] = [
   { label: 'Employee', route: '/main/user', icon: 'bi-people-fill', permission: PERMISSIONS.USER_VIEW, roles: ['Admin', 'Super User'] },
   { label: 'Lead', route: '/main/lead', icon: 'bi-person-lines-fill', permission: PERMISSIONS.LEAD_VIEW, roles: ['Super User', 'Admin', 'Counsellor'] },
   { label: 'Enquiry', route: '/main/enquiry', icon: 'bi-chat-square-text-fill', permission: PERMISSIONS.ENQUIRY_VIEW, roles: ['Super User', 'Admin', 'Counsellor'] },
-  { label: 'Course', route: '/main/course', icon: 'bi-journal-bookmark-fill', permission: PERMISSIONS.COURSE_VIEW, roles: ['Super User', 'Admin', 'Counsellor'] },
+  { label: 'Course', route: '/main/course', icon: 'bi-journal-bookmark-fill', permission: PERMISSIONS.COURSE_VIEW, roles: ['Super User', 'Admin', 'Counsellor', 'Developer'] },
   { label: 'Student Registration', route: '/main/student-registration', icon: 'bi-mortarboard-fill', roles: ['Accountant', 'Admin', 'Super User'] },
   { label: 'Student Payments', route: '/main/student-payments', icon: 'bi-wallet2', roles: ['Accountant', 'Admin', 'Super User'] },
   { label: 'Manage Batch', route: '/main/batch', icon: 'bi-calendar2-week-fill', roles: ['Super User', 'Admin', 'Group Leader'], permission: PERMISSIONS.GROUP_LEADER_BATCH_VIEW },
-  { label: 'My Batches', route: '/main/trainer', icon: 'bi-easel2-fill', roles: ['Trainer'], permission: PERMISSIONS.TRAINER_BATCH_VIEW },
+  { label: 'My Batches', route: '/main/trainer', icon: 'bi-easel2-fill', roles: ['Trainer', 'Admin'], permission: PERMISSIONS.TRAINER_BATCH_VIEW },
   { label: 'Reports', route: '/main/reports', icon: 'bi-graph-up-arrow', permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User'] },
   { label: 'Function Management', route: '/main/function-management', icon: 'bi-sliders2', permission: PERMISSIONS.FUNCTION_MANAGEMENT_VIEW, roles: ['Admin', 'Super User'] },
   { label: 'Email Services', route: '/main/email-services', icon: 'bi-envelope-at-fill', roles: ['Admin', 'Super User'] },
@@ -54,6 +55,7 @@ export default function MainLayout() {
   const location = useLocation();
   const session = useSession();
   usePermissionVersion();
+  const isSuperUser = session.roles.some((role) => role.trim().toLowerCase().replace(/[\s_-]+/g, '') === 'superuser');
 
   const [isDarkTheme, setIsDarkTheme] = useState(
     () => (localStorage.getItem('ciit-theme') || localStorage.getItem('theme')) === 'dark',
@@ -63,7 +65,35 @@ export default function MainLayout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     () => localStorage.getItem('ciit-sidebar-collapsed') === 'true',
   );
+  const [availableRoles, setAvailableRoles] = useState<RoleOption[]>([]);
+  const [expandedRole, setExpandedRole] = useState('');
   const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  // Load backend-defined role names only for Super User role grouping.
+  useEffect(() => {
+    if (!isSuperUser) {
+      setAvailableRoles([]);
+      setExpandedRole('');
+      return undefined;
+    }
+
+    let cancelled = false;
+    directoryApi.getRoles()
+      .then((roles) => {
+        if (cancelled) return;
+        const uniqueRoles = roles.filter((role, index, all) =>
+          all.findIndex((item) => item.roleId === role.roleId) === index);
+        setAvailableRoles(uniqueRoles);
+      })
+      .catch((error) => {
+        console.warn('Sidebar role directory load failed:', error);
+        if (!cancelled) setAvailableRoles([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isSuperUser]);
 
   // Keep the existing theme keys and custom event contract.
   useEffect(() => {
@@ -158,6 +188,36 @@ export default function MainLayout() {
     const permissionAllowed = !menu.permission || permissionService.hasPermission(menu.permission);
     return roleAllowed && permissionAllowed;
   });
+
+  const roleMenuGroups = useMemo(() => {
+    const permissionVisibleMenus = MENUS.filter(
+      (menu) => !menu.permission || permissionService.hasPermission(menu.permission),
+    );
+
+    return availableRoles.map((role) => {
+      const normalizedRole = role.roleName.trim().toLowerCase().replace(/[\s_-]+/g, '');
+      const menus = permissionVisibleMenus.filter((menu) => (
+        menu.route !== '/main/dashboard'
+        && (normalizedRole === 'superuser'
+          || menu.roles?.some((menuRole) => {
+            const normalizedMenuRole = menuRole.trim().toLowerCase().replace(/[\s_-]+/g, '');
+            return normalizedMenuRole === normalizedRole
+              || (normalizedRole === 'counciler' && normalizedMenuRole === 'counsellor')
+              || (normalizedRole === 'counsellor' && normalizedMenuRole === 'counciler');
+          }))
+      ));
+
+      return { ...role, menus };
+    });
+  }, [availableRoles, permissionService.getPermissions().join('|')]);
+
+  useEffect(() => {
+    if (!isSuperUser) return;
+    const activeGroup = roleMenuGroups.find((group) =>
+      group.menus.some((menu) =>
+        location.pathname === menu.route || location.pathname.startsWith(menu.route + '/')));
+    if (activeGroup) setExpandedRole(activeGroup.roleId);
+  }, [isSuperUser, location.pathname, roleMenuGroups]);
 
   function toggleTheme() {
     const next = !isDarkTheme;
@@ -292,24 +352,104 @@ export default function MainLayout() {
           <div className="ciit-sidebar-section-label">MAIN MENU</div>
           <nav className="ciit-sidebar-nav">
             <ul className="ciit-sidebar-list">
-              {visibleMenus.map((menu) => (
-                <li key={menu.route}>
-                  <NavLink
-                    to={menu.route}
-                    end={menu.route === '/main/dashboard'}
-                    aria-label={menu.label}
-                    title={isSidebarCollapsed ? menu.label : undefined}
-                    onClick={() => setIsMobileSidebarOpen(false)}
-                    className={({ isActive }) => (isActive ? 'active-link' : '')}
-                  >
-                    <i className={'bi ' + menu.icon} aria-hidden="true" />
-                    <span className="ciit-menu-label">{menu.label}</span>
-                    <span className="ciit-menu-active-mark" aria-hidden="true" />
-                  </NavLink>
-                </li>
-              ))}
-              {visibleMenus.length === 0 && (
-                <li className="ciit-sidebar-empty">No modules are available for this account.</li>
+              {isSuperUser ? (
+                <>
+                  {visibleMenus.filter((menu) => menu.route === '/main/dashboard').map((menu) => (
+                    <li key={menu.route}>
+                      <NavLink
+                        to={menu.route}
+                        end
+                        aria-label={menu.label}
+                        title={isSidebarCollapsed ? menu.label : undefined}
+                        onClick={() => setIsMobileSidebarOpen(false)}
+                        className={({ isActive }) => (isActive ? 'active-link' : '')}
+                      >
+                        <i className={'bi ' + menu.icon} aria-hidden="true" />
+                        <span className="ciit-menu-label">{menu.label}</span>
+                        <span className="ciit-menu-active-mark" aria-hidden="true" />
+                      </NavLink>
+                    </li>
+                  ))}
+                  {roleMenuGroups.map((group) => {
+                    const isExpanded = expandedRole === group.roleId;
+                    const hasActiveMenu = group.menus.some((menu) =>
+                      location.pathname === menu.route || location.pathname.startsWith(menu.route + '/'));
+                    const normalizedRole = group.roleName.trim().toLowerCase().replace(/[\s_-]+/g, '');
+                    const roleIcon = normalizedRole === 'superuser' ? 'bi-shield-lock-fill'
+                      : normalizedRole === 'admin' ? 'bi-person-gear'
+                      : normalizedRole === 'accountant' ? 'bi-calculator-fill'
+                      : normalizedRole === 'trainer' ? 'bi-mortarboard-fill'
+                      : normalizedRole === 'groupleader' ? 'bi-people-fill'
+                      : normalizedRole === 'student' ? 'bi-person-badge-fill'
+                      : normalizedRole === 'developer' ? 'bi-code-slash'
+                      : 'bi-person-lines-fill';
+                    const panelId = 'ciit-role-panel-' + group.roleId.replace(/[^a-zA-Z0-9_-]/g, '');
+
+                    return (
+                      <li className="ciit-role-group" key={group.roleId}>
+                        <button
+                          type="button"
+                          className={'ciit-role-trigger' + (hasActiveMenu ? ' has-active-menu' : '')}
+                          aria-expanded={isExpanded}
+                          aria-controls={panelId}
+                          title={isSidebarCollapsed ? group.roleName : undefined}
+                          onClick={() => setExpandedRole((current) => current === group.roleId ? '' : group.roleId)}
+                        >
+                          <i className={'bi ' + roleIcon} aria-hidden="true" />
+                          <span className="ciit-menu-label">{group.roleName}</span>
+                          <i className={'bi ciit-role-chevron ' + (isExpanded ? 'bi-chevron-down' : 'bi-chevron-right')} aria-hidden="true" />
+                        </button>
+                        {isExpanded && (
+                          <ul className="ciit-role-submenu" id={panelId}>
+                            {group.menus.length > 0 ? group.menus.map((menu) => (
+                              <li key={menu.route}>
+                                <NavLink
+                                  to={menu.route}
+                                  end={menu.route === '/main/dashboard'}
+                                  aria-label={menu.label}
+                                  title={isSidebarCollapsed ? menu.label : undefined}
+                                  onClick={() => setIsMobileSidebarOpen(false)}
+                                  className={({ isActive }) => (isActive ? 'active-link' : '')}
+                                >
+                                  <i className={'bi ' + menu.icon} aria-hidden="true" />
+                                  <span className="ciit-menu-label">{menu.label}</span>
+                                  <span className="ciit-menu-active-mark" aria-hidden="true" />
+                                </NavLink>
+                              </li>
+                            )) : (
+                              <li className="ciit-sidebar-empty">No modules assigned to this role.</li>
+                            )}
+                          </ul>
+                        )}
+                      </li>
+                    );
+                  })}
+                  {roleMenuGroups.length === 0 && (
+                    <li className="ciit-sidebar-empty">Role list is not available right now.</li>
+                  )}
+                </>
+              ) : (
+                <>
+                  {visibleMenus.map((menu) => (
+                    <li key={menu.route}>
+                      <NavLink
+                        to={menu.route}
+                        end={menu.route === '/main/dashboard'}
+                        aria-label={menu.label}
+                        title={isSidebarCollapsed ? menu.label : undefined}
+                        onClick={() => setIsMobileSidebarOpen(false)}
+                        className={({ isActive }) => (isActive ? 'active-link' : '')}
+                      >
+                        <i className={'bi ' + menu.icon} aria-hidden="true" />
+                        <span className="ciit-menu-label">{menu.label}</span>
+                        <span className="ciit-menu-active-mark" aria-hidden="true" />
+                      </NavLink>
+                    </li>
+                  ))}
+                  {visibleMenus.length === 0 && (
+                    <li className="ciit-sidebar-empty">No modules are available for this account.</li>
+                  )}
+                </>
               )}
             </ul>
           </nav>
