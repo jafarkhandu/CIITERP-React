@@ -285,7 +285,7 @@ export default function Reports() {
           </section>
           <section className="section">
             <div className="section-title"><div><h2>4. Lead Source Performance</h2><p>Lead count, conversion and loss by source.</p></div></div>
-            <div className="source-list">{leadSourceRows.length ? leadSourceRows.map((row) => <div className="source-row" key={row.name}><div className="source-label"><b>{row.name}</b><span>{row.total} leads · {row.converted} converted · {row.lost} lost</span></div><div className="bar"><span style={{ width: `${row.total * 100 / Math.max(...leadSourceRows.map((item) => item.total), 1)}%` }} /></div>) : <div className="empty">No lead source data for selected filters.</div>}</div>
+            <div className="source-list">{leadSourceRows.length ? leadSourceRows.map((row) => <div className="source-row" key={row.name}><div className="source-label"><b>{row.name}</b><span>{row.total} leads · {row.converted} converted · {row.lost} lost</span></div><div className="bar"><span style={{ width: `${row.total * 100 / Math.max(...leadSourceRows.map((item) => item.total), 1)}%` }} /></div></div>) : <div className="empty">No lead source data for selected filters.</div>}</div>
           </section>
           <section className="section">
             <div className="section-title"><div><h2>5. Counsellor Performance</h2><p>Follow-up activity by authorized counsellor / super user.</p></div></div>
