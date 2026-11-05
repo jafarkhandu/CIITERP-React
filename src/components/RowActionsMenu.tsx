@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 export type RowActionItem = {
@@ -9,39 +9,66 @@ export type RowActionItem = {
 };
 
 type Position = { top: number; left: number };
-
 type Props = {
   actions: RowActionItem[];
   label?: string;
   disabled?: boolean;
 };
 
-const MENU_WIDTH = 184;
-const MENU_HEIGHT = 196;
+const MENU_WIDTH = 196;
+const VIEWPORT_GAP = 8;
 
 export default function RowActionsMenu({ actions, label = 'Row actions', disabled = false }: Props) {
   const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState<Position>({ top: 0, left: 0 });
+  const [position, setPosition] = useState<Position>({ top: -1000, left: -1000 });
+  const [positionReady, setPositionReady] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const updatePosition = useCallback(() => {
-    const rect = triggerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const top = window.innerHeight - rect.bottom < MENU_HEIGHT + 12
-      ? Math.max(8, rect.top - MENU_HEIGHT - 6)
-      : rect.bottom + 6;
-    const left = Math.min(window.innerWidth - MENU_WIDTH - 8, Math.max(8, rect.right - MENU_WIDTH));
-    setPosition({ top, left });
+    const trigger = triggerRef.current?.getBoundingClientRect();
+    const menu = menuRef.current;
+    if (!trigger || !menu) return;
+
+    const menuRect = menu.getBoundingClientRect();
+    const menuHeight = Math.min(menuRect.height || 160, window.innerHeight - VIEWPORT_GAP * 2);
+    const menuWidth = Math.min(menuRect.width || MENU_WIDTH, window.innerWidth - VIEWPORT_GAP * 2);
+    const spaceBelow = window.innerHeight - trigger.bottom - VIEWPORT_GAP;
+    const spaceAbove = trigger.top - VIEWPORT_GAP;
+    const showAbove = spaceBelow < menuHeight + 6 && spaceAbove > spaceBelow;
+
+    const preferredTop = showAbove
+      ? trigger.top - menuHeight - 6
+      : trigger.bottom + 6;
+    const top = Math.max(
+      VIEWPORT_GAP,
+      Math.min(preferredTop, window.innerHeight - menuHeight - VIEWPORT_GAP),
+    );
+    const left = Math.max(
+      VIEWPORT_GAP,
+      Math.min(trigger.right - menuWidth, window.innerWidth - menuWidth - VIEWPORT_GAP),
+    );
+    const next = { top: Math.round(top), left: Math.round(left) };
+
+    setPosition((current) => (
+      current.top === next.top && current.left === next.left ? current : next
+    ));
+    setPositionReady(true);
   }, []);
 
-  useEffect(() => {
-    if (!open) return;
+  useLayoutEffect(() => {
+    if (!open) {
+      setPositionReady(false);
+      return;
+    }
+
     updatePosition();
 
     const closeOnOutside = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (!triggerRef.current?.contains(target) && !menuRef.current?.contains(target)) setOpen(false);
+      if (!triggerRef.current?.contains(target) && !menuRef.current?.contains(target)) {
+        setOpen(false);
+      }
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -49,21 +76,36 @@ export default function RowActionsMenu({ actions, label = 'Row actions', disable
         triggerRef.current?.focus();
       }
     };
-    const reposition = () => updatePosition();
 
     document.addEventListener('pointerdown', closeOnOutside);
     document.addEventListener('keydown', closeOnEscape);
-    window.addEventListener('resize', reposition);
-    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+
     return () => {
       document.removeEventListener('pointerdown', closeOnOutside);
       document.removeEventListener('keydown', closeOnEscape);
-      window.removeEventListener('resize', reposition);
-      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
     };
   }, [open, updatePosition]);
 
   if (!actions.length) return null;
+
+  // A single permitted action stays visible; only multi-action rows get a menu.
+  if (actions.length === 1) {
+    const action = actions[0];
+    return (
+      <button
+        type="button"
+        className={`ciit-row-single-action${action.danger ? ' is-danger' : ''}`}
+        disabled={disabled || Boolean(action.disabled)}
+        onClick={action.onSelect}
+      >
+        {action.label}
+      </button>
+    );
+  }
 
   return (
     <>
@@ -75,22 +117,29 @@ export default function RowActionsMenu({ actions, label = 'Row actions', disable
         aria-haspopup="menu"
         aria-expanded={open}
         disabled={disabled}
-        onClick={() => {
-          if (!open) updatePosition();
-          setOpen((value) => !value);
-        }}
+        onClick={() => setOpen((value) => !value)}
       >
         <span aria-hidden="true">•••</span>
       </button>
       {open && createPortal(
-        <div ref={menuRef} className="ciit-row-actions-menu" role="menu" style={{ top: position.top, left: position.left }}>
+        <div
+          ref={menuRef}
+          className="ciit-row-actions-menu"
+          role="menu"
+          aria-label={label}
+          style={{
+            top: position.top,
+            left: position.left,
+            visibility: positionReady ? 'visible' : 'hidden',
+          }}
+        >
           {actions.map((action) => (
             <button
               key={action.label}
               type="button"
               role="menuitem"
               className={action.danger ? 'is-danger' : ''}
-              disabled={action.disabled}
+              disabled={disabled || Boolean(action.disabled)}
               onClick={() => {
                 setOpen(false);
                 action.onSelect();

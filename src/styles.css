@@ -1113,15 +1113,15 @@ html[data-theme="dark"] .employee-modal header p {
 .ciit-row-actions-menu {
   position: fixed;
   z-index: 3200;
-  width: 184px;
+  width: 196px;
   max-height: min(240px, calc(100dvh - 16px));
   overflow-y: auto;
   padding: 5px;
   border: 1px solid rgba(172,193,219,.56);
   border-radius: 13px;
   background: rgba(250,253,255,.94);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
-  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(135%);
+  backdrop-filter: blur(12px) saturate(135%);
   box-shadow: 0 16px 42px rgba(18,38,67,.22), inset 0 1px 0 rgba(255,255,255,.9);
   animation: ciit-row-menu-in .12s ease-out both;
 }
@@ -1343,4 +1343,149 @@ html[data-theme="dark"] .batch-modal {
 }
 @media (prefers-reduced-motion: reduce) {
   .ciit-row-actions-menu { animation: none; }
+}
+
+
+/* Global ERP glass tables: same surface, header and row behavior in every module. */
+.ciit-content .lead-table-card,
+.ciit-content .course-table-card,
+.ciit-content .employee-table-card,
+.ciit-content .enquiry-table-card,
+.ciit-content .batch-table-card,
+.ciit-content .fm-table-card,
+.ciit-content .ciit-data-card,
+.ciit-content .trainer-panel-card,
+.ciit-content .trainer-attendance-panel {
+  border: 1px solid rgba(178,200,228,.58);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(255,255,255,.84), rgba(235,244,255,.62));
+  box-shadow: 0 10px 28px rgba(35,67,108,.065), inset 0 1px 0 rgba(255,255,255,.9);
+  -webkit-backdrop-filter: blur(7px) saturate(132%);
+  backdrop-filter: blur(7px) saturate(132%);
+}
+.ciit-content :is(
+  .lead-table-scroll, .course-table-scroll, .employee-table-scroll,
+  .enquiry-table-scroll, .batch-table-scroll, .fm-table-scroll,
+  .table-responsive, .table-wrap
+) {
+  background: rgba(245,249,255,.28);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(103,132,169,.38) transparent;
+}
+.ciit-content .table-responsive { border-color: rgba(178,200,228,.44); }
+.ciit-content :is(
+  .lead-table, .course-table, .employee-table, .enquiry-table,
+  .batch-table, .fm-table-card table, .ciit-professional-table
+) { border-collapse: separate; border-spacing: 0; }
+.ciit-content :is(
+  .lead-table, .course-table, .employee-table, .enquiry-table,
+  .batch-table, .fm-table-card table, .ciit-professional-table
+) thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  color: #506986;
+  background: linear-gradient(180deg, rgba(235,243,253,.98), rgba(226,237,250,.94)) !important;
+  box-shadow: 0 1px 0 rgba(170,192,219,.58);
+}
+.ciit-content :is(
+  .lead-table, .course-table, .employee-table, .enquiry-table,
+  .batch-table, .fm-table-card table, .ciit-professional-table
+) tbody td { background: transparent; vertical-align: middle; }
+.ciit-content :is(
+  .lead-table, .course-table, .employee-table, .enquiry-table,
+  .batch-table, .fm-table-card table, .ciit-professional-table
+) tbody tr { transition: background-color .14s ease; }
+.ciit-content :is(
+  .lead-table, .course-table, .employee-table, .enquiry-table,
+  .batch-table, .fm-table-card table, .ciit-professional-table
+) tbody tr:hover { background: rgba(214,232,255,.38); }
+.ciit-content td:has(> .ciit-row-actions-trigger),
+.ciit-content td:has(> .ciit-row-single-action) {
+  width: 68px;
+  min-width: 58px;
+  text-align: center;
+  white-space: nowrap;
+}
+.ciit-row-single-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid rgba(37,99,235,.22);
+  border-radius: 9px;
+  color: #245db0;
+  background: rgba(239,246,255,.84);
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ciit-row-single-action:hover:not(:disabled) {
+  border-color: rgba(37,99,235,.4);
+  background: rgba(222,237,255,.96);
+}
+.ciit-row-single-action.is-danger {
+  border-color: rgba(220,53,69,.22);
+  color: #b42335;
+  background: rgba(255,241,242,.9);
+}
+.ciit-row-single-action:disabled { opacity: .5; cursor: not-allowed; }
+
+html[data-theme="dark"] .ciit-content .lead-table-card,
+html[data-theme="dark"] .ciit-content .course-table-card,
+html[data-theme="dark"] .ciit-content .employee-table-card,
+html[data-theme="dark"] .ciit-content .enquiry-table-card,
+html[data-theme="dark"] .ciit-content .batch-table-card,
+html[data-theme="dark"] .ciit-content .fm-table-card,
+html[data-theme="dark"] .ciit-content .ciit-data-card,
+html[data-theme="dark"] .ciit-content .trainer-panel-card,
+html[data-theme="dark"] .ciit-content .trainer-attendance-panel {
+  border-color: rgba(148,176,210,.2);
+  background: linear-gradient(145deg, rgba(19,36,57,.9), rgba(12,27,45,.82));
+  box-shadow: 0 12px 30px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.04);
+}
+html[data-theme="dark"] .ciit-content :is(
+  .lead-table-scroll, .course-table-scroll, .employee-table-scroll,
+  .enquiry-table-scroll, .batch-table-scroll, .fm-table-scroll,
+  .table-responsive, .table-wrap
+) { background: rgba(9,22,38,.24); }
+html[data-theme="dark"] .ciit-content :is(
+  .lead-table, .course-table, .employee-table, .enquiry-table,
+  .batch-table, .fm-table-card table, .ciit-professional-table
+) thead th {
+  color: #bfd0e5;
+  background: linear-gradient(180deg, rgba(34,54,79,.98), rgba(24,43,66,.96)) !important;
+  box-shadow: 0 1px 0 rgba(148,176,210,.2);
+}
+html[data-theme="dark"] .ciit-content :is(
+  .lead-table, .course-table, .employee-table, .enquiry-table,
+  .batch-table, .fm-table-card table, .ciit-professional-table
+) tbody tr:hover { background: rgba(59,106,160,.2); }
+html[data-theme="dark"] .ciit-row-single-action {
+  border-color: rgba(96,165,250,.3);
+  color: #c6ddff;
+  background: rgba(37,99,235,.16);
+}
+html[data-theme="dark"] .ciit-row-single-action.is-danger {
+  border-color: rgba(244,114,182,.25);
+  color: #fecdd3;
+  background: rgba(159,18,57,.16);
+}
+
+/* Keep glass lightweight on smaller devices and lower-power GPUs. */
+@media (max-width: 760px) {
+  .ciit-content .lead-table-card,
+  .ciit-content .course-table-card,
+  .ciit-content .employee-table-card,
+  .ciit-content .enquiry-table-card,
+  .ciit-content .batch-table-card,
+  .ciit-content .fm-table-card,
+  .ciit-content .ciit-data-card,
+  .ciit-content .trainer-panel-card,
+  .ciit-content .trainer-attendance-panel {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
