@@ -85,6 +85,14 @@ export default function MainLayout() {
     setShowProfileMenu(false);
   }, [location.pathname]);
 
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 992) setIsMobileSidebarOpen(false);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Lock background scrolling while the mobile navigation drawer is open.
   useEffect(() => {
     if (!isMobileSidebarOpen) return undefined;
@@ -285,6 +293,7 @@ export default function MainLayout() {
                   <NavLink
                     to={menu.route}
                     end={menu.route === '/main/dashboard'}
+                    aria-label={menu.label}
                     title={isSidebarCollapsed ? menu.label : undefined}
                     onClick={() => setIsMobileSidebarOpen(false)}
                     className={({ isActive }) => (isActive ? 'active-link' : '')}
