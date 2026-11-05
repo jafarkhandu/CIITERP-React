@@ -1,4 +1,6 @@
+import RowActionsMenu from '@/components/RowActionsMenu';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { getAllUsers, clearUsersCache } from '@/api/userApi';
 import { employeeApi, type RegisterEmployeeRequest } from '@/api/employeeApi';
@@ -186,10 +188,10 @@ export default function Employee() {
                 <td>{user.emailAddress || '-'}</td><td>{user.mobileNumber || '-'}</td><td>{user.branchName || '-'}</td>
                 <td>{user.roles?.join(', ') || user.roleName || user.role || '-'}</td>
                 <td><span className={`employee-status ${user.isActive === true ? 'active' : 'inactive'}`}>{user.isActive === true ? 'Active' : 'Inactive'}</span></td>
-                <td><div className="employee-actions">
-                  <button type="button" onClick={() => setProfile(user)}><i className="bi bi-eye" /> View</button>
-                  <button type="button" onClick={() => openRoles(user)}><i className="bi bi-pencil" /> Roles</button>
-                </div></td>
+                <td><RowActionsMenu label={`Actions for ${user.employeeName || 'employee'}`} actions={[
+                  { label: 'View details', onSelect: () => setProfile(user) },
+                  { label: 'Manage roles', onSelect: () => openRoles(user) },
+                ]} /></td>
               </tr>)}
               {visibleUsers.length === 0 && <tr><td className="employee-no-results" colSpan={8}>No employees found.</td></tr>}
             </tbody>
@@ -205,7 +207,7 @@ export default function Employee() {
         </>}
       </div>
 
-      {showCreate && <div className="employee-modal-backdrop" onMouseDown={(event) => {
+      {showCreate && createPortal(<div className="employee-modal-backdrop" onMouseDown={(event) => {
         if (event.target === event.currentTarget && !saving) setShowCreate(false);
       }}><section className="employee-modal" role="dialog" aria-modal="true" aria-labelledby="employee-modal-title">
         <header><div><h2 id="employee-modal-title">Register Employee</h2><p>Create a new system employee</p></div>
@@ -228,9 +230,9 @@ export default function Employee() {
         <footer><button type="button" className="employee-secondary-btn" disabled={saving} onClick={() => setShowCreate(false)}>Cancel</button>
           <button className="employee-primary-btn" type="submit" disabled={saving}>{saving ? 'Registering...' : 'Register Employee'}</button></footer>
         </form>
-      </section></div>}
+      </section></div>, document.body)}
 
-      {profile && <div className="employee-modal-backdrop" onMouseDown={(event) => {
+      {profile && createPortal(<div className="employee-modal-backdrop" onMouseDown={(event) => {
         if (event.target === event.currentTarget) setProfile(null);
       }}><section className="employee-modal employee-profile-modal" role="dialog" aria-modal="true" aria-labelledby="employee-profile-title">
         <header><div><h2 id="employee-profile-title">{profile.employeeName || 'Employee Profile'}</h2>
@@ -246,7 +248,7 @@ export default function Employee() {
         </div>
         <footer><button type="button" className="employee-secondary-btn" onClick={() => setProfile(null)}>Close</button>
           <button type="button" className="employee-primary-btn" onClick={() => { const selected = profile; setProfile(null); openRoles(selected); }}>Edit Access</button></footer>
-      </section></div>}
+      </section></div>, document.body)}
     </section>
   );
 }

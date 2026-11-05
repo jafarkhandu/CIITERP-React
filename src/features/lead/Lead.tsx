@@ -1,4 +1,6 @@
+import RowActionsMenu from '@/components/RowActionsMenu';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -215,12 +217,16 @@ export default function Lead() {
     <div className="lead-table-card"><div className="lead-table-scroll"><table className="lead-table">
       <thead><tr><th>#</th><th>ID</th><th>Candidate Name</th><th>Email</th><th>Mobile</th><th>Training</th><th>Status</th><th>Lead Date</th><th>Action</th></tr></thead>
       <tbody>{loading ? <tr><td colSpan={9} className="lead-empty">Loading leads...</td></tr> :
-        filtered.filter((lead) => tab === 'deleted' ? Boolean((lead as any).deletedAt) : !(lead as any).deletedAt).map((lead, index) => <tr key={lead.leadId}><td>{index + 1}</td><td>{lead.leadId}</td><td className="lead-candidate">{lead.candidateName}</td><td>{lead.emailAddress}</td><td>{lead.mobileNumber}</td><td>{lead.trainingType}</td><td><span className={`lead-status ${lead.status.toLowerCase().replace(/\\s+/g, '-')}`}>{lead.status}</span></td><td>{formatDate(lead.leadDate)}</td><td><div className="lead-row-actions">{tab === 'deleted' ? (canRestore && <button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => void restoreLead(lead)}>Restore</button>) : <>{canFollowup && <button className="lead-followup-btn" type="button" onClick={() => navigate(`/main/lead/followup/${lead.leadId}`)}>Follow-up</button>}{canUpdate && <button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => void openEdit(lead)}>Edit</button>}{canDelete && <button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => void removeLead(lead)}>Delete</button>}</>}</div></td></tr>)}
+        filtered.filter((lead) => tab === 'deleted' ? Boolean((lead as any).deletedAt) : !(lead as any).deletedAt).map((lead, index) => <tr key={lead.leadId}><td>{index + 1}</td><td>{lead.leadId}</td><td className="lead-candidate">{lead.candidateName}</td><td>{lead.emailAddress}</td><td>{lead.mobileNumber}</td><td>{lead.trainingType}</td><td><span className={`lead-status ${lead.status.toLowerCase().replace(/\\s+/g, '-')}`}>{lead.status}</span></td><td>{formatDate(lead.leadDate)}</td><td><RowActionsMenu label={`Actions for lead ${lead.leadId}`} disabled={saving} actions={tab === 'deleted' ? (canRestore ? [{ label: 'Restore', onSelect: () => void restoreLead(lead) }] : []) : [
+            ...(canFollowup ? [{ label: 'Follow-up', onSelect: () => navigate(`/main/lead/followup/${lead.leadId}`) }] : []),
+            ...(canUpdate ? [{ label: 'Edit', onSelect: () => void openEdit(lead) }] : []),
+            ...(canDelete ? [{ label: 'Delete', danger: true, onSelect: () => void removeLead(lead) }] : []),
+          ]} /></td></tr>)}
         {!loading && filtered.filter((lead) => tab === 'deleted' ? Boolean((lead as any).deletedAt) : !(lead as any).deletedAt).length === 0 && <tr><td colSpan={9} className="lead-empty">No leads found.</td></tr>}
       </tbody>
     </table></div></div>
 
-    {showForm && <div className="lead-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setShowForm(false); }}>
+    {showForm && createPortal(<div className="lead-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setShowForm(false); }}>
       <section className="lead-modal" role="dialog" aria-modal="true" aria-labelledby="lead-modal-title">
         <header><div><h2 id="lead-modal-title">{editingLeadId ? 'Edit Lead' : 'Add Lead'}</h2><p>{editingLeadId ? 'Update lead details' : 'Create a new lead'}</p></div><button type="button" aria-label="Close" disabled={saving} onClick={() => setShowForm(false)}>×</button></header>
         <form onSubmit={createLead}><div className="lead-form-grid">
@@ -236,6 +242,6 @@ export default function Lead() {
         {formError && <div className="lead-alert" role="alert">{formError}</div>}
         <footer><button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => setShowForm(false)}>Cancel</button><button className="lead-primary-btn" type="submit" disabled={saving}>{saving ? 'Saving...' : editingLeadId ? 'Update Lead' : 'Save Lead'}</button></footer></form>
       </section>
-    </div>}
+    </div>, document.body)}
   </section>;
 }

@@ -471,14 +471,14 @@ html[data-theme="dark"] .error button { color: #ffd4df; }
 .chart-track, .bar { height: 8px; background: rgba(148,163,184,.16); }
 .chart-track b, .bar span { background: linear-gradient(90deg, #3c7fd0, #53b7b0); }
 .table-wrap {
-  max-height: min(280px, 52vh);
+  max-height: min(62dvh, 620px);
   border-color: var(--report-border);
   border-radius: 13px;
   background: rgba(255,255,255,.7);
   scrollbar-width: thin;
   scrollbar-color: rgba(106,137,174,.35) transparent;
 }
-.report-table { max-height: min(280px, 52vh); }
+.report-table { max-height: min(62dvh, 620px); }
 .report-table table { min-width: 960px; }
 .section th {
   top: 0;

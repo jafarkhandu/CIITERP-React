@@ -1,3 +1,4 @@
+import RowActionsMenu from '@/components/RowActionsMenu';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -119,7 +120,13 @@ export default function Enquiry() {
           <td>{item.enquiryId}</td><td>{formatDate(item.enquiryDate)}</td><td className="enquiry-candidate">{item.candidateName}</td>
           <td>{item.emailAddress}</td><td>{item.mobileNumber}</td><td>{item.branchName || '-'}</td><td>{item.qualification || '-'}</td>
           <td>{item.enquiryFors || '-'}</td><td><span className="enquiry-status">{item.status || 'New'}</span></td>
-          <td><div className="enquiry-actions">{tab === 'deleted' ? <button type="button" disabled={savingId === item.enquiryId} onClick={() => void restoreEnquiry(item)}>Restore</button> : <><button type="button" onClick={() => navigate(`/main/enquiry/followup/${item.enquiryId}`)}>Follow-up</button><button type="button" onClick={() => navigate(`/main/enquiry/edit/${item.enquiryId}`)}>Edit</button><button type="button" disabled={savingId === item.enquiryId} onClick={() => void removeEnquiry(item)}>Delete</button></>}</div></td>
+          <td><RowActionsMenu label={`Actions for enquiry ${item.enquiryId}`} disabled={savingId === item.enquiryId} actions={tab === 'deleted' ? [
+              { label: 'Restore', onSelect: () => void restoreEnquiry(item) },
+            ] : [
+              { label: 'Follow-up', onSelect: () => navigate(`/main/enquiry/followup/${item.enquiryId}`) },
+              { label: 'Edit', onSelect: () => navigate(`/main/enquiry/edit/${item.enquiryId}`) },
+              { label: 'Delete', danger: true, onSelect: () => void removeEnquiry(item) },
+            ]} /></td>
         </tr>)}
         {!loading && filtered.filter((item) => tab === 'deleted' ? Boolean(item.deletedAt) : !item.deletedAt).length === 0 && <tr><td colSpan={10} className="enquiry-empty">No enquiries found.</td></tr>}
       </tbody>

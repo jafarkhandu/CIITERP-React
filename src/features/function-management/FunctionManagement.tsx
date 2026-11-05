@@ -1,4 +1,6 @@
+import RowActionsMenu from '@/components/RowActionsMenu';
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { PERMISSIONS, permissionService, type Permission } from '@/core/services/permissionService';
 import { usePermissionVersion } from '@/core/auth/hooks';
 import './FunctionManagement.css';
@@ -101,10 +103,13 @@ export default function FunctionManagement() {
     <div className="fm-notice"><strong>Safe feature control</strong><span>Feature availability is stored in this browser. Backend authorization must still be enforced by the server.</span></div>
     <div className="fm-table-card"><div className="fm-table-scroll"><table><thead><tr><th>Function</th><th>Module</th><th>Status</th><th>Action</th></tr></thead><tbody>
       {filtered.map((row) => <tr key={row.id}><td><strong>{row.name}</strong><small>{row.id}</small><p>{row.description}</p></td><td>{row.module}</td><td><span className={`fm-status ${permissionService.isFunctionEnabled(row.id) ? 'enabled' : 'disabled'}`}>{permissionService.isFunctionEnabled(row.id) ? 'Enabled' : 'Disabled'}</span></td>
-        <td><button type="button" className="fm-toggle" onClick={() => permissionService.setFunctionEnabled(row.id, !permissionService.isFunctionEnabled(row.id))}>{permissionService.isFunctionEnabled(row.id) ? 'Disable' : 'Enable'}</button>{row.custom && <button type="button" className="fm-delete" onClick={() => setCustomRows((current) => current.filter((item) => item.id !== row.id))}>Remove</button>}</td></tr>)}
+        <td><RowActionsMenu label={`Actions for ${row.name}`} actions={[
+          { label: permissionService.isFunctionEnabled(row.id) ? 'Disable function' : 'Enable function', onSelect: () => permissionService.setFunctionEnabled(row.id, !permissionService.isFunctionEnabled(row.id)) },
+          ...(row.custom ? [{ label: 'Remove function', danger: true, onSelect: () => setCustomRows((current) => current.filter((item) => item.id !== row.id)) }] : []),
+        ]} /></td></tr>)}
       {filtered.length === 0 && <tr><td colSpan={4} className="fm-empty">No functions match your filters.</td></tr>}
     </tbody></table></div></div>
-    {showForm && <div className="fm-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowForm(false); }}><section className="fm-modal" role="dialog" aria-modal="true" aria-labelledby="fm-modal-title">
+    {showForm && createPortal(<div className="fm-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowForm(false); }}><section className="fm-modal" role="dialog" aria-modal="true" aria-labelledby="fm-modal-title">
       <header><h2 id="fm-modal-title">Create Function</h2><button type="button" aria-label="Close" onClick={() => setShowForm(false)}>×</button></header>
       <label>Function Name<input value={name} onChange={(event) => setName(event.target.value)} /></label>
       <label>Function ID<input value={id} onChange={(event) => setId(event.target.value)} placeholder="Example: CUSTOM_EXPORT" /></label>
@@ -112,6 +117,6 @@ export default function FunctionManagement() {
       <label>Description<textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
       {formError && <p className="fm-error" role="alert">{formError}</p>}
       <footer><button type="button" onClick={() => setShowForm(false)}>Cancel</button><button className="fm-primary" type="button" onClick={saveCustom}>Create Function</button></footer>
-    </section></div>}
+    </section></div>, document.body)}
   </section>;
 }
