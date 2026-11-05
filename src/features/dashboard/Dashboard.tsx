@@ -372,14 +372,18 @@ export default function Dashboard() {
   const roleModuleGroups = useMemo(() => {
     const roleKey = (value: string) => value.trim().toLowerCase().replace(/[\\s_-]+/g, '');
     const modulesByRole: Record<string, string[]> = {
+      // Keep this list aligned with the modules each role can actually open.
+      // Role names themselves come from the backend role directory below.
       superuser: ['Employees', 'Leads', 'Enquiries', 'Courses', 'Manage Batch', 'Trainer Batches', 'Student Registration', 'Student Payments', 'Reports', 'Function Management', 'Email Services'],
-      admin: ['Employees', 'Leads', 'Enquiries', 'Courses', 'Manage Batch', 'Student Registration', 'Student Payments', 'Reports', 'Email Services'],
+      admin: ['Employees', 'Leads', 'Enquiries', 'Courses', 'Manage Batch', 'Trainer Batches', 'Student Registration', 'Student Payments', 'Reports', 'Email Services'],
       accountant: ['Student Registration', 'Student Payments'],
       counsellor: ['Leads', 'Enquiries', 'Courses'],
       counciler: ['Leads', 'Enquiries', 'Courses'],
       groupleader: ['Manage Batch'],
       trainer: ['Trainer Batches'],
       developer: ['Courses'],
+      // Students currently have dashboard access only; do not invent module shortcuts.
+      student: [],
     };
     const moduleDetails: Record<string, DashboardCard> = {
       Employees: { title: 'Employees', description: 'Manage system users and access.', route: '/main/user', icon: 'bi-people-fill', permission: PERMISSIONS.USER_VIEW },
