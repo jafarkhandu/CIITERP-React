@@ -1777,6 +1777,15 @@ html[data-theme="dark"] .ciit-registration-form-page .ciit-fee-summary { backgro
 }
 .ciit-registration-form-page .ciit-registration-columns > .ciit-registration-course {
   grid-column: 2;
+  grid-row: 1;
+}
+.ciit-registration-form-page .ciit-registration-columns > .ciit-registration-academic {
+  grid-column: 2;
+  grid-row: 2;
+}
+.ciit-registration-form-page .ciit-registration-columns > .ciit-registration-personal {
+  grid-column: 1;
+  grid-row: 1 / span 2;
 }
 .ciit-registration-form-page .ciit-registration-columns > .ciit-form-section {
   min-width: 0;
