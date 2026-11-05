@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { findCurrentUser, getAllUsers } from '@/api/userApi';
 import { usePermissionVersion, useSession } from '@/core/auth/hooks';
 import { userSession } from '@/core/auth/session';
@@ -16,29 +16,56 @@ interface SidebarMenu {
 }
 
 const MENUS: SidebarMenu[] = [
-  { label: 'Dashboard', route: '/main/dashboard', icon: '▣', permission: PERMISSIONS.DASHBOARD_VIEW },
-  { label: 'Employee', route: '/main/user', icon: '♙', permission: PERMISSIONS.USER_VIEW, roles: ['Admin', 'Super User'] },
-  { label: 'Lead', route: '/main/lead', icon: '◉', permission: PERMISSIONS.LEAD_VIEW, roles: ['Super User', 'Admin', 'Counsellor'] },
-  { label: 'Enquiry', route: '/main/enquiry', icon: '✎', permission: PERMISSIONS.ENQUIRY_VIEW, roles: ['Super User', 'Admin', 'Counsellor'] },
-  { label: 'Course', route: '/main/course', icon: '📚', permission: PERMISSIONS.COURSE_VIEW, roles: ['Super User', 'Admin', 'Counsellor'] },
-  { label: 'Student Registration', route: '/main/student-registration', icon: '🎓', roles: ['Accountant', 'Admin', 'Super User'] },
-  { label: 'Student Payments', route: '/main/student-payments', icon: '₹', roles: ['Accountant', 'Admin', 'Super User'] },
-  { label: 'Manage Batch', route: '/main/batch', icon: '📅', roles: ['Super User', 'Admin', 'Group Leader'], permission: PERMISSIONS.GROUP_LEADER_BATCH_VIEW },
-  { label: 'Batch', route: '/main/trainer', icon: '📘', roles: ['Trainer'], permission: PERMISSIONS.TRAINER_BATCH_VIEW },
-  { label: 'Reports', route: '/main/reports', icon: '▤', permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User', 'Accountant'] },
-  { label: 'Function Management', route: '/main/function-management', icon: '⚙', permission: PERMISSIONS.FUNCTION_MANAGEMENT_VIEW, roles: ['Admin', 'Super User'] },
-  { label: 'Settings', route: '/main/settings', icon: '⚙', roles: ['Admin', 'Super User'] },
+  { label: 'Dashboard', route: '/main/dashboard', icon: 'bi-grid-1x2-fill', permission: PERMISSIONS.DASHBOARD_VIEW },
+  { label: 'Employee', route: '/main/user', icon: 'bi-people-fill', permission: PERMISSIONS.USER_VIEW, roles: ['Admin', 'Super User'] },
+  { label: 'Lead', route: '/main/lead', icon: 'bi-person-lines-fill', permission: PERMISSIONS.LEAD_VIEW, roles: ['Super User', 'Admin', 'Counsellor'] },
+  { label: 'Enquiry', route: '/main/enquiry', icon: 'bi-chat-square-text-fill', permission: PERMISSIONS.ENQUIRY_VIEW, roles: ['Super User', 'Admin', 'Counsellor'] },
+  { label: 'Course', route: '/main/course', icon: 'bi-journal-bookmark-fill', permission: PERMISSIONS.COURSE_VIEW, roles: ['Super User', 'Admin', 'Counsellor'] },
+  { label: 'Student Registration', route: '/main/student-registration', icon: 'bi-mortarboard-fill', roles: ['Accountant', 'Admin', 'Super User'] },
+  { label: 'Student Payments', route: '/main/student-payments', icon: 'bi-wallet2', roles: ['Accountant', 'Admin', 'Super User'] },
+  { label: 'Manage Batch', route: '/main/batch', icon: 'bi-calendar2-week-fill', roles: ['Super User', 'Admin', 'Group Leader'], permission: PERMISSIONS.GROUP_LEADER_BATCH_VIEW },
+  { label: 'Batch', route: '/main/trainer', icon: 'bi-easel2-fill', roles: ['Trainer'], permission: PERMISSIONS.TRAINER_BATCH_VIEW },
+  { label: 'Reports', route: '/main/reports', icon: 'bi-graph-up-arrow', permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User'] },
+  { label: 'Function Management', route: '/main/function-management', icon: 'bi-sliders2', permission: PERMISSIONS.FUNCTION_MANAGEMENT_VIEW, roles: ['Admin', 'Super User'] },
+  { label: 'Settings', route: '/main/settings', icon: 'bi-gear-fill', roles: ['Admin', 'Super User'] },
 ];
+
+function getPageTitle(pathname: string): string {
+  const match = [...MENUS]
+    .sort((a, b) => b.route.length - a.route.length)
+    .find((menu) => pathname === menu.route || pathname.startsWith(menu.route + '/'));
+
+  if (match) return match.label;
+  if (pathname.startsWith('/main/profile')) return 'My Profile';
+  if (pathname.startsWith('/main/change-password')) return 'Change Password';
+  if (pathname.startsWith('/main/edit-user-roles')) return 'User Roles';
+  if (pathname.startsWith('/main/enquiry')) return 'Enquiry';
+  return 'Workspace';
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'U';
+  return parts.slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('');
+}
 
 export default function MainLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const session = useSession();
   usePermissionVersion();
 
-  const [isDarkTheme, setIsDarkTheme] = useState(() => (localStorage.getItem('ciit-theme') || localStorage.getItem('theme')) === 'dark');
+  const [isDarkTheme, setIsDarkTheme] = useState(
+    () => (localStorage.getItem('ciit-theme') || localStorage.getItem('theme')) === 'dark',
+  );
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
+    () => localStorage.getItem('ciit-sidebar-collapsed') === 'true',
+  );
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
-  // theme (same data-theme attribute + localStorage key as before)
+  // Keep the existing theme keys and custom event contract.
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', isDarkTheme ? 'dark' : 'light');
   }, [isDarkTheme]);
@@ -48,18 +75,49 @@ export default function MainLayout() {
       const nextTheme = (event as CustomEvent<'light' | 'dark'>).detail;
       if (nextTheme === 'light' || nextTheme === 'dark') setIsDarkTheme(nextTheme === 'dark');
     };
+
     window.addEventListener('ciit-theme-change', handleThemeChange);
     return () => window.removeEventListener('ciit-theme-change', handleThemeChange);
   }, []);
 
-  function toggleTheme() {
-    const next = !isDarkTheme;
-    localStorage.setItem('ciit-theme', next ? 'dark' : 'light');
-    localStorage.setItem('theme', next ? 'dark' : 'light');
-    setIsDarkTheme(next);
-  }
+  useEffect(() => {
+    setIsMobileSidebarOpen(false);
+    setShowProfileMenu(false);
+  }, [location.pathname]);
 
-  // load / refresh the logged-in user's details (roles, name, permissions)
+  // Lock background scrolling while the mobile navigation drawer is open.
+  useEffect(() => {
+    if (!isMobileSidebarOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileSidebarOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsMobileSidebarOpen(false);
+        setShowProfileMenu(false);
+      }
+    };
+    const handlePointerDown = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handlePointerDown);
+    };
+  }, []);
+
+  // Refresh the current user's roles and permissions without changing the auth flow.
   useEffect(() => {
     const username = (userSession.username || localStorage.getItem('username') || '').trim();
 
@@ -75,140 +133,187 @@ export default function MainLayout() {
         const current = username ? findCurrentUser(users, username) : undefined;
         if (current) userSession.setUser(current);
       })
-      .catch((e) => console.warn('User information API error:', e));
+      .catch((error) => console.warn('User information API error:', error));
 
     return () => {
       cancelled = true;
     };
   }, [navigate]);
 
-  const roleNames = [...new Set(session.roles.filter((r) => !!r?.trim()).map((r) => r.trim()))];
-
+  const roleNames = [...new Set(session.roles.filter((role) => !!role?.trim()).map((role) => role.trim()))];
   const visibleMenus = MENUS.filter((menu) => {
     const roleAllowed = !menu.roles?.length || userSession.hasAnyRole(menu.roles);
     const permissionAllowed = !menu.permission || permissionService.hasPermission(menu.permission);
     return roleAllowed && permissionAllowed;
   });
 
+  function toggleTheme() {
+    const next = !isDarkTheme;
+    localStorage.setItem('ciit-theme', next ? 'dark' : 'light');
+    localStorage.setItem('theme', next ? 'dark' : 'light');
+    setIsDarkTheme(next);
+  }
+
+  function toggleSidebarCollapse() {
+    setIsSidebarCollapsed((current) => {
+      const next = !current;
+      localStorage.setItem('ciit-sidebar-collapsed', String(next));
+      return next;
+    });
+  }
+
   function goTo(path: string) {
     setShowProfileMenu(false);
     navigate(path);
   }
 
+  const pageTitle = getPageTitle(location.pathname);
+  const displayRole = roleNames.length > 0 ? roleNames.join(' · ') : 'User';
+
   return (
-    <div className="ciit-host cmp-main-layout">
-      {/* Header */}
-      <nav className="navbar navbar-expand-lg ciit-navbar">
-        <div className="container-fluid">
-          {/* CIIT Brand */}
-          <Link className="navbar-brand ciit-brand" to="/main/dashboard">
-            <div className="ciit-brand-name">
-              <span className="ciit-title">CIIT</span>
-              <span className="ciit-logo-sub">Training Institute</span>
-            </div>
+    <div className={'cmp-main-layout ciit-app-shell' + (isSidebarCollapsed ? ' is-sidebar-collapsed' : '')}>
+      <header className="ciit-topbar">
+        <div className="ciit-topbar-left">
+          <button
+            type="button"
+            className="ciit-shell-icon-button ciit-mobile-menu-button"
+            onClick={() => setIsMobileSidebarOpen(true)}
+            aria-label="Open navigation"
+            aria-controls="ciit-main-sidebar"
+            aria-expanded={isMobileSidebarOpen}
+          >
+            <i className="bi bi-list" aria-hidden="true" />
+          </button>
+
+          <button
+            type="button"
+            className="ciit-shell-icon-button ciit-desktop-collapse-button"
+            onClick={toggleSidebarCollapse}
+            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-controls="ciit-main-sidebar"
+            aria-expanded={!isSidebarCollapsed}
+            title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <i className={'bi ' + (isSidebarCollapsed ? 'bi-layout-sidebar-inset' : 'bi-layout-sidebar')} aria-hidden="true" />
+          </button>
+
+          <Link className="ciit-shell-brand" to="/main/dashboard" aria-label="CIIT ERP home">
+            <span className="ciit-brand-mark">C</span>
+            <span className="ciit-brand-copy">
+              <strong>CIIT</strong>
+              <small>TRAINING INSTITUTE</small>
+            </span>
           </Link>
 
-          {/* Header Actions */}
-          <div className="navbar-nav ms-auto ciit-nav-right">
-            <button
-              type="button"
-              className="theme-toggle"
-              onClick={toggleTheme}
-              aria-label={isDarkTheme ? 'Switch to light mode' : 'Switch to dark mode'}
-              title={isDarkTheme ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              <i className={`bi ${isDarkTheme ? 'bi-moon-stars-fill' : 'bi-sun-fill'}`}></i>
-              <span>{isDarkTheme ? 'Dark' : 'Light'}</span>
-              <span className={`theme-switch-track${isDarkTheme ? ' is-dark' : ''}`}>
-                <span></span>
-              </span>
-            </button>
-
-            <div className="profile-menu-wrap">
-              <button
-                type="button"
-                className="profile-menu-trigger"
-                onClick={() => setShowProfileMenu((v) => !v)}
-                aria-expanded={showProfileMenu}
-              >
-                <span className="top-profile-avatar">
-                  <i className="bi bi-person-fill"></i>
-                </span>
-                <span className="top-profile-name">{session.employeeName || 'User'}</span>
-                <i className="bi bi-chevron-down profile-chevron"></i>
-              </button>
-
-              {showProfileMenu && (
-                <div className="profile-dropdown">
-                  <button type="button" onClick={() => goTo('/main/profile')}>
-                    <i className="bi bi-person-circle"></i> Profile
-                  </button>
-                  <button type="button" onClick={() => goTo('/main/change-password')}>
-                    <i className="bi bi-lock"></i> Change Password
-                  </button>
-                  <div className="profile-dropdown-divider"></div>
-                  <button type="button" className="dropdown-logout" onClick={() => authService.logout()}>
-                    <i className="bi bi-box-arrow-right"></i> Logout
-                  </button>
-                </div>
-              )}
-            </div>
+          <div className="ciit-topbar-divider" aria-hidden="true" />
+          <div className="ciit-topbar-heading">
+            <span>WORKSPACE</span>
+            <strong>{pageTitle}</strong>
           </div>
         </div>
-      </nav>
 
-      {/* Main Page */}
-      <div className="ciit-page">
-        <div className="row g-3">
-          {/* Sidebar */}
-          <div className="col-lg-2 col-md-3">
-            <div className="ciit-sidebar">
-              {/* User Profile */}
-              <div className="sidebar-user-profile">
-                <div className="profile-avatar">
-                  <i className="bi bi-person-fill"></i>
-                </div>
+        <div className="ciit-topbar-actions">
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={toggleTheme}
+            aria-label={isDarkTheme ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={isDarkTheme ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            <i className={'bi ' + (isDarkTheme ? 'bi-moon-stars-fill' : 'bi-sun-fill')} aria-hidden="true" />
+            <span>{isDarkTheme ? 'Dark' : 'Light'}</span>
+            <span className={'theme-switch-track' + (isDarkTheme ? ' is-dark' : '')} aria-hidden="true"><span /></span>
+          </button>
 
-                <div className="profile-info">
-                  <div className="profile-roles">
-                    {roleNames.map((role) => (
-                      <div className="profile-role" key={role}>
-                        <i className="bi bi-shield-check"></i>
-                        <span>{role}</span>
-                      </div>
-                    ))}
+          <div className="profile-menu-wrap" ref={profileMenuRef}>
+            <button
+              type="button"
+              className="profile-menu-trigger"
+              onClick={() => setShowProfileMenu((current) => !current)}
+              aria-expanded={showProfileMenu}
+              aria-haspopup="menu"
+            >
+              <span className="top-profile-avatar">{getInitials(session.employeeName)}</span>
+              <span className="top-profile-copy">
+                <strong className="top-profile-name">{session.employeeName || 'User'}</strong>
+                <small>{displayRole}</small>
+              </span>
+              <i className="bi bi-chevron-down profile-chevron" aria-hidden="true" />
+            </button>
 
-                    {roleNames.length === 0 && (
-                      <div className="profile-role">
-                        <i className="bi bi-shield-check"></i>
-                        <span>User</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+            {showProfileMenu && (
+              <div className="profile-dropdown" role="menu" aria-label="Account menu">
+                <button type="button" role="menuitem" onClick={() => goTo('/main/profile')}>
+                  <i className="bi bi-person-circle" aria-hidden="true" /> Profile
+                </button>
+                <button type="button" role="menuitem" onClick={() => goTo('/main/change-password')}>
+                  <i className="bi bi-shield-lock" aria-hidden="true" /> Change Password
+                </button>
+                <div className="profile-dropdown-divider" />
+                <button type="button" role="menuitem" className="dropdown-logout" onClick={() => authService.logout()}>
+                  <i className="bi bi-box-arrow-right" aria-hidden="true" /> Logout
+                </button>
               </div>
+            )}
+          </div>
+        </div>
+      </header>
 
-              {/* Navigation Menu */}
-              <ul className="list-group ciit-sidebar-list">
-                {visibleMenus.map((menu) => (
-                  <li className="list-group-item" key={menu.route}>
-                    <NavLink to={menu.route} className={({ isActive }) => (isActive ? 'active-link' : '')}>
-                      <span className="ciit-sidebar-icon">{menu.icon}</span>
-                      <span className="ciit-menu-label">{menu.label}</span>
-                    </NavLink>
-                  </li>
-                ))}
-              </ul>
+      <div className={'ciit-shell-main' + (isMobileSidebarOpen ? ' is-mobile-sidebar-open' : '')}>
+        <button
+          type="button"
+          className="ciit-sidebar-backdrop"
+          aria-label="Close navigation"
+          tabIndex={isMobileSidebarOpen ? 0 : -1}
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+
+        <aside id="ciit-main-sidebar" className="ciit-shell-sidebar" aria-label="Main navigation">
+          <div className="ciit-sidebar-user">
+            <div className="ciit-sidebar-avatar">{getInitials(session.employeeName)}</div>
+            <div className="ciit-sidebar-user-copy">
+              <strong>{session.employeeName || 'Welcome'}</strong>
+              <small>{displayRole}</small>
             </div>
           </div>
 
-          {/* Page Content */}
-          <div className="col-lg-10 col-md-9">
-            <div className="ciit-content">
+          <div className="ciit-sidebar-section-label">MAIN MENU</div>
+          <nav className="ciit-sidebar-nav">
+            <ul className="ciit-sidebar-list">
+              {visibleMenus.map((menu) => (
+                <li key={menu.route}>
+                  <NavLink
+                    to={menu.route}
+                    end={menu.route === '/main/dashboard'}
+                    title={isSidebarCollapsed ? menu.label : undefined}
+                    onClick={() => setIsMobileSidebarOpen(false)}
+                    className={({ isActive }) => (isActive ? 'active-link' : '')}
+                  >
+                    <i className={'bi ' + menu.icon} aria-hidden="true" />
+                    <span className="ciit-menu-label">{menu.label}</span>
+                    <span className="ciit-menu-active-mark" aria-hidden="true" />
+                  </NavLink>
+                </li>
+              ))}
+              {visibleMenus.length === 0 && (
+                <li className="ciit-sidebar-empty">No modules are available for this account.</li>
+              )}
+            </ul>
+          </nav>
+
+          <div className="ciit-sidebar-footer">
+            <span className="ciit-sidebar-footer-mark"><i className="bi bi-mortarboard-fill" aria-hidden="true" /></span>
+            <span><strong>CIIT ERP</strong><small>Training Institute</small></span>
+          </div>
+        </aside>
+
+        <main className="ciit-workspace">
+          <div className="ciit-content">
+            <div className="ciit-page-transition" key={location.pathname}>
               <Outlet />
             </div>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );
