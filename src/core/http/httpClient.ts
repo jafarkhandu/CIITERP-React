@@ -6,7 +6,7 @@
 //  - expired / missing access token + refresh token -> refresh first, then send
 //  - 401 from server -> refresh once (shared between parallel requests) and retry
 //  - refresh fails / nothing to refresh with -> clear session and go to /login
-import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, type AxiosAdapter, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import { API_ENDPOINTS } from '@/core/config/api-endpoints';
 import { tokenService } from '@/core/services/tokenService';
 import { authService } from '@/core/auth/authService';
@@ -14,6 +14,53 @@ import { navigateTo } from '@/core/navigation';
 import type { LoginResponse } from '@/types/user';
 
 export const http = axios.create();
+
+const GET_CACHE_TTL_MS = 12_000;
+const getCache = new Map<string, { expiresAt: number; response?: AxiosResponse; pending?: Promise<AxiosResponse> }>();
+
+function withShortGetCache(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
+  if (config.method?.toLowerCase() !== 'get') return config;
+
+  const url = config.url ?? '';
+  const authorization = String(config.headers.get('Authorization') ?? '');
+  if (!authorization || isPublic(url) || isLeadDirect(url)) return config;
+
+  const cacheKey = authorization + ':' + axios.getUri(config) + ':' + (config.responseType ?? 'json');
+  const originalAdapter = axios.getAdapter(config.adapter) as AxiosAdapter;
+
+  config.adapter = async (requestConfig) => {
+    const now = Date.now();
+    const cached = getCache.get(cacheKey);
+
+    if (cached && cached.expiresAt > now) {
+      const response = cached.response ?? await cached.pending;
+      return { ...response, config: requestConfig };
+    }
+
+    const pending = originalAdapter(requestConfig)
+      .then((response) => {
+        if (response.status >= 200 && response.status < 300
+          && requestConfig.responseType !== 'blob'
+          && requestConfig.responseType !== 'arraybuffer'
+          && requestConfig.responseType !== 'stream') {
+          getCache.set(cacheKey, { expiresAt: Date.now() + GET_CACHE_TTL_MS, response });
+        } else {
+          getCache.delete(cacheKey);
+        }
+        return response;
+      })
+      .catch((error: unknown) => {
+        getCache.delete(cacheKey);
+        throw error;
+      });
+
+    getCache.set(cacheKey, { expiresAt: now + GET_CACHE_TTL_MS, pending });
+    const response = await pending;
+    return { ...response, config: requestConfig };
+  };
+
+  return config;
+}
 
 // separate instance without interceptors, used only to call /refresh
 const rawHttp = axios.create();
@@ -76,13 +123,13 @@ http.interceptors.request.use(async (config) => {
 
   if (token && !tokenService.isAccessTokenExpired()) {
     setBearer(config, token);
-    return config;
+    return withShortGetCache(config);
   }
 
   if ((token && tokenService.isAccessTokenExpired()) || (!token && refreshToken)) {
     const newToken = await refreshAccessToken();
     setBearer(config, newToken);
-    return config;
+    return withShortGetCache(config);
   }
 
   redirectToLogin();
