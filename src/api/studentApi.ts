@@ -135,7 +135,48 @@ export const studentApi = {
 
   async getRegistrations(): Promise<Record<string, unknown>[]> {
     const { data } = await http.get(`${API_ENDPOINTS.studentRegistration}/get-all`);
-    return extractRows(data);
+    const rows = extractRows(data);
+
+    // The registration endpoint may return student records with registrations
+    // nested under each student, rather than a flat registration list.
+    const flattened = rows.flatMap((student) => {
+      const nestedRegistrations = student.registrations ?? student.Registrations;
+      if (!Array.isArray(nestedRegistrations)) return [student];
+
+      return nestedRegistrations
+        .filter((registration): registration is Record<string, unknown> =>
+          !!registration && typeof registration === 'object',
+        )
+        .map((registration) => {
+          const payments = registration.payments ?? registration.Payments;
+          const paymentRows = Array.isArray(payments)
+            ? payments.filter((payment): payment is Record<string, unknown> =>
+                !!payment && typeof payment === 'object',
+              )
+            : [];
+
+          const paidAmount = paymentRows.reduce((total, payment) => {
+            const isPaid = Number(payment.is_Paid ?? payment.isPaid ?? payment.IsPaid ?? 0) === 1;
+            const amount = Number(payment.payment_Amount ?? payment.paymentAmount ?? payment.PaymentAmount ?? 0);
+            return isPaid ? total + amount : total;
+          }, 0);
+
+          return {
+            ...student,
+            ...registration,
+            studentId: student.studentId ?? student.student_Id ?? student.student_id,
+            studentName: student.studentName ?? student.student_Name ?? student.student_name,
+            lastName: student.lastName ?? student.last_Name ?? student.last_name,
+            registrationId: registration.registrationId ?? registration.registration_Id ?? registration.registration_id,
+            courseName: registration.courseName ?? registration.course_Name ?? registration.course_name,
+            registrationCode: registration.registrationCode ?? registration.registration_Code ?? registration.registration_code,
+            currentStatus: registration.currentStatus ?? registration.current_Status ?? registration.status,
+            paymentAmount: paidAmount,
+          };
+        });
+    });
+
+    return flattened;
   },
 
   async getRegistrationDropdowns(): Promise<unknown> {
