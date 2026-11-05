@@ -18,6 +18,17 @@ export const http = axios.create();
 const GET_CACHE_TTL_MS = 12_000;
 const getCache = new Map<string, { expiresAt: number; response?: AxiosResponse; pending?: Promise<AxiosResponse> }>();
 
+function pruneGetCache(now: number): void {
+  for (const [key, entry] of getCache) {
+    if (!entry.pending && entry.expiresAt <= now) getCache.delete(key);
+  }
+  while (getCache.size > 250) {
+    const oldestKey = getCache.keys().next().value;
+    if (oldestKey === undefined) break;
+    getCache.delete(oldestKey);
+  }
+}
+
 function withShortGetCache(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
   if (config.method?.toLowerCase() !== 'get') return config;
 
@@ -30,6 +41,7 @@ function withShortGetCache(config: InternalAxiosRequestConfig): InternalAxiosReq
 
   config.adapter = async (requestConfig) => {
     const now = Date.now();
+    pruneGetCache(now);
     const cached = getCache.get(cacheKey);
 
     if (cached && cached.expiresAt > now) {
@@ -54,7 +66,7 @@ function withShortGetCache(config: InternalAxiosRequestConfig): InternalAxiosReq
         throw error;
       });
 
-    getCache.set(cacheKey, { expiresAt: now + GET_CACHE_TTL_MS, pending });
+    getCache.set(cacheKey, { expiresAt: Number.POSITIVE_INFINITY, pending });
     const response = await pending;
     return { ...response, config: requestConfig };
   };
