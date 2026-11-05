@@ -21,11 +21,11 @@ const MENUS: SidebarMenu[] = [
   { label: 'Employee', route: '/main/user', icon: 'bi-people-fill', permission: PERMISSIONS.USER_VIEW, roles: ['Admin', 'Super User'] },
   { label: 'Lead', route: '/main/lead', icon: 'bi-person-lines-fill', permission: PERMISSIONS.LEAD_VIEW, roles: ['Super User', 'Admin', 'Counsellor'] },
   { label: 'Enquiry', route: '/main/enquiry', icon: 'bi-chat-square-text-fill', permission: PERMISSIONS.ENQUIRY_VIEW, roles: ['Super User', 'Admin', 'Counsellor'] },
-  { label: 'Course', route: '/main/course', icon: 'bi-journal-bookmark-fill', permission: PERMISSIONS.COURSE_VIEW, roles: ['Super User', 'Admin', 'Counsellor'] },
+  { label: 'Course', route: '/main/course', icon: 'bi-journal-bookmark-fill', permission: PERMISSIONS.COURSE_VIEW, roles: ['Super User', 'Admin', 'Counsellor', 'Developer'] },
   { label: 'Student Registration', route: '/main/student-registration', icon: 'bi-mortarboard-fill', roles: ['Accountant', 'Admin', 'Super User'] },
   { label: 'Student Payments', route: '/main/student-payments', icon: 'bi-wallet2', roles: ['Accountant', 'Admin', 'Super User'] },
   { label: 'Manage Batch', route: '/main/batch', icon: 'bi-calendar2-week-fill', roles: ['Super User', 'Admin', 'Group Leader'], permission: PERMISSIONS.GROUP_LEADER_BATCH_VIEW },
-  { label: 'My Batches', route: '/main/trainer', icon: 'bi-easel2-fill', roles: ['Trainer'], permission: PERMISSIONS.TRAINER_BATCH_VIEW },
+  { label: 'My Batches', route: '/main/trainer', icon: 'bi-easel2-fill', roles: ['Trainer', 'Admin'], permission: PERMISSIONS.TRAINER_BATCH_VIEW },
   { label: 'Reports', route: '/main/reports', icon: 'bi-graph-up-arrow', permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User'] },
   { label: 'Function Management', route: '/main/function-management', icon: 'bi-sliders2', permission: PERMISSIONS.FUNCTION_MANAGEMENT_VIEW, roles: ['Admin', 'Super User'] },
   { label: 'Email Services', route: '/main/email-services', icon: 'bi-envelope-at-fill', roles: ['Admin', 'Super User'] },
@@ -197,9 +197,14 @@ export default function MainLayout() {
     return availableRoles.map((role) => {
       const normalizedRole = role.roleName.trim().toLowerCase().replace(/[\s_-]+/g, '');
       const menus = permissionVisibleMenus.filter((menu) => (
-        normalizedRole === 'superuser'
-          || menu.roles?.some((menuRole) =>
-            menuRole.trim().toLowerCase().replace(/[\s_-]+/g, '') === normalizedRole)
+        menu.route !== '/main/dashboard'
+        && (normalizedRole === 'superuser'
+          || menu.roles?.some((menuRole) => {
+            const normalizedMenuRole = menuRole.trim().toLowerCase().replace(/[\s_-]+/g, '');
+            return normalizedMenuRole === normalizedRole
+              || (normalizedRole === 'counciler' && normalizedMenuRole === 'counsellor')
+              || (normalizedRole === 'counsellor' && normalizedMenuRole === 'counciler');
+          }))
       ));
 
       return { ...role, menus };
