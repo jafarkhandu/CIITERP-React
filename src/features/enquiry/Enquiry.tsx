@@ -21,6 +21,8 @@ export default function Enquiry() {
   const [branch, setBranch] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [tab, setTab] = useState<'active' | 'deleted'>('active');
+  const [savingId, setSavingId] = useState(0);
 
   async function load() {
     setLoading(true); setError('');
@@ -45,6 +47,21 @@ export default function Enquiry() {
       (!from || Boolean(date && date >= from)) && (!to || Boolean(date && date <= to));
   }), [enquiries, search, branch, fromDate, toDate]);
 
+  async function removeEnquiry(item: EnquiryRecord) {
+    if (!window.confirm(`Delete enquiry for ${item.candidateName}?`)) return;
+    setSavingId(item.enquiryId); setError('');
+    try { await enquiryApi.remove(item.enquiryId); await load(); }
+    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to delete enquiry.'); }
+    finally { setSavingId(0); }
+  }
+
+  async function restoreEnquiry(item: EnquiryRecord) {
+    setSavingId(item.enquiryId); setError('');
+    try { await enquiryApi.restore(item.enquiryId); await load(); }
+    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to restore enquiry.'); }
+    finally { setSavingId(0); }
+  }
+
   function exportExcel() {
     const rows = filtered.map((item) => ({
       'Enquiry ID': item.enquiryId, 'Enquiry Date': formatDate(item.enquiryDate),
@@ -64,6 +81,7 @@ export default function Enquiry() {
         <button className="enquiry-primary-btn" type="button" onClick={() => navigate('/main/enquiry/add')}>+ Add Enquiry</button></div>
     </header>
     {error && <div className="enquiry-alert" role="alert">{error}<button type="button" onClick={() => void load()}>Retry</button></div>}
+    <div className="enquiry-tabs"><button type="button" className={tab === 'active' ? 'active' : ''} onClick={() => setTab('active')}>Active Enquiries</button><button type="button" className={tab === 'deleted' ? 'active' : ''} onClick={() => setTab('deleted')}>Deleted Enquiries</button></div>
     <div className="enquiry-filters">
       <input aria-label="Search enquiries" placeholder="Search candidate, email, mobile..." value={search} onChange={(event) => setSearch(event.target.value)} />
       <select aria-label="Filter branch" value={branch} onChange={(event) => setBranch(event.target.value)}><option value="">All Branches</option>{branches.map((name) => <option key={name}>{name}</option>)}</select>
@@ -74,15 +92,15 @@ export default function Enquiry() {
     <div className="enquiry-table-card"><div className="enquiry-table-scroll"><table className="enquiry-table">
       <thead><tr><th>ID</th><th>Date</th><th>Candidate</th><th>Email</th><th>Mobile</th><th>Branch</th><th>Qualification</th><th>Enquiry For</th><th>Status</th><th>Action</th></tr></thead>
       <tbody>{loading ? <tr><td colSpan={10} className="enquiry-empty">Loading enquiries...</td></tr> :
-        filtered.filter((item) => !item.deletedAt).map((item) => <tr key={item.enquiryId}>
+        filtered.filter((item) => tab === 'deleted' ? Boolean(item.deletedAt) : !item.deletedAt).map((item) => <tr key={item.enquiryId}>
           <td>{item.enquiryId}</td><td>{formatDate(item.enquiryDate)}</td><td className="enquiry-candidate">{item.candidateName}</td>
           <td>{item.emailAddress}</td><td>{item.mobileNumber}</td><td>{item.branchName || '-'}</td><td>{item.qualification || '-'}</td>
           <td>{item.enquiryFors || '-'}</td><td><span className="enquiry-status">{item.status || 'New'}</span></td>
-          <td><div className="enquiry-actions"><button type="button" onClick={() => navigate(`/main/enquiry/followup/${item.enquiryId}`)}>Follow-up</button><button type="button" onClick={() => navigate(`/main/enquiry/edit/${item.enquiryId}`)}>Edit</button></div></td>
+          <td><div className="enquiry-actions">{tab === 'deleted' ? <button type="button" disabled={savingId === item.enquiryId} onClick={() => void restoreEnquiry(item)}>Restore</button> : <><button type="button" onClick={() => navigate(`/main/enquiry/followup/${item.enquiryId}`)}>Follow-up</button><button type="button" onClick={() => navigate(`/main/enquiry/edit/${item.enquiryId}`)}>Edit</button><button type="button" disabled={savingId === item.enquiryId} onClick={() => void removeEnquiry(item)}>Delete</button></>}</div></td>
         </tr>)}
-        {!loading && filtered.filter((item) => !item.deletedAt).length === 0 && <tr><td colSpan={10} className="enquiry-empty">No enquiries found.</td></tr>}
+        {!loading && filtered.filter((item) => tab === 'deleted' ? Boolean(item.deletedAt) : !item.deletedAt).length === 0 && <tr><td colSpan={10} className="enquiry-empty">No enquiries found.</td></tr>}
       </tbody>
     </table></div></div>
-    <p className="enquiry-count">Showing {filtered.filter((item) => !item.deletedAt).length} enquiries</p>
+    <p className="enquiry-count">Showing {filtered.filter((item) => tab === 'deleted' ? Boolean(item.deletedAt) : !item.deletedAt).length} enquiries</p>
   </section>;
 }
