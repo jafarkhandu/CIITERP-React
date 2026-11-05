@@ -31,7 +31,8 @@ export default function LeadFollowup() {
   const [editingFollowupId, setEditingFollowupId] = useState(0);
   const [status, setStatus] = useState('');
   const [description, setDescription] = useState('');
-  const [followupDate] = useState(toLocalDateTime());
+  const [followupDate, setFollowupDate] = useState(toLocalDateTime());
+  const [followupBy, setFollowupBy] = useState(userSession.employeeName || userSession.username || '');
   const [nextFollowupDate, setNextFollowupDate] = useState(toLocalDate());
 
   async function loadLead() {
@@ -64,6 +65,8 @@ export default function LeadFollowup() {
       const raw = await leadApi.getFollowupById(id) as any;
       const record = raw?.data ?? raw?.result ?? raw;
       setEditingFollowupId(id);
+      setFollowupDate(String(record.followUpDate ?? item.followUpDate ?? toLocalDateTime()).slice(0, 16));
+      setFollowupBy(String(record.followUpBy ?? item.followUpBy ?? userSession.employeeName ?? userSession.username ?? ''));
       setStatus(String(record.status ?? item.status ?? ''));
       setDescription(String(record.description ?? item.description ?? ''));
       setNextFollowupDate(String(record.nextFollowupDate ?? item.nextFollowupDate ?? '').slice(0, 10));
@@ -96,7 +99,7 @@ export default function LeadFollowup() {
     const payload: LeadFollowupRecord = {
       leadFollowupId: editingFollowupId || 0, leadId, candidateName: lead.candidateName || '',
       followUpDate: new Date(followupDate),
-      followUpBy: userSession.employeeName || userSession.username || '',
+      followUpBy,
       description: description.trim(), status,
       nextFollowupDate: nextFollowupDate ? new Date(`${nextFollowupDate}T00:00:00`) : new Date(),
     };
@@ -132,8 +135,8 @@ export default function LeadFollowup() {
       </button>
       {expandedForm && <form onSubmit={saveFollowup} className="lead-followup-form">
         <div className="lead-form-grid">
-          <label>Follow-up Date<input type="datetime-local" value={followupDate} disabled /></label>
-          <label>Follow-up By<input value={userSession.employeeName || userSession.username || ''} disabled /></label>
+          <label>Follow-up Date<input type="datetime-local" value={followupDate} disabled={!editingFollowupId} onChange={(event) => setFollowupDate(event.target.value)} /></label>
+          <label>Follow-up By<input required value={followupBy} disabled={!editingFollowupId} onChange={(event) => setFollowupBy(event.target.value)} /></label>
           <label>Status<select required value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Select Status</option><option>Hot</option><option>Warm</option><option>Cold</option></select></label>
           <label>Next Follow-up Date<input type="date" min={toLocalDate()} value={nextFollowupDate} onChange={(event) => setNextFollowupDate(event.target.value)} /></label>
           <label className="lead-full-field">Description<textarea required rows={4} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Enter follow-up details..." /></label>
