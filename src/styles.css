@@ -1766,3 +1766,50 @@ html[data-theme="dark"] .ciit-registration-form-page .ciit-fee-summary { backgro
 @media (max-width: 767.98px) {
   .ciit-registration-form-page > .ciit-page-heading { align-items: flex-start; flex-direction: column; }
 }
+
+
+/* Student registration: compact two-column workspace matching enquiry layout. */
+.ciit-registration-form-page .ciit-registration-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr);
+  align-items: start;
+  gap: 14px;
+}
+.ciit-registration-form-page .ciit-registration-columns > .ciit-form-section {
+  min-width: 0;
+  margin-top: 0 !important;
+  padding: 14px;
+}
+.ciit-registration-form-page .ciit-registration-columns .ciit-form-section h3 {
+  margin-bottom: 10px;
+}
+.ciit-registration-form-page .ciit-registration-columns .form-label {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.ciit-registration-form-page .ciit-registration-columns .form-control,
+.ciit-registration-form-page .ciit-registration-columns .form-select {
+  min-height: 34px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.ciit-registration-form-page .ciit-registration-columns textarea.form-control {
+  min-height: 48px;
+}
+.ciit-registration-form-page .ciit-registration-columns .small {
+  font-size: 11px;
+}
+.ciit-registration-form-page .ciit-registration-columns .ciit-fee-summary {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.ciit-registration-form-page .ciit-registration-columns + .alert {
+  margin-top: 10px !important;
+}
+@media (max-width: 1050px) {
+  .ciit-registration-form-page .ciit-registration-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
