@@ -11,6 +11,29 @@ function formatDate(value?: string): string {
   return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString('en-GB');
 }
 
+function normalizeEnquiry(raw: any): EnquiryRecord {
+  return {
+    ...raw,
+    enquiryId: Number(raw?.enquiryId ?? raw?.enquiry_id ?? raw?.id ?? 0),
+    enquiryDate: String(raw?.enquiryDate ?? raw?.enquiry_date ?? ''),
+    candidateName: String(raw?.candidateName ?? raw?.candidate_name ?? ''),
+    gender: String(raw?.gender ?? ''),
+    localAddress: String(raw?.localAddress ?? raw?.local_address ?? ''),
+    emailAddress: String(raw?.emailAddress ?? raw?.email_address ?? raw?.email ?? ''),
+    mobileNumber: String(raw?.mobileNumber ?? raw?.mobile_number ?? raw?.mobile ?? ''),
+    birthDate: String(raw?.birthDate ?? raw?.birth_date ?? ''),
+    qualificationId: Number(raw?.qualificationId ?? raw?.qualification_id ?? 0),
+    qualification: String(raw?.qualification ?? ''),
+    leadSources: String(raw?.leadSources ?? raw?.lead_sources ?? ''),
+    enquiryFors: String(raw?.enquiryFors ?? raw?.enquiry_fors ?? ''),
+    interestedTopics: String(raw?.interestedTopics ?? raw?.interested_topics ?? ''),
+    status: String(raw?.status ?? 'New'),
+    branchId: Number(raw?.branchId ?? raw?.branch_id ?? 0),
+    branchName: String(raw?.branchName ?? raw?.branch_name ?? ''),
+    deletedAt: raw?.deletedAt ?? raw?.deleted_at ?? ((raw?.is_deleted ?? raw?.isDeleted ?? raw?.deleted) ? 'deleted' : null),
+  };
+}
+
 export default function Enquiry() {
   const navigate = useNavigate();
   const [enquiries, setEnquiries] = useState<EnquiryRecord[]>([]);
@@ -29,7 +52,7 @@ export default function Enquiry() {
     const [enquiryResult, branchResult] = await Promise.allSettled([
       enquiryApi.getAll(), directoryApi.getBranches(),
     ]);
-    if (enquiryResult.status === 'fulfilled') setEnquiries(enquiryResult.value);
+    if (enquiryResult.status === 'fulfilled') setEnquiries(enquiryResult.value.map(normalizeEnquiry));
     else { setEnquiries([]); setError('Unable to load enquiries. Please retry.'); }
     if (branchResult.status === 'fulfilled') setBranches(branchResult.value.map((item) => item.name));
     else setBranches([]);
