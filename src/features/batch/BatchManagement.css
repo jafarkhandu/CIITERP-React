@@ -429,3 +429,49 @@ html[data-theme="dark"] .batch-success { border-color: #276448; color: #bbf7d0; 
   .batch-primary, .batch-secondary, .batch-tabs button, .batch-actions button,
   .batch-modal-backdrop, .batch-modal, .batch-table tbody tr { transition: none; animation: none; }
 }
+
+
+.batch-modal-subtitle {
+  margin: 5px 0 0;
+  color: var(--batch-muted);
+  font-size: 11px;
+}
+.batch-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 18px 20px;
+  margin: 0;
+}
+.batch-detail-grid > div {
+  min-width: 0;
+  padding: 12px 13px;
+  border: 1px solid var(--batch-border);
+  border-radius: 11px;
+  background: var(--batch-panel);
+}
+.batch-detail-grid dt {
+  margin-bottom: 5px;
+  color: var(--batch-muted);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.batch-detail-grid dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--batch-text);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+html[data-theme="dark"] .batch-detail-grid > div {
+  border-color: rgba(148,176,210,.17);
+  background: rgba(11,25,43,.68);
+}
+html[data-theme="dark"] .batch-detail-grid dt { color: #9db1cb; }
+html[data-theme="dark"] .batch-detail-grid dd { color: #e6eefb; }
+@media (max-width: 575px) {
+  .batch-detail-grid { grid-template-columns: 1fr; padding: 14px; }
+}
