@@ -36,7 +36,7 @@ const emptyForm = (): CreateBatchRequest => ({
 
 export default function BatchManagement() {
   const [batches, setBatches] = useState<BatchRow[]>([]);
-  const [counts, setCounts] = useState<Record<number, number>>({});
+  const [counts, setCounts] = useState<Record<number, number | null>>({});
   const [topics, setTopics] = useState<Row[]>([]);
   const [employees, setEmployees] = useState<Row[]>([]);
   const [branches, setBranches] = useState<BranchOption[]>([]);
@@ -65,19 +65,28 @@ export default function BatchManagement() {
 
   async function load() {
     setLoading(true); setError('');
+    let mapped: BatchRow[] = [];
     try {
       const records = await batchApi.getAll();
-      const mapped = records.map((row) => ({ ...row, batchId: idOf(row), batchName: String(read(row, 'batch_name', 'batchName', 'BatchName') ?? 'Unnamed Batch') }))
+      mapped = records.map((row) => ({ ...row, batchId: idOf(row), batchName: String(read(row, 'batch_name', 'batchName', 'BatchName') ?? 'Unnamed Batch') }))
         .filter((row) => row.batchId > 0) as BatchRow[];
       setBatches(mapped);
-      const countPairs = await Promise.all(mapped.filter((row) => !deleted(row)).map(async (row) => {
-        const students = await batchStudentApi.getByBatch(row.batchId);
-        return [row.batchId, students.length] as const;
-      }));
-      setCounts(Object.fromEntries(countPairs));
     } catch (requestError: any) {
       setError(requestError?.response?.data?.message || 'Unable to load batches.');
-    } finally { setLoading(false); }
+      setLoading(false);
+      return;
+    }
+    const countResults = await Promise.allSettled(mapped.filter((row) => !deleted(row)).map((row) => batchStudentApi.getByBatch(row.batchId)));
+    const nextCounts: Record<number, number | null> = {};
+    let countFailures = 0;
+    countResults.forEach((result, index) => {
+      const batchId = mapped.filter((row) => !deleted(row))[index].batchId;
+      if (result.status === 'fulfilled') nextCounts[batchId] = result.value.length;
+      else { nextCounts[batchId] = null; countFailures += 1; }
+    });
+    setCounts(nextCounts);
+    if (countFailures) setError(`Loaded batches, but student counts failed for ${countFailures} batch(es).`);
+    setLoading(false);
   }
 
   useEffect(() => {
