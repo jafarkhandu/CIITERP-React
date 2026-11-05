@@ -26,6 +26,8 @@ export default function EnquiryFollowup() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(0);
+  const [newFollowupExpanded, setNewFollowupExpanded] = useState(false);
+  const [previousFollowupsExpanded, setPreviousFollowupsExpanded] = useState(false);
   const [form, setForm] = useState({
     candidateName: '', sourceId: 0, sourceName: '', followUpDate: localDateTime(),
     followUpBy: '', description: '', status: 'Hot', nextFollowupDate: new Date().toISOString().slice(0, 10),
@@ -136,40 +138,82 @@ export default function EnquiryFollowup() {
     finally { setSaving(false); }
   }
 
-  if (loading) return <section className="enquiry-page"><p>Loading follow-ups...</p></section>;
-  return <section className="enquiry-page">
-    <header className="enquiry-header"><div><h1>Enquiry Follow-up</h1><p>{enquiry?.candidateName ?? `Enquiry #${enquiryId}`}</p></div>
-      <button className="enquiry-secondary-btn" type="button" onClick={() => navigate('/main/enquiry')}>Back to Enquiries</button>
+  if (loading) return <section className="enquiry-page"><p>Loading enquiry details...</p></section>;
+  const detail = enquiry as any;
+  const detailRows = [
+    ['Candidate Name', detail?.candidateName],
+    ['Enquiry Date', dateValue(String(detail?.enquiryDate ?? detail?.enquiry_date ?? ''))],
+    ['Gender', detail?.gender],
+    ['Mobile Number', detail?.mobileNumber ?? detail?.mobile_number],
+    ['Email Address', detail?.emailAddress ?? detail?.email_address],
+    ['Qualification', detail?.qualificationName ?? detail?.qualification],
+    ['Enquiry For', detail?.enquiryFors ?? detail?.enquiryFor ?? detail?.enquiry_fors],
+    ['Lead Source', detail?.sourceName ?? detail?.leadSources ?? detail?.lead_sources],
+    ['Interested Topics', detail?.interestedTopics ?? detail?.interested_topics],
+    ['Branch', detail?.branchName ?? detail?.branch_name],
+    ['Status', detail?.status],
+    ['Local Address', detail?.localAddress ?? detail?.local_address],
+  ];
+  return <section className="enquiry-page enquiry-followup-page">
+    <header className="enquiry-header">
+      <div><h1>Enquiry Followup</h1><p>Manage enquiry followup details</p></div>
+      <button className="enquiry-secondary-btn" type="button" onClick={() => navigate('/main/enquiry')}>← Back</button>
     </header>
     {error && <div className="enquiry-alert" role="alert">{error}<button type="button" onClick={() => void load()}>Retry</button></div>}
-    <div className="enquiry-table-card" style={{ padding: 24, marginBottom: 20 }}>
-      <h2>{editingId ? 'Update Follow-up' : 'Add Follow-up'}</h2>
-      <form onSubmit={submit}>
-        <div className="enquiry-filters">
-          <label>Candidate *<input required value={form.candidateName} readOnly /></label>
-          <label>Follow-up Date *<input type="datetime-local" required value={form.followUpDate} onChange={(e) => setForm({ ...form, followUpDate: e.target.value })} /></label>
-          <label>Follow-up By *<input required value={form.followUpBy} onChange={(e) => setForm({ ...form, followUpBy: e.target.value })} /></label>
-          <label>Status *<select required value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>{['Hot', 'Warm', 'Cold', 'Interested', 'Not Interested', 'Converted'].map((status) => <option key={status}>{status}</option>)}</select></label>
-          <label>Next Follow-up Date *<input type="date" required value={form.nextFollowupDate} onChange={(e) => setForm({ ...form, nextFollowupDate: e.target.value })} /></label>
-        </div>
-        <label>Description *<textarea required rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
-        <footer style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 16 }}>
-          {editingId > 0 && <button className="enquiry-secondary-btn" type="button" disabled={saving} onClick={resetForm}>Cancel Edit</button>}
-          <button className="enquiry-primary-btn" type="submit" disabled={saving}>{saving ? 'Saving...' : editingId ? 'Update Follow-up' : 'Save Follow-up'}</button>
-        </footer>
-      </form>
-    </div>
-    <div className="enquiry-table-card"><div className="enquiry-table-scroll"><table className="enquiry-table">
-      <thead><tr><th>ID</th><th>Follow-up Date</th><th>Follow-up By</th><th>Status</th><th>Next Date</th><th>Description</th><th>Actions</th></tr></thead>
-      <tbody>{items.map((item, index) => {
-        const deleted = Boolean(item.deletedAt ?? item.deleted_at);
-        return <tr key={idOf(item) || index}><td>{idOf(item)}</td><td>{dateValue(String(item.followUpDate ?? item.follow_up_date ?? ''))}</td>
-          <td>{String(item.followUpBy ?? item.follow_up_by ?? '-')}</td><td>{String(item.status ?? '-')}</td>
-          <td>{dateValue(String(item.nextFollowupDate ?? item.next_followup_date ?? ''))}</td><td>{String(item.description ?? '-')}</td>
-          <td><div className="enquiry-actions">{deleted ? <button type="button" disabled={saving} onClick={() => void restore(item)}>Restore</button> : <>
-            <button type="button" disabled={saving} onClick={() => void edit(item)}>Edit</button><button type="button" disabled={saving} onClick={() => void remove(item)}>Delete</button>
-          </>}</div></td></tr>;
-      })}{!items.length && <tr><td colSpan={7} className="enquiry-empty">No follow-ups found.</td></tr>}</tbody>
-    </table></div></div>
+    <section className="enquiry-followup-section enquiry-details-card">
+      <div className="enquiry-followup-section-title">
+        <div><h2>Enquiry Details</h2><p>Candidate enquiry information</p></div>
+        <span className="enquiry-id-pill">Enquiry #{enquiryId}</span>
+      </div>
+      <div className="enquiry-details-grid">
+        {detailRows.map(([label, value]) => <div className="enquiry-detail-item" key={label}>
+          <span>{label}</span><strong>{String(value ?? '').trim() || '-'}</strong>
+        </div>)}
+      </div>
+    </section>
+    <section className="enquiry-followup-section enquiry-accordion-card">
+      <button className="enquiry-accordion-header" type="button" aria-expanded={newFollowupExpanded} onClick={() => setNewFollowupExpanded((value) => !value)}>
+        <div className="enquiry-accordion-title"><span className="enquiry-accordion-icon">+</span><div>
+          <h3>{editingId ? 'Edit Followup' : 'New Followup'}</h3><p>{editingId ? 'Update followup details' : 'Add a new followup for this enquiry'}</p>
+        </div></div><span className="enquiry-accordion-expand">{newFollowupExpanded ? '−' : '+'}</span>
+      </button>
+      {newFollowupExpanded && <div className="enquiry-accordion-content">
+        <form onSubmit={submit}>
+          <div className="enquiry-followup-form-grid">
+            <label>Candidate Name *<input required value={form.candidateName} readOnly /></label>
+            <label>Followup By *<input required value={form.followUpBy} onChange={(e) => setForm({ ...form, followUpBy: e.target.value })} /></label>
+            <label>Followup Date *<input type="date" required value={form.followUpDate.slice(0,10)} onChange={(e) => setForm({ ...form, followUpDate: e.target.value + 'T' + (form.followUpDate.slice(11,16) || '09:00') })} /></label>
+            <label>Status *<select required value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>{['Hot','Warm','Cold'].map((status) => <option key={status}>{status}</option>)}</select></label>
+            <label>Next Followup Date *<input type="date" required value={form.nextFollowupDate} onChange={(e) => setForm({ ...form, nextFollowupDate: e.target.value })} /></label>
+            <label className="enquiry-followup-description">Description *<textarea required rows={5} placeholder="Enter followup description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
+          </div>
+          <footer className="enquiry-followup-form-actions">
+            {editingId > 0 && <button className="enquiry-secondary-btn" type="button" disabled={saving} onClick={resetForm}>Cancel Edit</button>}
+            <button className="enquiry-primary-btn" type="submit" disabled={saving}>{saving ? 'Saving...' : editingId ? 'Update Followup' : 'Save Followup'}</button>
+          </footer>
+        </form>
+      </div>}
+    </section>
+    <section className="enquiry-followup-section enquiry-accordion-card">
+      <button className="enquiry-accordion-header" type="button" aria-expanded={previousFollowupsExpanded} onClick={() => setPreviousFollowupsExpanded((value) => !value)}>
+        <div className="enquiry-accordion-title"><span className="enquiry-accordion-icon enquiry-history-icon">◷</span><div>
+          <h3>Previous Followups</h3><p>Followup history for this enquiry</p>
+        </div></div><span className="enquiry-accordion-expand">{previousFollowupsExpanded ? '−' : '+'}</span>
+      </button>
+      {previousFollowupsExpanded && <div className="enquiry-accordion-content">
+        <div className="enquiry-table-scroll"><table className="enquiry-table">
+          <thead><tr><th>ID</th><th>Followup Date</th><th>Followup By</th><th>Status</th><th>Next Date</th><th>Description</th><th>Actions</th></tr></thead>
+          <tbody>{items.map((item, index) => {
+            const deleted = Boolean(item.deletedAt ?? item.deleted_at);
+            return <tr key={idOf(item) || index}><td>{idOf(item)}</td><td>{dateValue(String(item.followUpDate ?? item.follow_up_date ?? ''))}</td>
+              <td>{String(item.followUpBy ?? item.follow_up_by ?? '-')}</td><td>{String(item.status ?? '-')}</td>
+              <td>{dateValue(String(item.nextFollowupDate ?? item.next_followup_date ?? ''))}</td><td>{String(item.description ?? '-')}</td>
+              <td><div className="enquiry-actions">{deleted ? <button type="button" disabled={saving} onClick={() => void restore(item)}>Restore</button> : <>
+                <button type="button" disabled={saving} onClick={() => void edit(item)}>Edit</button><button type="button" disabled={saving} onClick={() => void remove(item)}>Delete</button>
+              </>}</div></td></tr>;
+          })}{!items.length && <tr><td colSpan={7} className="enquiry-empty">No follow-ups found.</td></tr>}</tbody>
+        </table></div>
+      </div>}
+    </section>
   </section>;
 }
