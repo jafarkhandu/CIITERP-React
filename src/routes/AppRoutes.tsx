@@ -4,6 +4,7 @@ import ProtectedRoute from '@/core/auth/ProtectedRoute';
 import { PERMISSIONS, type Permission } from '@/core/services/permissionService';
 import MainLayout from '@/layouts/MainLayout';
 import ComingSoon from '@/features/placeholder/ComingSoon';
+import Reports from '@/features/reports/Reports';
 import Login from '@/features/account/Login/Login';
 import ForgotPassword from '@/features/account/ForgotPassword/ForgotPassword';
 import ResetPassword from '@/features/account/ResetPassword/ResetPassword';
@@ -52,7 +53,7 @@ export default function AppRoutes() {
       <Route path="enquiry/followup/:enquiryId" element={guarded(<EnquiryFollowup />, { permission: PERMISSIONS.ENQUIRY_FOLLOWUP })} />
       <Route path="course" element={guarded(<Course />, { permission: PERMISSIONS.COURSE_VIEW })} />
       <Route path="function-management" element={guarded(<FunctionManagement />, { permission: PERMISSIONS.FUNCTION_MANAGEMENT_VIEW, roles: ['Admin', 'Super User'] })} />
-      <Route path="reports" element={guarded(soon('Reports', 4), { permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User'] })} />
+      <Route path="reports" element={guarded(<Reports />, { permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User'] })} />
       <Route path="settings" element={guarded(<Settings />)} />
       <Route path="student-registration" element={guarded(<StudentRegistration />)} />
       <Route path="student-details/:studentId" element={guarded(soon('Student Details', 3))} />
