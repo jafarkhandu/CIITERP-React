@@ -194,21 +194,26 @@ export default function MainLayout() {
       (menu) => !menu.permission || permissionService.hasPermission(menu.permission),
     );
 
-    return availableRoles.map((role) => {
-      const normalizedRole = role.roleName.trim().toLowerCase().replace(/[\s_-]+/g, '');
-      const menus = permissionVisibleMenus.filter((menu) => (
-        menu.route !== '/main/dashboard'
-        && (normalizedRole === 'superuser'
-          || menu.roles?.some((menuRole) => {
-            const normalizedMenuRole = menuRole.trim().toLowerCase().replace(/[\s_-]+/g, '');
+    return availableRoles
+      .filter((role) => {
+        const normalizedRole = role.roleName.trim().toLowerCase().replace(/[\\s_-]+/g, '');
+        // Super User is represented by the combined role groups; omit Student and HR.
+        return !['superuser', 'student', 'hr'].includes(normalizedRole);
+      })
+      .map((role) => {
+        const normalizedRole = role.roleName.trim().toLowerCase().replace(/[\\s_-]+/g, '');
+        const menus = permissionVisibleMenus.filter((menu) => (
+          menu.route !== '/main/dashboard'
+          && menu.roles?.some((menuRole) => {
+            const normalizedMenuRole = menuRole.trim().toLowerCase().replace(/[\\s_-]+/g, '');
             return normalizedMenuRole === normalizedRole
               || (normalizedRole === 'counciler' && normalizedMenuRole === 'counsellor')
               || (normalizedRole === 'counsellor' && normalizedMenuRole === 'counciler');
-          }))
-      ));
+          })
+        ));
 
-      return { ...role, menus };
-    });
+        return { ...role, menus };
+      });
   }, [availableRoles, permissionService.getPermissions().join('|')]);
 
   useEffect(() => {
