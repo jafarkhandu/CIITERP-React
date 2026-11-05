@@ -120,7 +120,20 @@ export default function StudentPayments() {
     setDetailsLoading(true);
     try {
       const details = await studentApi.getPaymentById(payment.paymentId);
-      setDetailPayment({ ...payment, ...details });
+      setDetailPayment({
+        ...payment,
+        ...details,
+        paymentId: Number(pick(details, 'paymentId', 'payment_id', 'payment_Id', 'PaymentId') ?? payment.paymentId),
+        paymentDate: String(pick(details, 'paymentDate', 'payment_date', 'payment_Date') ?? payment.paymentDate ?? ''),
+        paymentAmount: Number(pick(details, 'paymentAmount', 'payment_amount', 'payment_Amount') ?? payment.paymentAmount ?? 0),
+        paymentMode: String(pick(details, 'paymentMode', 'payment_mode', 'payment_Mode') ?? payment.paymentMode ?? ''),
+        paymentDescription: String(pick(details, 'paymentDescription', 'payment_description', 'payment_Description') ?? payment.paymentDescription ?? ''),
+        registrationId: Number(pick(details, 'registrationId', 'registration_id', 'registration_Id') ?? payment.registrationId ?? 0),
+        studentName: String(pick(details, 'studentName', 'student_name', 'student_Name') ?? payment.studentName ?? ''),
+        lastName: String(pick(details, 'lastName', 'last_name', 'last_Name') ?? payment.lastName ?? ''),
+        courseName: String(pick(details, 'courseName', 'course_name', 'course_Name') ?? payment.courseName ?? ''),
+        branchName: String(pick(details, 'branchName', 'branch_name', 'branch_Name') ?? payment.branchName ?? ''),
+      });
     } catch (err) {
       console.error('Payment detail lookup failed:', err);
       setDetailsError('Could not load the latest payment details. Showing the available list information.');
