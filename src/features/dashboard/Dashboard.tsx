@@ -7,6 +7,7 @@ import { enquiryApi, type EnquiryRecord } from '@/api/enquiryApi';
 import { courseApi, type TrainingCourseRecord } from '@/api/courseApi';
 import { batchApi, batchStudentApi, batchScheduleApi } from '@/api/batchApi';
 import { studentApi, trainerApi, type PaymentRow, type StudentRow } from '@/api/studentApi';
+import { directoryApi, type RoleOption } from '@/api/directoryApi';
 import './Dashboard.css';
 
 type DashboardCard = {
@@ -98,12 +99,13 @@ function buildBatchSummary(rows: Record<string, unknown>[]): BatchSummary[] {
 
 export default function Dashboard() {
   const session = useSession();
-  usePermissionVersion();
+  const permissionVersion = usePermissionVersion();
 
   const roles = useMemo(
     () => session.roles.map((role) => role.trim().toLowerCase()),
     [session.roles],
   );
+  const isSuperUser = roles.includes('super user');
   const isAdmin = roles.some((role) => ['admin', 'super user'].includes(role));
   const isCounsellor = roles.some((role) => ['counsellor', 'counciler'].includes(role));
   const isAccountant = roles.includes('accountant');
@@ -132,6 +134,10 @@ export default function Dashboard() {
 
   const [snapshot, setSnapshot] = useState<DashboardSnapshot>(emptySnapshot);
   const [loading, setLoading] = useState(true);
+  const [directoryRoles, setDirectoryRoles] = useState<RoleOption[]>([]);
+  const [directoryRolesLoading, setDirectoryRolesLoading] = useState(false);
+  const [directoryRolesError, setDirectoryRolesError] = useState('');
+  const [expandedRole, setExpandedRole] = useState('');
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
@@ -336,6 +342,86 @@ export default function Dashboard() {
     void loadDashboard();
   }, [loadDashboard]);
 
+
+  useEffect(() => {
+    if (!isSuperUser) return undefined;
+
+    let cancelled = false;
+    setDirectoryRolesLoading(true);
+    setDirectoryRolesError('');
+    directoryApi.getRoles()
+      .then((items) => {
+        if (cancelled) return;
+        const uniqueRoles = items.filter((role, index, all) =>
+          all.findIndex((item) => item.roleId === role.roleId) === index,
+        );
+        setDirectoryRoles(uniqueRoles);
+        setExpandedRole((current) => current || uniqueRoles[0]?.roleName || '');
+      })
+      .catch((error) => {
+        console.error('Dashboard role directory load failed:', error);
+        if (!cancelled) setDirectoryRolesError('Unable to load the role directory. Please retry.');
+      })
+      .finally(() => {
+        if (!cancelled) setDirectoryRolesLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [isSuperUser]);
+
+  const roleModuleGroups = useMemo(() => {
+    const roleKey = (value: string) => value.trim().toLowerCase().replace(/[\\s_-]+/g, '');
+    const modulesByRole: Record<string, string[]> = {
+      superuser: ['Employees', 'Leads', 'Enquiries', 'Courses', 'Manage Batch', 'Trainer Batches', 'Student Registration', 'Student Payments', 'Reports', 'Function Management', 'Email Services'],
+      admin: ['Employees', 'Leads', 'Enquiries', 'Courses', 'Manage Batch', 'Student Registration', 'Student Payments', 'Reports', 'Email Services'],
+      accountant: ['Student Registration', 'Student Payments'],
+      counsellor: ['Leads', 'Enquiries', 'Courses'],
+      counciler: ['Leads', 'Enquiries', 'Courses'],
+      groupleader: ['Manage Batch'],
+      trainer: ['Trainer Batches'],
+      developer: ['Courses'],
+    };
+    const moduleDetails: Record<string, DashboardCard> = {
+      Employees: { title: 'Employees', description: 'Manage system users and access.', route: '/main/user', icon: 'bi-people-fill', permission: PERMISSIONS.USER_VIEW },
+      Leads: { title: 'Leads', description: 'Manage leads and follow-ups.', route: '/main/lead', icon: 'bi-person-lines-fill', permission: PERMISSIONS.LEAD_VIEW },
+      Enquiries: { title: 'Enquiries', description: 'Manage candidate enquiries and follow-ups.', route: '/main/enquiry', icon: 'bi-chat-square-text-fill', permission: PERMISSIONS.ENQUIRY_VIEW },
+      Courses: { title: 'Courses', description: 'Manage training courses and fees.', route: '/main/course', icon: 'bi-journal-bookmark-fill', permission: PERMISSIONS.COURSE_VIEW },
+      'Manage Batch': { title: 'Manage Batch', description: 'Manage batches, schedules, and attendance.', route: '/main/batch', icon: 'bi-calendar2-week-fill', permission: PERMISSIONS.GROUP_LEADER_BATCH_VIEW },
+      'Trainer Batches': { title: 'Trainer Batches', description: 'View assigned training batches.', route: '/main/trainer', icon: 'bi-easel2-fill', permission: PERMISSIONS.TRAINER_BATCH_VIEW },
+      'Student Registration': { title: 'Student Registration', description: 'View student profiles and course registrations.', route: '/main/student-registration', icon: 'bi-mortarboard-fill' },
+      'Student Payments': { title: 'Student Payments', description: 'Review student payment history and collections.', route: '/main/student-payments', icon: 'bi-wallet2' },
+      Reports: { title: 'Reports', description: 'Review operational reports.', route: '/main/reports', icon: 'bi-graph-up-arrow', permission: PERMISSIONS.REPORTS_VIEW },
+      'Function Management': { title: 'Function Management', description: 'Configure permitted application modules.', route: '/main/function-management', icon: 'bi-sliders2', permission: PERMISSIONS.FUNCTION_MANAGEMENT_VIEW },
+      'Email Services': { title: 'Email Services', description: 'Manage system email services.', route: '/main/email-services', icon: 'bi-envelope-at-fill' },
+    };
+    return directoryRoles.map((role) => {
+      const configured = modulesByRole[roleKey(role.roleName)] || [];
+      const modules = configured
+        .map((name) => moduleDetails[name])
+        .filter((module): module is DashboardCard => Boolean(module))
+        .filter((module) => !module.permission || permissionService.hasPermission(module.permission));
+      return { ...role, modules };
+    });
+  }, [directoryRoles, session.roles, permissionVersion]);
+
+  const retryRoleDirectory = () => {
+    setDirectoryRolesError('');
+    setDirectoryRolesLoading(true);
+    directoryApi.getRoles()
+      .then((items) => {
+        const uniqueRoles = items.filter((role, index, all) =>
+          all.findIndex((item) => item.roleId === role.roleId) === index,
+        );
+        setDirectoryRoles(uniqueRoles);
+        setExpandedRole((current) => current || uniqueRoles[0]?.roleName || '');
+      })
+      .catch((error) => {
+        console.error('Dashboard role directory retry failed:', error);
+        setDirectoryRolesError('Unable to load the role directory. Please retry.');
+      })
+      .finally(() => setDirectoryRolesLoading(false));
+  };
+
   const roleLabel = session.roleName || session.roles.join(' · ') || 'User';
   const hasLiveData = snapshot.metrics.length > 0;
   const chartMax = Math.max(...snapshot.pipeline.map((item) => item.value), 1);
@@ -467,26 +553,69 @@ export default function Dashboard() {
 
       <section className="dashboard-quick-section">
         <div className="dashboard-section-heading">
-          <div><span>WORKSPACE</span><h2>Quick access</h2></div>
-          <small>{cards.length} permitted modules</small>
+          <div><span>WORKSPACE</span><h2>{isSuperUser ? 'Role-wise module access' : 'Quick access'}</h2></div>
+          <small>{isSuperUser ? `${directoryRoles.length} roles in the system` : `${cards.length} permitted modules`}</small>
         </div>
-        <div className="dashboard-quick-grid">
-          {cards.map((card) => (
-            <Link className="dashboard-quick-card" to={card.route} key={card.route}>
-              <span><i className={`bi ${card.icon}`} aria-hidden="true" /></span>
-              <div><strong>{card.title}</strong><small>{card.description}</small></div>
-              <i className="bi bi-arrow-up-right" aria-hidden="true" />
-            </Link>
-          ))}
-          {cards.length === 0 && <p className="dashboard-empty">No modules are currently available for this account.</p>}
-          {permissionService.hasPermission(PERMISSIONS.FUNCTION_MANAGEMENT_VIEW) && (
-            <Link className="dashboard-quick-card dashboard-quick-settings" to="/main/function-management">
-              <span><i className="bi bi-sliders2" aria-hidden="true" /></span>
-              <div><strong>Function Management</strong><small>Configure permitted application modules.</small></div>
-              <i className="bi bi-arrow-up-right" aria-hidden="true" />
-            </Link>
-          )}
-        </div>
+        {isSuperUser ? (
+          <div className="dashboard-role-groups">
+            {directoryRolesLoading && directoryRoles.length === 0 ? (
+              <div className="dashboard-role-empty" role="status">Loading roles from the role directory…</div>
+            ) : directoryRolesError ? (
+              <div className="dashboard-role-empty" role="alert">
+                <span>{directoryRolesError}</span>
+                <button type="button" onClick={retryRoleDirectory}>Retry</button>
+              </div>
+            ) : roleModuleGroups.length > 0 ? roleModuleGroups.map((group) => {
+              const isExpanded = expandedRole === group.roleName;
+              return (
+                <article className={`dashboard-role-group${isExpanded ? ' is-expanded' : ''}`} key={group.roleId}>
+                  <button
+                    type="button"
+                    className="dashboard-role-trigger"
+                    onClick={() => setExpandedRole(isExpanded ? '' : group.roleName)}
+                    aria-expanded={isExpanded}
+                    aria-controls={`role-modules-${group.roleId}`}
+                  >
+                    <span className="dashboard-role-symbol"><i className="bi bi-person-badge-fill" aria-hidden="true" /></span>
+                    <span className="dashboard-role-copy"><strong>{group.roleName}</strong><small>{group.modules.length} available modules</small></span>
+                    <i className={`bi ${isExpanded ? 'bi-chevron-up' : 'bi-chevron-down'} dashboard-role-chevron`} aria-hidden="true" />
+                  </button>
+                  {isExpanded && (
+                    <div className="dashboard-role-modules" id={`role-modules-${group.roleId}`}>
+                      {group.modules.length > 0 ? group.modules.map((module) => (
+                        <Link className="dashboard-quick-card" to={module.route} key={module.route}>
+                          <span><i className={`bi ${module.icon}`} aria-hidden="true" /></span>
+                          <div><strong>{module.title}</strong><small>{module.description}</small></div>
+                          <i className="bi bi-arrow-up-right" aria-hidden="true" />
+                        </Link>
+                      )) : <p className="dashboard-empty">No module shortcuts are configured for this role.</p>}
+                    </div>
+                  )}
+                </article>
+              );
+            }) : (
+              <div className="dashboard-role-empty">No roles were returned by the role directory.</div>
+            )}
+          </div>
+        ) : (
+          <div className="dashboard-quick-grid">
+            {cards.map((card) => (
+              <Link className="dashboard-quick-card" to={card.route} key={card.route}>
+                <span><i className={`bi ${card.icon}`} aria-hidden="true" /></span>
+                <div><strong>{card.title}</strong><small>{card.description}</small></div>
+                <i className="bi bi-arrow-up-right" aria-hidden="true" />
+              </Link>
+            ))}
+            {cards.length === 0 && <p className="dashboard-empty">No modules are currently available for this account.</p>}
+            {permissionService.hasPermission(PERMISSIONS.FUNCTION_MANAGEMENT_VIEW) && (
+              <Link className="dashboard-quick-card dashboard-quick-settings" to="/main/function-management">
+                <span><i className="bi bi-sliders2" aria-hidden="true" /></span>
+                <div><strong>Function Management</strong><small>Configure permitted application modules.</small></div>
+                <i className="bi bi-arrow-up-right" aria-hidden="true" />
+              </Link>
+            )}
+          </div>
+        )}
       </section>
     </main>
   );
