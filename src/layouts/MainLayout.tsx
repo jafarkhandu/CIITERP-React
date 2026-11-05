@@ -134,6 +134,10 @@ export default function MainLayout() {
       return;
     }
 
+    // Login already resolves and persists the current user. Avoid downloading the
+    // complete users list again on every workspace mount when that session exists.
+    if (userSession.currentUser) return;
+
     let cancelled = false;
     getAllUsers()
       .then((users) => {
