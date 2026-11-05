@@ -38,8 +38,13 @@ export interface SmtpSettings {
   password?: string;
 }
 
-export interface EmailAutomationRule { key: string; label: string; enabled: boolean; description: string; }\n\nexport const emailApi = {
-  sendManualEmail: async (payload: { recipient: string; subject: string; htmlBody: string }) => (await http.post(`${base}/send`, payload)).data,\n  getAutomationRules: async () => (await http.get(`${base}/automation-rules`)).data as EmailAutomationRule[],\n  saveAutomationRules: async (rules: EmailAutomationRule[]) => (await http.put(`${base}/automation-rules`, rules)).data,\n  getSmtpSettings: async () => (await http.get(`${base}/settings`)).data as SmtpSettings,
+export interface EmailAutomationRule { key: string; label: string; enabled: boolean; description: string; }
+
+export const emailApi = {
+  sendManualEmail: async (payload: { recipient: string; subject: string; htmlBody: string }) => (await http.post(`${base}/send`, payload)).data,
+  getAutomationRules: async () => (await http.get(`${base}/automation-rules`)).data as EmailAutomationRule[],
+  saveAutomationRules: async (rules: EmailAutomationRule[]) => (await http.put(`${base}/automation-rules`, rules)).data,
+  getSmtpSettings: async () => (await http.get(`${base}/settings`)).data as SmtpSettings,
   saveSmtpSettings: async (settings: SmtpSettings) => (await http.put(`${base}/settings`, settings)).data,
   testSmtp: async (recipient: string) => (await http.post(`${base}/settings/test`, { recipient })).data,
   getTemplates: async () => (await http.get(`${base}/templates`)).data as EmailTemplate[],
