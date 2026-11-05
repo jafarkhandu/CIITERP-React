@@ -139,7 +139,12 @@ http.interceptors.request.use(async (config) => {
 type RetryConfig = InternalAxiosRequestConfig & { _retried?: boolean };
 
 http.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.config.method?.toLowerCase() !== 'get') {
+      getCache.clear();
+    }
+    return response;
+  },
   async (error: AxiosError) => {
     const config = error.config as RetryConfig | undefined;
     const url = config?.url ?? '';
