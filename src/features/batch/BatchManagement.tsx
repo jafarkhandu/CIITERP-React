@@ -261,9 +261,13 @@ export default function BatchManagement() {
     try {
       const outcomes = await Promise.allSettled(selected.map((item) => batchStudentApi.create({ batch_id: studentBatch.batchId, registration_id: item.registrationId })));
       const successes = outcomes.filter((item) => item.status === 'fulfilled').length;
-      if (successes !== selected.length) setError(`${successes} of ${selected.length} students added. Some requests failed; check eligible list and retry.`);
-      else setSuccess(`${successes} students added to ${studentBatch.batchName}.`);
-      setStudentBatch(null); await load();
+      const partialFailure = successes !== selected.length
+        ? `${successes} of ${selected.length} students added. Some requests failed; check eligible list and retry.`
+        : '';
+      if (!partialFailure) setSuccess(`${successes} students added to ${studentBatch.batchName}.`);
+      setStudentBatch(null);
+      await load();
+      if (partialFailure) setError(partialFailure);
     } catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to add students.'); }
     finally { setSaving(false); }
   }
@@ -274,7 +278,8 @@ export default function BatchManagement() {
     try {
       const [scheduleRows, students] = await Promise.all([batchScheduleApi.getByBatch(row.batchId), batchStudentApi.getByBatch(row.batchId)]);
       setSchedules(scheduleRows);
-      setAttendanceScheduleId(Number(read(scheduleRows[0] ?? {}, 'batch_schedule_id', 'batchScheduleId', 'id') ?? 0));
+      const firstActiveSchedule = scheduleRows.find((item) => !deleted(item));
+      setAttendanceScheduleId(Number(read(firstActiveSchedule ?? {}, 'batch_schedule_id', 'batchScheduleId', 'id') ?? 0));
       setAttendanceStudents(students.map((item) => ({
         ...item, batchStudentId: Number(read(item, 'batch_student_id', 'batchStudentId', 'id') ?? 0),
         registrationId: Number(read(item, 'registration_id', 'registrationId') ?? 0),
