@@ -220,7 +220,8 @@ export default function StudentRegistration() {
     {modal === 'new' && <div className="ciit-registration-form-page"><div className="ciit-page-heading mb-3"><div><span className="ciit-section-eyebrow">CIIT · STUDENT MANAGEMENT</span><h1 className="h3 mb-1">Register New Student</h1><p className="text-muted mb-0">Create a student profile and enroll in a course.</p></div><button type="button" className="btn btn-outline-secondary" disabled={saving} onClick={() => setModal(null)}>Back to Student Registration</button></div><div className="card ciit-data-card"><div className="card-body">
       {dropdownLoading && <div className="alert alert-info py-2">Loading branches, qualifications and courses...</div>}
       <form onSubmit={submitNew}>
-        <div className="ciit-form-section"><h3>Personal Information</h3><div className="row g-3">
+        <div className="ciit-registration-columns">
+        <div className="ciit-form-section ciit-registration-personal"><h3>Personal Information</h3><div className="row g-2">
           <div className="col-12"><label className="form-label">Search Enquiry Student</label><select className="form-select" value={selectedEnquiryId} onChange={(e) => prefillFromEnquiry(Number(e.target.value))}><option value={0}>Select enquiry to auto-fill details (optional)</option>{enquiries.map((item) => <option key={item.enquiryId} value={item.enquiryId}>{item.candidateName} · {item.mobileNumber}</option>)}</select><small className="text-muted">Selecting an enquiry fills available personal details. You can edit them before registering.</small></div>
           <div className="col-md-6"><label className="form-label">First Name *</label><input className="form-control" required value={form.studentName} onChange={(e) => setField('studentName', e.target.value)} /></div>
           <div className="col-md-6"><label className="form-label">Last Name *</label><input className="form-control" required value={form.lastName} onChange={(e) => setField('lastName', e.target.value)} /></div>
@@ -241,7 +242,7 @@ export default function StudentRegistration() {
           <div className="col-12"><label className="form-label">Local Address</label><textarea className="form-control" rows={2} value={form.localAddress} onChange={(e) => setField('localAddress', e.target.value)} /></div>
           <div className="col-12"><label className="form-label">Permanent Address</label><textarea className="form-control" rows={2} value={form.permanentAddress} onChange={(e) => setField('permanentAddress', e.target.value)} /></div>
         </div></div>
-        <div className="ciit-form-section mt-4"><h3>Course & Fee Details</h3><div className="row g-3">
+        <div className="ciit-form-section ciit-registration-course"><h3>Course & Fee Details</h3><div className="row g-2">
           <div className="col-md-6"><label className="form-label">Branch *</label><select className="form-select" required value={form.branchId} onChange={(e) => setField('branchId', Number(e.target.value))}><option value={0}>Select branch</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
           <div className="col-md-6"><label className="form-label">Course *</label><select className="form-select" required value={form.courseId} onChange={(e) => { const id = Number(e.target.value); setField('courseId', id); void loadFees(id, form.discount); }}><option value={0}>Select course</option>{courses.map((c) => <option key={c.courseId} value={c.courseId}>{c.courseName}</option>)}</select></div>
           <div className="col-md-4"><label className="form-label">Registration Date *</label><input type="date" required className="form-control" value={form.registrationDate} onChange={(e) => setField('registrationDate', e.target.value)} /></div>
@@ -252,6 +253,7 @@ export default function StudentRegistration() {
           <div className="col-md-4"><label className="form-label">Payment Mode</label><select className="form-select" value={form.paymentMode} onChange={(e) => setField('paymentMode', e.target.value)}><option>Cash</option><option>UPI</option><option>Online</option><option>Card</option><option>Bank Transfer</option><option>Cheque</option></select></div>
           <div className="col-md-4"><label className="form-label">Payment Description</label><input className="form-control" value={form.paymentDescription} onChange={(e) => setField('paymentDescription', e.target.value)} /></div>
         </div></div>
+        </div>
         {error && <div className="alert alert-danger mt-3">{error}</div>}<div className="d-flex justify-content-end gap-2 mt-4"><button type="button" className="btn btn-light" disabled={saving} onClick={() => setModal(null)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={saving || dropdownLoading || feeLoading}>{saving ? 'Registering...' : 'Register Student'}</button></div>
       </form>
     </div></div></div>}
