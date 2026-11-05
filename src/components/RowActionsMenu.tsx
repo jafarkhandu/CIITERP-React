@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 export type RowActionItem = {
@@ -25,7 +25,7 @@ export default function RowActionsMenu({ actions, label = 'Row actions', disable
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  function updatePosition() {
+  const updatePosition = useCallback(() => {
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return;
     const top = window.innerHeight - rect.bottom < MENU_HEIGHT + 12
@@ -33,7 +33,7 @@ export default function RowActionsMenu({ actions, label = 'Row actions', disable
       : rect.bottom + 6;
     const left = Math.min(window.innerWidth - MENU_WIDTH - 8, Math.max(8, rect.right - MENU_WIDTH));
     setPosition({ top, left });
-  }
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -61,7 +61,7 @@ export default function RowActionsMenu({ actions, label = 'Row actions', disable
       window.removeEventListener('resize', reposition);
       window.removeEventListener('scroll', reposition, true);
     };
-  }, [open]);
+  }, [open, updatePosition]);
 
   if (!actions.length) return null;
 
