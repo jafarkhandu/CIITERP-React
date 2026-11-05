@@ -127,6 +127,12 @@ export const studentApi = {
     return (data?.data ?? data?.result ?? data) as Record<string, unknown>;
   },
 
+  async getRegistrationById(studentId: number): Promise<unknown> {
+    if (!Number.isInteger(studentId) || studentId <= 0) throw new Error('studentId must be a positive integer.');
+    const { data } = await http.get(`${registrationBase}/get-by-id/${studentId}`);
+    return data;
+  },
+
   async getRegistrations(): Promise<Record<string, unknown>[]> {
     const { data } = await http.get(`${API_ENDPOINTS.studentRegistration}/get-all`);
     return extractRows(data);
@@ -148,6 +154,28 @@ export const studentApi = {
       { responseType: 'blob' },
     );
     return response.data as Blob;
+  },
+
+  async getPaymentById(paymentId: number): Promise<PaymentRow> {
+    if (!Number.isInteger(paymentId) || paymentId <= 0) throw new Error('paymentId must be a positive integer.');
+    const { data } = await http.get(`${paymentBase}/get-by-id/${paymentId}`);
+    return (data?.data ?? data?.result ?? data) as PaymentRow;
+  },
+
+  async updatePayment(paymentId: number, payload: PaymentRequest): Promise<unknown> {
+    if (!Number.isInteger(paymentId) || paymentId <= 0) throw new Error('paymentId must be a positive integer.');
+    const { data } = await http.put(`${paymentBase}/update/${paymentId}`, payload);
+    return data;
+  },
+
+  async removePayment(paymentId: number): Promise<void> {
+    if (!Number.isInteger(paymentId) || paymentId <= 0) throw new Error('paymentId must be a positive integer.');
+    await http.delete(`${paymentBase}/delete/${paymentId}`);
+  },
+
+  async restorePayment(paymentId: number): Promise<void> {
+    if (!Number.isInteger(paymentId) || paymentId <= 0) throw new Error('paymentId must be a positive integer.');
+    await http.put(`${paymentBase}/restore/${paymentId}`, {});
   },
 
   async getPayments(): Promise<PaymentRow[]> {
