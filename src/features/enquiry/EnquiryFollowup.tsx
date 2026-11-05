@@ -13,7 +13,7 @@ function dateValue(value?: string): string {
   return Number.isNaN(date.getTime()) ? String(value).slice(0, 10) : date.toLocaleDateString('en-GB');
 }
 function idOf(item: Record<string, unknown>): number {
-  return Number(item.followupId ?? item.followup_id ?? item.enquiryFollowupId ?? item.enquiry_followup_id ?? item.id ?? 0);
+  return Number(item.followupId ?? item.followup_id ?? item.followUpId ?? item.FollowupId ?? item.enquiryFollowupId ?? item.enquiry_followup_id ?? item.id ?? 0);
 }
 
 export default function EnquiryFollowup() {
@@ -205,8 +205,8 @@ export default function EnquiryFollowup() {
           <thead><tr><th>ID</th><th>Followup Date</th><th>Followup By</th><th>Status</th><th>Next Date</th><th>Description</th><th>Actions</th></tr></thead>
           <tbody>{items.map((item, index) => {
             const deleted = Boolean(item.deletedAt ?? item.deleted_at);
-            return <tr key={idOf(item) || index}><td>{idOf(item)}</td><td>{dateValue(String(item.followUpDate ?? item.follow_up_date ?? ''))}</td>
-              <td>{String(item.followUpBy ?? item.follow_up_by ?? '-')}</td><td>{String(item.status ?? '-')}</td>
+            return <tr key={idOf(item) || index}><td>{idOf(item)}</td><td>{dateValue(String(item.followUpDate ?? item.follow_up_date ?? item.followupDate ?? ''))}</td>
+              <td>{String(item.followUpBy ?? item.follow_up_by ?? item.followupBy ?? '-')}</td><td>{String(item.status ?? '-')}</td>
               <td>{dateValue(String(item.nextFollowupDate ?? item.next_followup_date ?? ''))}</td><td>{String(item.description ?? '-')}</td>
               <td><div className="enquiry-actions">{deleted ? <button type="button" disabled={saving} onClick={() => void restore(item)}>Restore</button> : <>
                 <button type="button" disabled={saving} onClick={() => void edit(item)}>Edit</button><button type="button" disabled={saving} onClick={() => void remove(item)}>Delete</button>
