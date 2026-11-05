@@ -49,6 +49,7 @@ export default function StudentRegistration() {
   const [selectedEnquiryId, setSelectedEnquiryId] = useState(0);
   const [search, setSearch] = useState('');
   const [regSearch, setRegSearch] = useState('');
+  const [expandedStudentKey, setExpandedStudentKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dropdownLoading, setDropdownLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -101,6 +102,20 @@ export default function StudentRegistration() {
     const q = regSearch.trim().toLowerCase();
     return registrations.filter((r) => !q || [pick(r, 'registrationId', 'registration_Id'), pick(r, 'studentName', 'student_Name'), pick(r, 'courseName', 'course_Name'), pick(r, 'registrationCode', 'registration_Code')].some((v) => String(v ?? '').toLowerCase().includes(q)));
   }, [registrations, regSearch]);
+
+  const groupedRegs = useMemo(() => {
+    const groups = new Map<string, { key: string; studentName: string; lastName: string; records: Row[] }>();
+    visibleRegs.forEach((registration) => {
+      const studentId = pick(registration, 'studentId', 'student_Id', 'student_id');
+      const studentName = String(pick(registration, 'studentName', 'student_Name', 'student_name') ?? 'Unknown student').trim();
+      const lastName = String(pick(registration, 'lastName', 'last_Name', 'last_name') ?? '').trim();
+      const key = studentId != null && studentId !== '' ? 'student-' + studentId : 'name-' + (studentName + ' ' + lastName).toLowerCase();
+      const group = groups.get(key);
+      if (group) group.records.push(registration);
+      else groups.set(key, { key, studentName, lastName, records: [registration] });
+    });
+    return Array.from(groups.values());
+  }, [visibleRegs]);
 
   async function openForm(kind: 'new' | 'existing', studentId = 0) {
     setError(''); setSuccess(''); setFeeInfo(null); setModal(kind);
