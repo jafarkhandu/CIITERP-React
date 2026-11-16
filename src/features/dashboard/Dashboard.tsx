@@ -213,6 +213,22 @@ export default function Dashboard() {
 
     await Promise.all(jobs);
 
+    // Read the callback-populated values through a typed snapshot after all jobs settle.
+    // TypeScript cannot track assignments made inside the request callbacks above.
+    const loaded = {
+      leads: leads as LeadRecord[] | null,
+      enquiries: enquiries as EnquiryRecord[] | null,
+      leadFollowups: leadFollowups as LeadFollowupRecord[] | null,
+      courses: courses as TrainingCourseRecord[] | null,
+      batches: batches as Record<string, unknown>[] | null,
+      batchStudents: batchStudents as Record<string, unknown>[] | null,
+      schedules: schedules as Record<string, unknown>[] | null,
+      assignedBatches: assignedBatches as Record<string, unknown>[] | null,
+      students: students as StudentRow[] | null,
+      registrations: registrations as Record<string, unknown>[] | null,
+      payments: payments as PaymentRow[] | null,
+    };
+
     const metrics: Metric[] = [];
     const pipeline: ChartItem[] = [];
     const paymentTotals = new Map<string, number>();
