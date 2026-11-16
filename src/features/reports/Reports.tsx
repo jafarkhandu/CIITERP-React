@@ -73,7 +73,7 @@ export default function Reports() {
       else failedSections.push('enquiries');
 
       if (enquiryFollowupResult.status === 'fulfilled') {
-        setEnquiryFollowups((enquiryFollowupResult.value as FollowupRow[]).filter(active));
+        setEnquiryFollowups(enquiryFollowupResult.value.filter(active));
       } else failedSections.push('enquiry follow-ups');
 
       if (userResult.status === 'fulfilled') setUsers(userResult.value);
@@ -238,10 +238,10 @@ export default function Reports() {
     doc.setFontSize(9);
     doc.text(`Period: ${dateFrom || 'All'} to ${dateTo || 'All'}`, 14, 22);
     const rows = lead ? latestLeadFollowups.map((row, index) => [
-      index + 1, row.leadId, row.candidateName, row.followUpBy, formatDate(row.followUpDate), row.status || '',
+      index + 1, row.leadId ?? '', row.candidateName ?? '', row.followUpBy ?? '', formatDate(row.followUpDate), row.status || '',
       row.description || '', formatDate(row.nextFollowupDate),
     ]) : latestEnquiryFollowups.map((row, index) => [
-      index + 1, row.candidateName, row.followUpBy, formatDate(row.followUpDate ?? row.followupDate), row.description || '',
+      index + 1, row.candidateName ?? '', row.followUpBy ?? '', formatDate(row.followUpDate ?? row.followupDate), row.description || '',
     ]);
     autoTable(doc, {
       head: [lead ? ['SR', 'Lead ID', 'Candidate', 'Counsellor', 'Last Follow-up', 'Status', 'Last Comment', 'Next Follow-up']
