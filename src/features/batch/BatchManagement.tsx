@@ -87,7 +87,7 @@ export default function BatchManagement() {
       const allBatchStudents = await batchStudentApi.getAll();
       const nextCounts: Record<number, number | null> = {};
       allBatchStudents.forEach((student) => {
-        const nestedBatch = student.batch && typeof student.batch === 'object'
+        const nestedBatch: Record<string, unknown> = student.batch && typeof student.batch === 'object'
           ? student.batch as Record<string, unknown>
           : {};
         const batchId = Number(read(student, 'batch_id', 'batchId') ?? nestedBatch.batch_id ?? nestedBatch.batchId ?? 0);
