@@ -39,14 +39,15 @@ function withShortGetCache(config: InternalAxiosRequestConfig): InternalAxiosReq
   const cacheKey = authorization + ':' + axios.getUri(config) + ':' + (config.responseType ?? 'json');
   const originalAdapter = axios.getAdapter(axios.defaults.adapter) as AxiosAdapter;
 
-  config.adapter = async (requestConfig) => {
+  config.adapter = async (requestConfig): Promise<AxiosResponse> => {
     const now = Date.now();
     pruneGetCache(now);
     const cached = getCache.get(cacheKey);
 
     if (cached && cached.expiresAt > now) {
-      const response = cached.response ?? await cached.pending;
-      return { ...response, config: requestConfig };
+      const response = cached.response ?? (cached.pending ? await cached.pending : undefined);
+      if (response) return { ...response, config: requestConfig };
+      getCache.delete(cacheKey);
     }
 
     const pending = originalAdapter(requestConfig)
