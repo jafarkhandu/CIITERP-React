@@ -22,7 +22,10 @@ const formatDate = (value: unknown): string => {
   const date = parseDate(value);
   return date ? date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 };
-const active = (row: { deletedAt?: string | null }) => !row.deletedAt;
+const active = (row: unknown): boolean => {
+  if (!row || typeof row !== 'object') return true;
+  return !(row as Record<string, unknown>).deletedAt;
+};
 const completedStatus = /completed|complete|done|closed/i;
 const lostStatus = /lost|not interested/i;
 

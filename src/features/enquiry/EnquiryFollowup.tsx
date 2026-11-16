@@ -12,8 +12,9 @@ function dateValue(value?: string): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? String(value).slice(0, 10) : date.toLocaleDateString('en-GB');
 }
-function idOf(item: Record<string, unknown>): number {
-  return Number(item.followupId ?? item.followup_id ?? item.followUpId ?? item.FollowupId ?? item.enquiryFollowupId ?? item.enquiry_followup_id ?? item.id ?? 0);
+function idOf(item: EnquiryFollowupRecord | Record<string, unknown>): number {
+  const record = item as unknown as Record<string, unknown>;
+  return Number(record.followupId ?? record.followup_id ?? record.followUpId ?? record.FollowupId ?? record.enquiryFollowupId ?? record.enquiry_followup_id ?? record.id ?? 0);
 }
 
 export default function EnquiryFollowup() {
@@ -51,7 +52,14 @@ export default function EnquiryFollowup() {
       const merged = new Map<number, Record<string, unknown>>();
       [...byEnquiry, ...allForEnquiry].forEach((item) => {
         const id = idOf(item);
-        if (id > 0) merged.set(id, { ...item, followupId: id, enquiryId: Number(item.enquiryId ?? (item as any).enquiry_id ?? enquiryId), deletedAt: item.deletedAt ?? (item as any).deleted_at ?? (((item as any).is_deleted ?? (item as any).isDeleted ?? (item as any).deleted) ? 'deleted' : null) });
+        const record = item as unknown as Record<string, unknown>;
+        if (id > 0) merged.set(id, {
+          ...record,
+          followupId: id,
+          enquiryId: Number(record.enquiryId ?? record.enquiry_id ?? enquiryId),
+          deletedAt: record.deletedAt ?? record.deleted_at
+            ?? ((record.is_deleted ?? record.isDeleted ?? record.deleted) ? 'deleted' : null),
+        });
       });
       setEnquiry(record);
       setItems(Array.from(merged.values()));
