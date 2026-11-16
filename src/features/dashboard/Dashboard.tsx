@@ -213,6 +213,22 @@ export default function Dashboard() {
 
     await Promise.all(jobs);
 
+    // Read the callback-populated values through a typed snapshot after all jobs settle.
+    // TypeScript cannot track assignments made inside the request callbacks above.
+    const loaded = {
+      leads: leads as LeadRecord[] | null,
+      enquiries: enquiries as EnquiryRecord[] | null,
+      leadFollowups: leadFollowups as LeadFollowupRecord[] | null,
+      courses: courses as TrainingCourseRecord[] | null,
+      batches: batches as Record<string, unknown>[] | null,
+      batchStudents: batchStudents as Record<string, unknown>[] | null,
+      schedules: schedules as Record<string, unknown>[] | null,
+      assignedBatches: assignedBatches as Record<string, unknown>[] | null,
+      students: students as StudentRow[] | null,
+      registrations: registrations as Record<string, unknown>[] | null,
+      payments: payments as PaymentRow[] | null,
+    };
+
     const metrics: Metric[] = [];
     const pipeline: ChartItem[] = [];
     const paymentTotals = new Map<string, number>();
@@ -220,76 +236,76 @@ export default function Dashboard() {
     let batchCards: BatchSummary[] = [];
 
     if (isAdmin) {
-      if (leads !== null) {
-        metrics.push({ label: 'Total Leads', value: leads.length, detail: 'Active lead records', icon: 'bi-person-lines-fill', tone: 'blue', route: '/main/lead' });
-        pipeline.push({ label: 'Leads', value: leads.length });
+      if (loaded.leads !== null) {
+        metrics.push({ label: 'Total Leads', value: loaded.leads.length, detail: 'Active lead records', icon: 'bi-person-lines-fill', tone: 'blue', route: '/main/lead' });
+        pipeline.push({ label: 'Leads', value: loaded.leads.length });
       }
-      if (enquiries !== null) {
-        metrics.push({ label: 'Enquiries', value: enquiries.length, detail: 'Candidate enquiries', icon: 'bi-chat-square-text', tone: 'teal', route: '/main/enquiry' });
-        pipeline.push({ label: 'Enquiries', value: enquiries.length });
+      if (loaded.enquiries !== null) {
+        metrics.push({ label: 'Enquiries', value: loaded.enquiries.length, detail: 'Candidate enquiries', icon: 'bi-chat-square-text', tone: 'teal', route: '/main/enquiry' });
+        pipeline.push({ label: 'Enquiries', value: loaded.enquiries.length });
       }
-      if (students !== null) {
-        metrics.push({ label: 'Students', value: students.length, detail: 'Registered student profiles', icon: 'bi-mortarboard', tone: 'violet', route: '/main/student-registration' });
+      if (loaded.students !== null) {
+        metrics.push({ label: 'Students', value: loaded.students.length, detail: 'Registered student profiles', icon: 'bi-mortarboard', tone: 'violet', route: '/main/student-registration' });
       }
-      if (payments !== null) {
-        const total = payments.reduce((sum, row) => sum + numberValue(row.paymentAmount), 0);
-        metrics.push({ label: 'Total Collected', value: total, detail: `${formatCount(payments.length)} payment records`, icon: 'bi-wallet2', tone: 'amber', route: '/main/student-payments', format: 'currency' });
+      if (loaded.payments !== null) {
+        const total = loaded.payments.reduce((sum, row) => sum + numberValue(row.paymentAmount), 0);
+        metrics.push({ label: 'Total Collected', value: total, detail: `${formatCount(loaded.payments.length)} payment records`, icon: 'bi-wallet2', tone: 'amber', route: '/main/student-payments', format: 'currency' });
       }
-      if (courses !== null) {
-        metrics.push({ label: 'Courses', value: courses.length, detail: 'Available course records', icon: 'bi-journal-bookmark', tone: 'orange', route: '/main/course' });
+      if (loaded.courses !== null) {
+        metrics.push({ label: 'Courses', value: loaded.courses.length, detail: 'Available course records', icon: 'bi-journal-bookmark', tone: 'orange', route: '/main/course' });
       }
-      if (batches !== null) {
-        metrics.push({ label: 'Batches', value: batches.length, detail: 'Training batches', icon: 'bi-calendar2-week', tone: 'slate', route: '/main/batch' });
-        batchCards = buildBatchSummary(batches).slice(0, 4).map((batch) => ({ ...batch, route: '/main/batch' }));
+      if (loaded.batches !== null) {
+        metrics.push({ label: 'Batches', value: loaded.batches.length, detail: 'Training batches', icon: 'bi-calendar2-week', tone: 'slate', route: '/main/batch' });
+        batchCards = buildBatchSummary(loaded.batches).slice(0, 4).map((batch) => ({ ...batch, route: '/main/batch' }));
       }
     } else if (isAccountant) {
-      if (students !== null) metrics.push({ label: 'Students', value: students.length, detail: 'Registered student profiles', icon: 'bi-mortarboard', tone: 'violet', route: '/main/student-registration' });
-      if (registrations !== null) metrics.push({ label: 'Course Registrations', value: registrations.length, detail: 'Enrollment records', icon: 'bi-journal-check', tone: 'blue', route: '/main/student-registration' });
-      if (payments !== null) {
-        const total = payments.reduce((sum, row) => sum + numberValue(row.paymentAmount), 0);
-        metrics.push({ label: 'Payment Records', value: payments.length, detail: 'Transactions in the payment register', icon: 'bi-receipt', tone: 'teal', route: '/main/student-payments' });
+      if (loaded.students !== null) metrics.push({ label: 'Students', value: loaded.students.length, detail: 'Registered student profiles', icon: 'bi-mortarboard', tone: 'violet', route: '/main/student-registration' });
+      if (loaded.registrations !== null) metrics.push({ label: 'Course Registrations', value: loaded.registrations.length, detail: 'Enrollment records', icon: 'bi-journal-check', tone: 'blue', route: '/main/student-registration' });
+      if (loaded.payments !== null) {
+        const total = loaded.payments.reduce((sum, row) => sum + numberValue(row.paymentAmount), 0);
+        metrics.push({ label: 'Payment Records', value: loaded.payments.length, detail: 'Transactions in the payment register', icon: 'bi-receipt', tone: 'teal', route: '/main/student-payments' });
         metrics.push({ label: 'Total Collected', value: total, detail: 'Sum of loaded payment amounts', icon: 'bi-wallet2', tone: 'amber', route: '/main/student-payments', format: 'currency' });
       }
     } else if (isTrainer) {
-      if (assignedBatches !== null) {
-        batchCards = buildBatchSummary(assignedBatches).slice(0, 6);
-        metrics.push({ label: 'Assigned Batches', value: assignedBatches.length, detail: 'Batches returned for your trainer account', icon: 'bi-easel2', tone: 'blue', route: '/main/trainer' });
-        const studentCountIsAvailable = assignedBatches.some((row) => field(row, 'studentCount', 'student_count', 'totalStudents') !== undefined);
+      if (loaded.assignedBatches !== null) {
+        batchCards = buildBatchSummary(loaded.assignedBatches).slice(0, 6);
+        metrics.push({ label: 'Assigned Batches', value: loaded.assignedBatches.length, detail: 'Batches returned for your trainer account', icon: 'bi-easel2', tone: 'blue', route: '/main/trainer' });
+        const studentCountIsAvailable = loaded.assignedBatches.some((row) => field(row, 'studentCount', 'student_count', 'totalStudents') !== undefined);
         if (studentCountIsAvailable) {
-          const studentTotal = assignedBatches.reduce((sum, row) => sum + numberValue(field(row, 'studentCount', 'student_count', 'totalStudents')), 0);
+          const studentTotal = loaded.assignedBatches.reduce((sum, row) => sum + numberValue(field(row, 'studentCount', 'student_count', 'totalStudents')), 0);
           metrics.push({ label: 'Assigned Students', value: studentTotal, detail: 'Sum of student counts supplied by the batch API', icon: 'bi-people', tone: 'teal', route: '/main/trainer' });
         }
       }
     } else if (isGroupLeader) {
-      if (batches !== null) {
-        metrics.push({ label: 'Batches', value: batches.length, detail: 'Managed training batches', icon: 'bi-calendar2-week', tone: 'blue', route: '/main/batch' });
-        batchCards = buildBatchSummary(batches).slice(0, 6).map((batch) => ({ ...batch, route: '/main/batch' }));
+      if (loaded.batches !== null) {
+        metrics.push({ label: 'Batches', value: loaded.batches.length, detail: 'Managed training batches', icon: 'bi-calendar2-week', tone: 'blue', route: '/main/batch' });
+        batchCards = buildBatchSummary(loaded.batches).slice(0, 6).map((batch) => ({ ...batch, route: '/main/batch' }));
       }
-      if (batchStudents !== null) metrics.push({ label: 'Assigned Students', value: batchStudents.length, detail: 'Batch assignment records', icon: 'bi-people', tone: 'teal', route: '/main/batch' });
-      if (schedules !== null) metrics.push({ label: 'Schedule Records', value: schedules.length, detail: 'Generated batch schedule entries', icon: 'bi-calendar-check', tone: 'violet', route: '/main/batch' });
+      if (loaded.batchStudents !== null) metrics.push({ label: 'Assigned Students', value: loaded.batchStudents.length, detail: 'Batch assignment records', icon: 'bi-people', tone: 'teal', route: '/main/batch' });
+      if (loaded.schedules !== null) metrics.push({ label: 'Schedule Records', value: loaded.schedules.length, detail: 'Generated batch schedule entries', icon: 'bi-calendar-check', tone: 'violet', route: '/main/batch' });
     } else if (isCounsellor) {
-      if (leads !== null) {
-        const converted = leads.filter((row) => /convert/i.test(row.status || '')).length;
-        metrics.push({ label: 'Total Leads', value: leads.length, detail: 'Active lead records', icon: 'bi-person-lines-fill', tone: 'blue', route: '/main/lead' });
-        metrics.push({ label: 'Lead Conversion', value: leads.length ? Math.round(converted * 1000 / leads.length) / 10 : 0, detail: `${converted} converted leads`, icon: 'bi-graph-up-arrow', tone: 'teal', route: '/main/lead' });
-        pipeline.push({ label: 'Leads', value: leads.length });
+      if (loaded.leads !== null) {
+        const converted = loaded.leads.filter((row) => /convert/i.test(row.status || '')).length;
+        metrics.push({ label: 'Total Leads', value: loaded.leads.length, detail: 'Active lead records', icon: 'bi-person-lines-fill', tone: 'blue', route: '/main/lead' });
+        metrics.push({ label: 'Lead Conversion', value: loaded.leads.length ? Math.round(converted * 1000 / loaded.leads.length) / 10 : 0, detail: `${converted} converted leads`, icon: 'bi-graph-up-arrow', tone: 'teal', route: '/main/lead' });
+        pipeline.push({ label: 'Leads', value: loaded.leads.length });
         pipeline.push({ label: 'Converted leads', value: converted });
       }
-      if (enquiries !== null) {
-        metrics.push({ label: 'Enquiries', value: enquiries.length, detail: 'Candidate enquiries', icon: 'bi-chat-square-text', tone: 'violet', route: '/main/enquiry' });
-        pipeline.push({ label: 'Enquiries', value: enquiries.length });
+      if (loaded.enquiries !== null) {
+        metrics.push({ label: 'Enquiries', value: loaded.enquiries.length, detail: 'Candidate enquiries', icon: 'bi-chat-square-text', tone: 'violet', route: '/main/enquiry' });
+        pipeline.push({ label: 'Enquiries', value: loaded.enquiries.length });
       }
-      if (leadFollowups !== null) metrics.push({ label: 'Follow-ups', value: leadFollowups.length, detail: 'Recorded lead follow-ups', icon: 'bi-calendar2-check', tone: 'amber', route: '/main/lead' });
+      if (loaded.leadFollowups !== null) metrics.push({ label: 'Follow-ups', value: loaded.leadFollowups.length, detail: 'Recorded lead follow-ups', icon: 'bi-calendar2-check', tone: 'amber', route: '/main/lead' });
     } else if (isDeveloper) {
-      if (courses !== null) metrics.push({ label: 'Courses', value: courses.length, detail: 'Available course records', icon: 'bi-journal-bookmark', tone: 'blue', route: '/main/course' });
+      if (loaded.courses !== null) metrics.push({ label: 'Courses', value: loaded.courses.length, detail: 'Available course records', icon: 'bi-journal-bookmark', tone: 'blue', route: '/main/course' });
     }
 
-    if (leads !== null && !isCounsellor && !isAdmin) {
-      pipeline.push({ label: 'Leads', value: leads.length });
+    if (loaded.leads !== null && !isCounsellor && !isAdmin) {
+      pipeline.push({ label: 'Leads', value: loaded.leads.length });
     }
 
-    if (payments !== null) {
-      const activePayments = payments.filter((row) => !isDeleted(row));
+    if (loaded.payments !== null) {
+      const activePayments = loaded.payments.filter((row) => !isDeleted(row));
       activePayments.forEach((row) => {
         const mode = String(row.paymentMode || 'Other').trim() || 'Other';
         paymentTotals.set(mode, (paymentTotals.get(mode) || 0) + numberValue(row.paymentAmount));
@@ -321,8 +337,8 @@ export default function Dashboard() {
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
 
-    if (pipeline.length > 1 && leads !== null && pipeline.every((item) => item.label !== 'Converted leads')) {
-      const converted = leads.filter((row) => /convert/i.test(row.status || '')).length;
+    if (pipeline.length > 1 && loaded.leads !== null && pipeline.every((item) => item.label !== 'Converted leads')) {
+      const converted = loaded.leads.filter((row) => /convert/i.test(row.status || '')).length;
       pipeline.push({ label: 'Converted leads', value: converted });
     }
 

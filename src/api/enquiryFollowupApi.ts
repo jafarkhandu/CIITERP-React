@@ -22,7 +22,8 @@ function requirePositiveId(id: number): void {
 }
 
 export const enquiryFollowupApi = {
-  getAll: async () => extractRows((await http.get(baseUrl)).data),
+  getAll: async (): Promise<EnquiryFollowupRecord[]> =>
+    extractRows((await http.get(baseUrl)).data) as unknown as EnquiryFollowupRecord[],
   getByEnquiryId: async (enquiryId: number) => {
     requirePositiveId(enquiryId);
     return extractRows((await http.get(`${baseUrl}/enquiry/${enquiryId}`)).data);

@@ -115,7 +115,7 @@ export default function LeadFollowup() {
     const payload: LeadFollowupRecord = {
       leadFollowupId: editingFollowupId || 0, leadId, candidateName: lead.candidateName || '',
       followUpDate: new Date(followupDate),
-      followUpBy,
+      followUpBy: followupBy,
       description: description.trim(), status,
       nextFollowupDate: nextFollowupDate ? new Date(`${nextFollowupDate}T00:00:00`) : new Date(),
     };
