@@ -247,13 +247,22 @@ export default function BatchManagement() {
     setStudentBatch(row); setRegistrationSearch(''); setError(''); setRegistrations([]);
     setSaving(true);
     try {
-      const available = await batchStudentApi.getRegistrations(row.batchId);
+      const [available, existingStudents] = await Promise.all([
+        batchStudentApi.getRegistrations(row.batchId),
+        batchStudentApi.getByBatch(row.batchId),
+      ]);
+      const alreadyAdded = new Set(
+        existingStudents
+          .filter((item) => !deleted(item))
+          .map((item) => Number(read(item, 'registration_id', 'registrationId', 'student_registration_id', 'studentRegistrationId') ?? 0))
+          .filter((id) => id > 0),
+      );
       setRegistrations(available.map((item) => ({
         ...item,
-        registrationId: Number(read(item, 'registration_id', 'registrationId', 'student_registration_id', 'id') ?? 0),
+        registrationId: Number(read(item, 'registration_id', 'registrationId', 'student_registration_id', 'studentRegistrationId', 'id') ?? 0),
         studentName: String(read(item, 'student_name', 'studentName', 'candidateName', 'firstName', 'first_name') ?? 'Student'),
         selected: false,
-      })).filter((item) => item.registrationId > 0));
+      })).filter((item) => item.registrationId > 0 && !alreadyAdded.has(item.registrationId)));
     } catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to load eligible registrations.'); }
     finally { setSaving(false); }
   }
