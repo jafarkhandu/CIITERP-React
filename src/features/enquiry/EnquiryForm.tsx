@@ -107,7 +107,7 @@ export default function EnquiryForm() {
       setError('Please select a branch and qualification.');
       return;
     }
-    if (!/^\\d{10}$/.test(form.mobileNumber)) {
+    if (!/^\d{10}$/.test(form.mobileNumber)) {
       setError('Enter a valid 10-digit mobile number.');
       return;
     }
