@@ -149,7 +149,7 @@ export default function Lead() {
     event.preventDefault(); setFormError('');
     const source = sources.find((item) => Number(item.sourceId) === Number(form.sourceId));
     if (!source) { setFormError('Select a valid lead source.'); return; }
-    if (!/^\\d{10}$/.test(form.mobileNumber)) { setFormError('Enter a valid 10-digit mobile number.'); return; }
+    if (!/^\d{10}$/.test(form.mobileNumber)) { setFormError('Enter a valid 10-digit mobile number.'); return; }
     setSaving(true);
     try {
       const payload = {
@@ -217,7 +217,7 @@ export default function Lead() {
     <div className="lead-table-card"><div className="lead-table-scroll"><table className="lead-table">
       <thead><tr><th>#</th><th>ID</th><th>Candidate Name</th><th>Email</th><th>Mobile</th><th>Training</th><th>Status</th><th>Lead Date</th><th>Action</th></tr></thead>
       <tbody>{loading ? <tr><td colSpan={9} className="lead-empty">Loading leads...</td></tr> :
-        filtered.filter((lead) => tab === 'deleted' ? Boolean((lead as any).deletedAt) : !(lead as any).deletedAt).map((lead, index) => <tr key={lead.leadId}><td>{index + 1}</td><td>{lead.leadId}</td><td className="lead-candidate">{lead.candidateName}</td><td>{lead.emailAddress}</td><td>{lead.mobileNumber}</td><td>{lead.trainingType}</td><td><span className={`lead-status ${lead.status.toLowerCase().replace(/\\s+/g, '-')}`}>{lead.status}</span></td><td>{formatDate(lead.leadDate)}</td><td><RowActionsMenu label={`Actions for lead ${lead.leadId}`} disabled={saving} actions={tab === 'deleted' ? (canRestore ? [{ label: 'Restore', onSelect: () => void restoreLead(lead) }] : []) : [
+        filtered.filter((lead) => tab === 'deleted' ? Boolean((lead as any).deletedAt) : !(lead as any).deletedAt).map((lead, index) => <tr key={lead.leadId}><td>{index + 1}</td><td>{lead.leadId}</td><td className="lead-candidate">{lead.candidateName}</td><td>{lead.emailAddress}</td><td>{lead.mobileNumber}</td><td>{lead.trainingType}</td><td><span className={`lead-status ${lead.status.toLowerCase().replace(/\s+/g, '-')}`}>{lead.status}</span></td><td>{formatDate(lead.leadDate)}</td><td><RowActionsMenu label={`Actions for lead ${lead.leadId}`} disabled={saving} actions={tab === 'deleted' ? (canRestore ? [{ label: 'Restore', onSelect: () => void restoreLead(lead) }] : []) : [
             ...(canFollowup ? [{ label: 'Follow-up', onSelect: () => navigate(`/main/lead/followup/${lead.leadId}`) }] : []),
             ...(canUpdate ? [{ label: 'Edit', onSelect: () => void openEdit(lead) }] : []),
             ...(canDelete ? [{ label: 'Delete', danger: true, onSelect: () => void removeLead(lead) }] : []),
@@ -232,7 +232,7 @@ export default function Lead() {
         <form onSubmit={createLead}><div className="lead-form-grid">
           <label>Candidate Name *<input required value={form.candidateName} onChange={(event) => setForm({ ...form, candidateName: event.target.value })} /></label>
           <label>Email Address *<input type="email" required value={form.emailAddress} onChange={(event) => setForm({ ...form, emailAddress: event.target.value })} /></label>
-          <label>Mobile Number *<input required inputMode="numeric" maxLength={10} value={form.mobileNumber} onChange={(event) => setForm({ ...form, mobileNumber: event.target.value.replace(/\\D/g, '').slice(0, 10) })} /></label>
+          <label>Mobile Number *<input required inputMode="numeric" maxLength={10} value={form.mobileNumber} onChange={(event) => setForm({ ...form, mobileNumber: event.target.value.replace(/\D/g, '').slice(0, 10) })} /></label>
           <label>Training Type *<select value={form.trainingType} onChange={(event) => setForm({ ...form, trainingType: event.target.value })}><option>Online</option><option>Offline</option></select></label>
           <label>Lead Date<input type="date" value={form.leadDate} disabled /></label>
           <label>Status *<select required value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>{STATUS_OPTIONS.map((item) => <option key={item}>{item}</option>)}</select></label>
