@@ -35,7 +35,10 @@ export const enquiryFollowupApi = {
   create: async (payload: EnquiryFollowupRecord) => (await http.post(`${baseUrl}/Create`, payload)).data,
   update: async (id: number, payload: EnquiryFollowupRecord) => {
     requirePositiveId(id);
-    return (await http.put(`${baseUrl}/Update/${id}`, payload)).data;
+    return (await http.put(`${baseUrl}/Update/${id}`, {
+      ...payload,
+      followupId: id,
+    })).data;
   },
   remove: async (id: number) => {
     requirePositiveId(id);
