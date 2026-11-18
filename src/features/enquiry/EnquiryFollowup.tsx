@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { enquiryApi, type EnquiryRecord } from '@/api/enquiryApi';
 import { enquiryFollowupApi, type EnquiryFollowupRecord } from '@/api/enquiryFollowupApi';
 import { leadApi, type LeadSourceRecord } from '@/api/leadApi';
+import './Enquiry.css';
 
 function localDateTime(date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, '0');
