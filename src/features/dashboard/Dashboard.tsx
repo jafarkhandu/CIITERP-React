@@ -480,6 +480,32 @@ export default function Dashboard() {
         </section>
       )}
 
+      {!roles.includes('super user') && (
+        <section className="dashboard-quick-section">
+          <div className="dashboard-section-heading">
+            <div><span>WORKSPACE</span><h2>Quick access</h2></div>
+            <small>{cards.length} permitted modules</small>
+          </div>
+          <div className="dashboard-quick-grid">
+            {cards.map((card) => (
+              <Link className="dashboard-quick-card" to={card.route} key={card.route}>
+                <span><i className={`bi ${card.icon}`} aria-hidden="true" /></span>
+                <div><strong>{card.title}</strong><small>{card.description}</small></div>
+                <i className="bi bi-arrow-up-right" aria-hidden="true" />
+              </Link>
+            ))}
+            {cards.length === 0 && <p className="dashboard-empty">No modules are currently available for this account.</p>}
+            {permissionService.hasPermission(PERMISSIONS.FUNCTION_MANAGEMENT_VIEW) && (
+              <Link className="dashboard-quick-card dashboard-quick-settings" to="/main/function-management">
+                <span><i className="bi bi-sliders2" aria-hidden="true" /></span>
+                <div><strong>Function Management</strong><small>Configure permitted application modules.</small></div>
+                <i className="bi bi-arrow-up-right" aria-hidden="true" />
+              </Link>
+            )}
+          </div>
+        </section>
+      )}
+
     </main>
   );
 }
