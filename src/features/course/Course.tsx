@@ -89,12 +89,12 @@ export default function Course() {
       installmentPercentage: installment,
     };
     try {
-      if (editingId !== null) await courseApi.update(editingId, course);
-      else {
-        const created = await courseApi.create(course);
-        const createdId = Number(created?.courseId ?? created?.data?.courseId ?? created?.id);
-        // Preserve Angular's create-then-update behavior when the API returns an ID.
-        if (createdId > 0) await courseApi.update(createdId, { ...course, courseId: createdId });
+      if (editingId !== null) {
+        await courseApi.update(editingId, course);
+      } else {
+        // Create already includes the course name, fees, date, and installment details.
+        // Do not issue an unnecessary second PUT that can fail after a successful POST.
+        await courseApi.create(course);
       }
       setModalOpen(false); setForm(EMPTY_FORM); setSuccess(editingId === null ? 'Course created successfully.' : 'Course updated successfully.');
       await loadCourses();
