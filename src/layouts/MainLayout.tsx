@@ -209,11 +209,11 @@ export default function MainLayout() {
     const groups = availableRoles
       .filter((role) => !excludedRoles.has(normalizeRole(role.roleName)))
       .map((role) => ({ ...role, menus: [] as SidebarMenu[] }));
-    const groupByName = new Map(groups.map((group) => [normalizeRole(group.roleName), group]));
     const roleAlias = (name: string) => {
       const normalized = normalizeRole(name);
       return normalized === 'counciler' ? 'counsellor' : normalized;
     };
+    const groupByName = new Map(groups.map((group) => [roleAlias(group.roleName), group]));
     const assignedRoutes = new Set<string>();
 
     for (const menu of visibleMenus) {
