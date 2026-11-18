@@ -86,7 +86,10 @@ const PUBLIC_URLS = [
 ];
 
 const isPublic = (url: string) => PUBLIC_URLS.some((p) => url.includes(p));
-const isLeadDirect = (url: string) => url.startsWith(`${API_ENDPOINTS.leadDirectHost}/`);
+const isLeadDirect = (url: string) =>
+  url.startsWith(`${API_ENDPOINTS.leadDirectHost}/`) ||
+  // The Vite proxy is only used for this development-only enquiry update request.
+  (import.meta.env.DEV && url.startsWith('/lead-api/EnquiryFollowup/Update/'));
 
 function redirectToLogin() {
   console.log('Session expired. Redirecting to login.');
