@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { enquiryApi, type EnquiryRecord } from '@/api/enquiryApi';
 import { enquiryFollowupApi, type EnquiryFollowupRecord } from '@/api/enquiryFollowupApi';
+import { leadApi, type LeadSourceRecord } from '@/api/leadApi';
 
 function localDateTime(date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -22,6 +23,7 @@ export default function EnquiryFollowup() {
   const { enquiryId: rawId } = useParams();
   const enquiryId = Number(rawId ?? 0);
   const [enquiry, setEnquiry] = useState<EnquiryRecord | null>(null);
+  const [sources, setSources] = useState<LeadSourceRecord[]>([]);
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -37,10 +39,11 @@ export default function EnquiryFollowup() {
   async function load() {
     setLoading(true);
     try {
-      const [recordResult, byEnquiryResult, allResult] = await Promise.allSettled([
+      const [recordResult, byEnquiryResult, allResult, sourceResult] = await Promise.allSettled([
         enquiryApi.getById(enquiryId),
         enquiryFollowupApi.getByEnquiryId(enquiryId),
         enquiryFollowupApi.getAll(),
+        leadApi.getSources(),
       ]);
       if (recordResult.status === 'rejected') throw recordResult.reason;
       const record = recordResult.value;
@@ -61,9 +64,20 @@ export default function EnquiryFollowup() {
             ?? ((record.is_deleted ?? record.isDeleted ?? record.deleted) ? 'deleted' : null),
         });
       });
+      const availableSources = sourceResult.status === 'fulfilled'
+        ? sourceResult.value.filter((source) => Number(source.sourceId) > 0 && !source.deletedAt)
+        : [];
+      setSources(availableSources);
       setEnquiry(record);
       setItems(Array.from(merged.values()));
-      setForm((previous) => ({ ...previous, candidateName: String(record.candidateName ?? ''), sourceName: String(record.leadSources ?? '') }));
+      const selectedNames = String(record.leadSources ?? '').split(',').map((name) => name.trim().toLowerCase()).filter(Boolean);
+      const matchingSources = availableSources.filter((source) => selectedNames.includes(source.sourceName.trim().toLowerCase()));
+      setForm((previous) => ({
+        ...previous,
+        candidateName: String(record.candidateName ?? ''),
+        sourceId: matchingSources.length === 1 ? matchingSources[0].sourceId : previous.sourceId,
+        sourceName: matchingSources.length === 1 ? matchingSources[0].sourceName : String(record.leadSources ?? ''),
+      }));
       setError('');
     } catch (requestError: any) {
       setError(requestError?.response?.data?.message || 'Unable to load enquiry follow-ups.');
@@ -77,7 +91,9 @@ export default function EnquiryFollowup() {
     setEditingId(0);
     setForm({
       candidateName: String(enquiry?.candidateName ?? ''),
-      sourceId: Number((enquiry as any)?.sourceId ?? 0),
+      sourceId: sources.filter((source) => String(enquiry?.leadSources ?? '').split(',').some((name) => name.trim().toLowerCase() === source.sourceName.trim().toLowerCase())).length === 1
+        ? sources.find((source) => String(enquiry?.leadSources ?? '').split(',').some((name) => name.trim().toLowerCase() === source.sourceName.trim().toLowerCase()))!.sourceId
+        : 0,
       sourceName: String(enquiry?.leadSources ?? ''),
       followUpDate: localDateTime(),
       followUpBy: '',
@@ -96,7 +112,7 @@ export default function EnquiryFollowup() {
       setEditingId(id);
       setForm({
         candidateName: String(record.candidateName ?? enquiry?.candidateName ?? ''),
-        sourceId: Number(record.sourceId ?? 0),
+        sourceId: Number(record.sourceId ?? record.source_Id ?? 0),
         sourceName: String(record.sourceName ?? enquiry?.leadSources ?? ''),
         followUpDate: String(record.followUpDate ?? localDateTime()).slice(0, 16),
         followUpBy: String(record.followUpBy ?? ''),
@@ -112,10 +128,14 @@ export default function EnquiryFollowup() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!form.description.trim() || !form.status) { setError('Status and description are required.'); return; }
+    const selectedSource = sources.find((source) => Number(source.sourceId) === form.sourceId);
+    if (!selectedSource) { setError('Select a valid lead source before saving the enquiry follow-up.'); return; }
     setSaving(true); setError('');
     const payload: EnquiryFollowupRecord = {
       ...form,
       enquiryId,
+      sourceId: selectedSource.sourceId,
+      sourceName: selectedSource.sourceName,
       candidateName: String(enquiry?.candidateName ?? form.candidateName).trim(),
       followUpDate: new Date(form.followUpDate).toISOString(),
       nextFollowupDate: form.nextFollowupDate ? new Date(`${form.nextFollowupDate}T00:00:00`).toISOString() : form.followUpDate,
@@ -189,6 +209,17 @@ export default function EnquiryFollowup() {
         <form onSubmit={submit}>
           <div className="enquiry-followup-form-grid">
             <label>Candidate Name *<input required value={form.candidateName} readOnly /></label>
+            <label>Lead Source *<select required value={form.sourceId || ''} onChange={(e) => {
+              const source = sources.find((item) => item.sourceId === Number(e.target.value));
+              setForm((previous) => ({
+                ...previous,
+                sourceId: source?.sourceId ?? 0,
+                sourceName: source?.sourceName ?? '',
+              }));
+            }}>
+              <option value="">Select Source</option>
+              {sources.map((source) => <option key={source.sourceId} value={source.sourceId}>{source.sourceName}</option>)}
+            </select></label>
             <label>Followup By *<input required value={form.followUpBy} onChange={(e) => setForm({ ...form, followUpBy: e.target.value })} /></label>
             <label>Followup Date *<input type="date" required value={form.followUpDate.slice(0,10)} onChange={(e) => setForm({ ...form, followUpDate: e.target.value + 'T' + (form.followUpDate.slice(11,16) || '09:00') })} /></label>
             <label>Status *<select required value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>{['Hot','Warm','Cold'].map((status) => <option key={status}>{status}</option>)}</select></label>
