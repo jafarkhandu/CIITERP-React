@@ -190,31 +190,49 @@ export default function MainLayout() {
   });
 
   const roleMenuGroups = useMemo(() => {
-    const permissionVisibleMenus = MENUS.filter(
-      (menu) => !menu.permission || permissionService.hasPermission(menu.permission),
-    );
+    const normalizeRole = (value: string) => value.trim().toLowerCase().replace(/[\s_-]+/g, '');
+    const excludedRoles = new Set(['superuser', 'student', 'hr']);
+    // A module has one navigation home; this does not change authorization.
+    const preferredRoleByRoute: Record<string, string> = {
+      '/main/user': 'admin',
+      '/main/lead': 'counsellor',
+      '/main/enquiry': 'counsellor',
+      '/main/course': 'developer',
+      '/main/student-registration': 'accountant',
+      '/main/student-payments': 'accountant',
+      '/main/batch': 'groupleader',
+      '/main/trainer': 'trainer',
+      '/main/reports': 'admin',
+      '/main/function-management': 'admin',
+      '/main/email-services': 'admin',
+    };
+    const groups = availableRoles
+      .filter((role) => !excludedRoles.has(normalizeRole(role.roleName)))
+      .map((role) => ({ ...role, menus: [] as SidebarMenu[] }));
+    const roleAlias = (name: string) => {
+      const normalized = normalizeRole(name);
+      return normalized === 'counciler' ? 'counsellor' : normalized;
+    };
+    const groupByName = new Map(groups.map((group) => [roleAlias(group.roleName), group]));
+    const assignedRoutes = new Set<string>();
 
-    return availableRoles
-      .filter((role) => {
-        const normalizedRole = role.roleName.trim().toLowerCase().replace(/[\\s_-]+/g, '');
-        // Super User is represented by the combined role groups; omit Student and HR.
-        return !['superuser', 'student', 'hr'].includes(normalizedRole);
-      })
-      .map((role) => {
-        const normalizedRole = role.roleName.trim().toLowerCase().replace(/[\\s_-]+/g, '');
-        const menus = permissionVisibleMenus.filter((menu) => (
-          menu.route !== '/main/dashboard'
-          && menu.roles?.some((menuRole) => {
-            const normalizedMenuRole = menuRole.trim().toLowerCase().replace(/[\\s_-]+/g, '');
-            return normalizedMenuRole === normalizedRole
-              || (normalizedRole === 'counciler' && normalizedMenuRole === 'counsellor')
-              || (normalizedRole === 'counsellor' && normalizedMenuRole === 'counciler');
-          })
-        ));
+    for (const menu of visibleMenus) {
+      if (menu.route === '/main/dashboard' || assignedRoutes.has(menu.route)) continue;
+      const eligibleRoles = (menu.roles ?? [])
+        .map(roleAlias)
+        .filter((role) => !excludedRoles.has(role));
+      const preferred = preferredRoleByRoute[menu.route];
+      const destination = (preferred && eligibleRoles.includes(preferred)
+        ? groupByName.get(preferred)
+        : undefined)
+        ?? eligibleRoles.map((role) => groupByName.get(role)).find((group) => group !== undefined);
+      if (!destination) continue;
+      destination.menus.push(menu);
+      assignedRoutes.add(menu.route);
+    }
 
-        return { ...role, menus };
-      });
-  }, [availableRoles, permissionService.getPermissions().join('|')]);
+    return groups.filter((group) => group.menus.length > 0);
+  }, [availableRoles, visibleMenus.map((menu) => menu.route).join('|')]);
 
   useEffect(() => {
     if (!isSuperUser) return;
