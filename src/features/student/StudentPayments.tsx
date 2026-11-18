@@ -7,8 +7,27 @@ import { studentApi, type PaymentRequest, type PaymentRow } from '@/api/studentA
 type Row = Record<string, unknown>;
 type Registration = { registrationId: number; studentId: number; courseId: number; registrationCode: string; courseName: string; discount: number; studentName: string; lastName: string; mobileNumber: string };
 const money = (v: unknown) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(v) || 0);
-const dateLabel = (v: unknown) => { const d = v ? new Date(String(v)) : null; return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString('en-IN') : '—'; };
-const dateKey = (v: unknown) => { const d = v ? new Date(String(v)) : null; return d && !Number.isNaN(d.getTime()) ? [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-') : ''; };
+const dateKey = (value: unknown): string => {
+  if (!value) return '';
+
+  // Payment dates are calendar dates, not timestamps to shift between timezones.
+  const text = String(value);
+  const datePart = text.match(/^(\d{4}-\d{2}-\d{2})(?:$|T|\s)/);
+  if (datePart) return datePart[1];
+
+  const date = new Date(text);
+  return Number.isNaN(date.getTime())
+    ? ''
+    : [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+};
+
+const dateLabel = (value: unknown): string => {
+  const date = dateKey(value);
+  if (!date) return '—';
+
+  const [year, month, day] = date.split('-');
+  return `${day}/${month}/${year}`;
+};
 const pick = (r: Row, ...keys: string[]) => keys.map((k) => r[k]).find((v) => v !== undefined && v !== null && v !== '');
 const rowsFrom = (v: unknown): Row[] => {
   if (Array.isArray(v)) return v.filter((x): x is Row => !!x && typeof x === 'object');
@@ -38,7 +57,7 @@ export default function StudentPayments() {
   const [editingPaymentId, setEditingPaymentId] = useState(0);
   const [studentId, setStudentId] = useState(0);
   const [registrationId, setRegistrationId] = useState(0);
-  const [paymentForm, setPaymentForm] = useState({ paymentDate: new Date().toISOString().slice(0, 10), paymentAmount: 0, paymentMode: 'Cash', paymentDescription: '' });
+  const [paymentForm, setPaymentForm] = useState({ paymentDate: dateKey(new Date()), paymentAmount: 0, paymentMode: 'Cash', paymentDescription: '' });
   const [fee, setFee] = useState<{ finalFees: number; actualFees: number } | null>(null);
   const [feeLoading, setFeeLoading] = useState(false);
 
@@ -97,7 +116,7 @@ export default function StudentPayments() {
 
   async function openCreate() {
     setError(''); setFee(null); setStudentId(0); setRegistrationId(0);
-    setPaymentForm({ paymentDate: new Date().toISOString().slice(0, 10), paymentAmount: 0, paymentMode: 'Cash', paymentDescription: '' });
+    setPaymentForm({ paymentDate: dateKey(new Date()), paymentAmount: 0, paymentMode: 'Cash', paymentDescription: '' });
     setModal('create');
     if (!registrations.length) await loadPayments();
   }
@@ -150,7 +169,7 @@ export default function StudentPayments() {
     setRegistrationId(Number(payment.registrationId || 0));
     setStudentId(Number(payment.studentId || 0));
     setPaymentForm({
-      paymentDate: dateKey(payment.paymentDate) || new Date().toISOString().slice(0, 10),
+      paymentDate: dateKey(payment.paymentDate) || dateKey(new Date()),
       paymentAmount: Number(payment.paymentAmount) || 0,
       paymentMode: payment.paymentMode || 'Cash',
       paymentDescription: payment.paymentDescription || '',
@@ -198,7 +217,7 @@ export default function StudentPayments() {
 
     const payload: PaymentRequest = {
       ...paymentForm,
-      paymentDate: new Date(paymentForm.paymentDate + 'T00:00:00').toISOString(),
+      paymentDate: `${paymentForm.paymentDate}T00:00:00`,
       registrationId,
     };
 
@@ -245,7 +264,7 @@ export default function StudentPayments() {
     const alreadyPaid = payments.filter((p) => Number(p.registrationId) === registrationId).reduce((sum, p) => sum + (Number(p.paymentAmount) || 0), 0);
     const balance = Math.max(0, fee.finalFees - alreadyPaid);
     if (!Number.isFinite(paymentForm.paymentAmount) || paymentForm.paymentAmount <= 0 || paymentForm.paymentAmount > balance) { setError('Enter an amount greater than zero and no more than the remaining balance (' + money(balance) + ').'); return; }
-    const payload: PaymentRequest = { ...paymentForm, paymentDate: new Date(paymentForm.paymentDate + 'T00:00:00').toISOString(), registrationId };
+    const payload: PaymentRequest = { ...paymentForm, paymentDate: `${paymentForm.paymentDate}T00:00:00`, registrationId };
     setSaving(true);
     try { await studentApi.createPayment(payload); setModal(null); await loadPayments(); }
     catch (err) { console.error('Payment creation failed:', err); setError('Payment could not be saved. Verify the details and try again.'); }
