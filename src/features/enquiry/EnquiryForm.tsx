@@ -75,10 +75,10 @@ export default function EnquiryForm() {
           emailAddress: String(item.emailAddress ?? item.email_address ?? item.email ?? ''),
           mobileNumber: String(item.mobileNumber ?? item.mobile_number ?? item.mobile ?? ''),
           birthDate: String(item.birthDate ?? item.birth_date ?? '').slice(0, 10),
-          branchId: Number(item.branchId ?? item.branch_id ?? 0),
+          branchId: Number(item.branchId ?? item.branch_Id ?? item.branch_id ?? 0),
           branchName: String(item.branchName ?? item.branch_name ?? ''),
-          qualificationId: Number(item.qualificationId ?? item.qualification_id ?? 0),
-          qualification: String(item.qualification ?? ''),
+          qualificationId: Number(item.qualificationId ?? item.qualification_Id ?? item.qualification_id ?? 0),
+          qualification: String(item.qualification ?? item.qualification_Name ?? item.qualificationName ?? ''),
           leadSources: String(item.leadSources ?? item.lead_sources ?? ''),
           enquiryFors: String(item.enquiryFors ?? item.enquiry_fors ?? ''),
           interestedTopics: String(item.interestedTopics ?? item.interested_topics ?? ''),
@@ -101,8 +101,8 @@ export default function EnquiryForm() {
     setError('');
     const branch = branches.find((item) => item.id === Number(form.branchId));
     const qualification = qualifications.find((item) =>
-      Number(item.qualificationId ?? item.qualification_id ?? item.id) === Number(form.qualificationId));
-    const qualificationName = String(qualification?.qualificationName ?? qualification?.qualification_name ?? qualification?.name ?? form.qualification).trim();
+      Number(item.qualificationId ?? item.qualification_Id ?? item.qualification_id ?? item.QualificationId ?? item.id) === Number(form.qualificationId));
+    const qualificationName = String(qualification?.qualificationName ?? qualification?.qualification_Name ?? qualification?.qualification_name ?? qualification?.qualification ?? qualification?.QualificationName ?? qualification?.name ?? form.qualification).trim();
     if (!branch || !qualificationName) {
       setError('Please select a branch and qualification.');
       return;
@@ -154,12 +154,12 @@ export default function EnquiryForm() {
             <label>Mobile Number:<input required inputMode="numeric" pattern="[0-9]{10}" maxLength={10} value={form.mobileNumber} onChange={(e) => change('mobileNumber', e.target.value)} /></label>
             <label>Birth Date:<input type="date" value={form.birthDate} onChange={(e) => change('birthDate', e.target.value)} /></label>
             <label>Qualification:<select required value={form.qualificationId} onChange={(e) => {
-              const selected = qualifications.find((item) => Number(item.qualificationId ?? item.qualification_id ?? item.id) === Number(e.target.value));
+              const selected = qualifications.find((item) => Number(item.qualificationId ?? item.qualification_Id ?? item.qualification_id ?? item.QualificationId ?? item.id) === Number(e.target.value));
               change('qualificationId', Number(e.target.value));
-              change('qualification', String(selected?.qualificationName ?? selected?.qualification_name ?? selected?.name ?? ''));
+              change('qualification', String(selected?.qualificationName ?? selected?.qualification_Name ?? selected?.qualification_name ?? selected?.qualification ?? selected?.QualificationName ?? selected?.name ?? ''));
             }}><option value={0}>Select Qualification</option>{qualifications.map((item) => {
-              const qid = Number(item.qualificationId ?? item.qualification_id ?? item.id ?? 0);
-              const name = String(item.qualificationName ?? item.qualification_name ?? item.name ?? 'Qualification');
+              const qid = Number(item.qualificationId ?? item.qualification_Id ?? item.qualification_id ?? item.QualificationId ?? item.id ?? 0);
+              const name = String(item.qualificationName ?? item.qualification_Name ?? item.qualification_name ?? item.qualification ?? item.QualificationName ?? item.name ?? 'Qualification');
               return <option key={qid} value={qid}>{name}</option>;
             })}</select></label>
             <label>Status:<select value={form.status} onChange={(e) => change('status', e.target.value)}><option>New</option><option>In Progress</option><option>Converted</option><option>Closed</option></select></label>
