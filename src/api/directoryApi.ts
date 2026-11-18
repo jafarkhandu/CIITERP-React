@@ -17,8 +17,8 @@ export const directoryApi = {
     const response = await http.get(`${API_ENDPOINTS.branch}/get-all`);
     return extractArray(response.data)
       .map((branch: any) => ({
-        id: Number(branch?.branchId ?? branch?.id ?? branch?.branch_id ?? 0),
-        name: String(branch?.branchName ?? branch?.name ?? branch?.branch_name ?? '').trim(),
+        id: Number(branch?.branchId ?? branch?.branch_Id ?? branch?.branch_id ?? branch?.BranchId ?? branch?.id ?? 0),
+        name: String(branch?.branchName ?? branch?.branch_Name ?? branch?.branch_name ?? branch?.BranchName ?? branch?.name ?? '').trim(),
       }))
       .filter((branch: BranchOption) => branch.id > 0 && branch.name.length > 0)
       .filter((branch: BranchOption, index: number, all: BranchOption[]) =>
