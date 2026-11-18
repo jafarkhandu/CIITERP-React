@@ -146,7 +146,18 @@ export default function EnquiryFollowup() {
       resetForm();
       await load();
     } catch (requestError: any) {
-      setError(requestError?.response?.data?.message || (editingId ? 'Unable to update follow-up.' : 'Unable to create follow-up.'));
+      const serverData = requestError?.response?.data;
+      const validationMessages = serverData?.errors && typeof serverData.errors === 'object'
+        ? Object.values(serverData.errors as Record<string, unknown>)
+            .flatMap((value) => Array.isArray(value) ? value : [value])
+            .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+        : [];
+      const serverMessage = validationMessages.join(' ')
+        || [serverData?.message, serverData?.detail, serverData?.title]
+            .find((value): value is string => typeof value === 'string' && value.trim().length > 0);
+      const fallback = editingId ? 'Unable to update follow-up' : 'Unable to create follow-up';
+      const status = requestError?.response?.status;
+      setError(serverMessage || `${fallback}${status ? ` (HTTP ${status})` : ''}.`);
     } finally { setSaving(false); }
   }
 
