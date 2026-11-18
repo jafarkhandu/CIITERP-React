@@ -16,7 +16,8 @@ const today = () => new Date().toISOString().slice(0, 10);
 const pick = (row: Row, ...keys: string[]) => keys.map((key) => row[key]).find((v) => v !== undefined && v !== null && v !== '');
 const show = (v: unknown) => v === undefined || v === null || v === '' ? '—' : String(v);
 const money = (v: unknown) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(v) || 0);
-const iso = (v: string) => new Date(v + 'T00:00:00').toISOString();
+// Keep entered calendar dates unchanged; converting local midnight to UTC can change the day.
+const iso = (value: string): string => `${value}T00:00:00`;
 const freshForm = () => ({
   branchId: 0, registrationDate: today(), studentName: '', lastName: '', gender: '', birthDate: '',
   emailAddress: '', mobileNumber: '', whatsappNumber: '', parentName: '', parentNumber: '',
