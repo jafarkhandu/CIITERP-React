@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { enquiryApi, type EnquiryRecord } from '@/api/enquiryApi';
 import { directoryApi, type BranchOption } from '@/api/directoryApi';
+import { leadApi, type LeadSourceRecord } from '@/api/leadApi';
 import './Enquiry.css';
 
 type FormState = Omit<EnquiryRecord, 'enquiryId'>;
@@ -39,6 +40,7 @@ export default function EnquiryForm() {
   const [form, setForm] = useState<FormState>(initialForm);
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [qualifications, setQualifications] = useState<Record<string, unknown>[]>([]);
+  const [leadSources, setLeadSources] = useState<LeadSourceRecord[]>([]);
   const [loading, setLoading] = useState(editMode);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -58,11 +60,13 @@ export default function EnquiryForm() {
     Promise.allSettled([
       directoryApi.getBranches(),
       enquiryApi.getQualifications(),
+      leadApi.getSources(),
       editMode ? enquiryApi.getById(enquiryId) : Promise.resolve(null),
-    ]).then(([branchResult, qualificationResult, enquiryResult]) => {
+    ]).then(([branchResult, qualificationResult, sourceResult, enquiryResult]) => {
       if (!active) return;
       if (branchResult.status === 'fulfilled') setBranches(branchResult.value);
       if (qualificationResult.status === 'fulfilled') setQualifications(qualificationResult.value);
+      if (sourceResult.status === 'fulfilled') setLeadSources(sourceResult.value.filter((source) => source.sourceId > 0 && !source.deletedAt));
       if (editMode && enquiryResult.status === 'fulfilled' && enquiryResult.value) {
         const item = enquiryResult.value as any;
         setForm({
@@ -111,6 +115,14 @@ export default function EnquiryForm() {
       setError('Enter a valid 10-digit mobile number.');
       return;
     }
+    const selectedSourceNames = form.leadSources.split(',').map((name) => name.trim()).filter(Boolean);
+    const matchingSources = selectedSourceNames.map((name) =>
+      leadSources.find((source) => source.sourceName.trim().toLowerCase() === name.toLowerCase())
+    );
+    if (selectedSourceNames.length && matchingSources.some((source) => !source)) {
+      setError('Selected lead source could not be verified. Refresh the page and try again.');
+      return;
+    }
     const payload: any = {
       ...form,
       branchId: branch.id,
@@ -119,6 +131,7 @@ export default function EnquiryForm() {
       qualification: qualificationName,
       status: form.status || 'New',
       enquiryFors: form.enquiryFors.trim(),
+      sourceId: matchingSources[0]?.sourceId ?? 0,
       leadSources: form.leadSources.trim(),
       interestedTopics: form.interestedTopics.trim(),
     };
