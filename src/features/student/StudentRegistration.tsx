@@ -83,7 +83,7 @@ export default function StudentRegistration() {
       directoryApi.getBranches(),
       http.get(API_ENDPOINTS.lead + '/Qualification').then(({ data }) => {
         const rows = Array.isArray(data) ? data : data?.data ?? data?.result ?? data?.items ?? data?.$values ?? [];
-        return rows.map((x: Row) => ({ qualificationId: Number(pick(x, 'qualificationId', 'qualification_Id', 'id') ?? 0), qualification: String(pick(x, 'qualification', 'qualificationName', 'name') ?? '') })).filter((x: Qualification) => x.qualification);
+        return rows.map((x: Row) => ({ qualificationId: Number(pick(x, 'qualificationId', 'qualification_Id', 'qualification_id', 'QualificationId', 'id') ?? 0), qualification: String(pick(x, 'qualification', 'qualificationName', 'qualification_Name', 'qualification_name', 'QualificationName', 'name') ?? '') })).filter((x: Qualification) => x.qualification);
       }),
       courseApi.getAll(),
     ]);
