@@ -378,29 +378,33 @@
 
 /* Course Mapping only: replace the long vertical checklist with responsive topic cards. */
 .dt-mapping-layout {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr);
+  align-items: stretch;
 }
 
 .dt-mapping-topic-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr));
-  gap: 10px;
-  max-height: none;
-  overflow: visible;
-  margin-top: 14px;
-  padding: 0;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
+  align-content: start;
+  gap: 7px;
+  max-height: 360px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-top: 9px;
+  padding: 2px 5px 2px 1px;
 }
 
 .dt-mapping-topic-grid .dt-mapping-topic-card {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 8px;
   min-width: 0;
-  min-height: 67px;
+  min-height: 48px;
   margin: 0;
-  padding: 12px 14px;
+  padding: 7px 9px;
   border: 1px solid var(--ciit-border, #dce6f2);
-  border-radius: 11px;
+  border-radius: 9px;
   background: var(--ciit-surface, #fff);
   transition: border-color .15s ease, background .15s ease;
 }
@@ -436,4 +440,99 @@
 
 .dt-mapping-topic-grid .dt-mapping-topic-card small {
   margin-top: 5px;
+}
+
+/* Course Mapping: both lists stay inside the workspace instead of elongating the page. */
+.dt-mapping-page .dt-heading {
+  margin-bottom: 10px;
+}
+
+.dt-mapping-page .dt-heading h1 {
+  font-size: 24px;
+}
+
+.dt-mapping-page .dt-course-selector {
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+
+.dt-mapping-layout > .dt-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 14px 16px;
+}
+
+.dt-mapping-layout > .dt-panel:first-child form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dt-mapping-layout .dt-form-actions {
+  flex: 0 0 auto;
+  margin-top: 10px;
+}
+
+.dt-mapping-layout .dt-panel-header {
+  flex: 0 0 auto;
+}
+
+.dt-mapping-layout > .dt-panel:last-child .dt-table-wrap {
+  max-height: 360px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.dt-mapping-layout .dt-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.dt-mapping-topic-grid .dt-mapping-topic-card small {
+  margin-top: 2px;
+}
+
+@media (min-width: 992px) and (min-height: 680px) {
+  .ciit-app-shell .ciit-content:has(.dt-mapping-page) {
+    height: calc(100dvh - 128px);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .ciit-content:has(.dt-mapping-page) .ciit-page-transition,
+  .dt-mapping-page {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .dt-mapping-page {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dt-mapping-layout {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .dt-mapping-topic-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .dt-mapping-layout > .dt-panel:last-child .dt-table-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .dt-mapping-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
