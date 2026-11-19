@@ -5,6 +5,7 @@ import { useSession } from '@/core/auth/hooks';
 import { readTokenIdentity } from '@/core/auth/tokenIdentity';
 import { tokenService } from '@/core/services/tokenService';
 import { studentApi } from '@/api/studentApi';
+import { loadStudentPhoto, saveStudentPhoto } from './studentPhotoStorage';
 import '@/layouts/MainLayout.css';
 import './StudentPortal.css';
 
@@ -65,22 +66,61 @@ export default function StudentAccount() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [photoMessage, setPhotoMessage] = useState('');
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const photoRevision = useRef(0);
 
-  useEffect(() => () => { if (photoInputRef.current) photoInputRef.current.value = ''; }, []);
+  useEffect(() => {
+    let active = true;
+    const revision = ++photoRevision.current;
+    setProfilePhoto(null);
+    setPhotoMessage('');
+
+    if (studentId) {
+      loadStudentPhoto(studentId)
+        .then((photo) => {
+          if (active && revision === photoRevision.current) setProfilePhoto(photo);
+        })
+        .catch(() => {
+          // Photo storage may be blocked by the browser. Keep initials as fallback.
+        });
+    }
+
+    return () => { active = false; };
+  }, [studentId]);
 
   function selectPhoto(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
-      setPhotoMessage('Choose a JPG, PNG or WebP image smaller than 2 MB.');
+    if (!studentId) {
+      setPhotoMessage('Your account could not be identified. Please sign in again before choosing a photo.');
       event.target.value = '';
       return;
     }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+      setPhotoMessage('Choose a JPG, PNG or WebP image no larger than 2 MB.');
+      event.target.value = '';
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result !== 'string') return;
-      setProfilePhoto(reader.result);
-      setPhotoMessage('Photo preview only. Uploading to your account requires a student photo API.');
+
+      const photo = reader.result;
+      const revision = ++photoRevision.current;
+      setProfilePhoto(photo);
+      setPhotoMessage('Saving photo in this browser…');
+
+      saveStudentPhoto(studentId, photo)
+        .then(() => {
+          if (revision === photoRevision.current) {
+            setPhotoMessage('Photo saved in this browser and displayed in the sidebar. It is not uploaded to the server.');
+          }
+        })
+        .catch(() => {
+          if (revision === photoRevision.current) {
+            setPhotoMessage('Photo preview is visible, but this browser could not save it. It may disappear after refresh.');
+          }
+        });
     };
     reader.onerror = () => setPhotoMessage('Unable to read the selected image. Please try another file.');
     reader.readAsDataURL(file);
@@ -195,17 +235,31 @@ export default function StudentAccount() {
           {activeSection === 'student-profile' ? (
             <div className="sp-my-profile" id="student-profile">
               <header className="sp-heading"><div><span className="sp-eyebrow">STUDENT WORKSPACE</span><h1>My Profile</h1><p>View your account information and profile picture.</p></div></header>
-              <section className="sp-panel sp-my-profile-photo">
-                <div className="sp-my-profile-avatar">{profilePhoto ? <img src={profilePhoto} alt="Selected student profile preview" /> : studentName.charAt(0).toUpperCase()}</div>
-                <div><h2>{studentName}</h2><p>{studentCode || 'Student account'}</p>
-                  <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sp-profile-file-input" id="sp-profile-photo-input" onChange={selectPhoto} />
-                  <label htmlFor="sp-profile-photo-input" className="sp-profile-upload-button">Choose profile photo</label>
-                  <p className="sp-muted">JPG, PNG or WebP · Maximum 2 MB</p>
-                  {photoMessage && <p role="status" className="sp-muted">{photoMessage}</p>}
+              <section className="sp-panel sp-profile-glass" aria-labelledby="sp-profile-details-title">
+                <div className="sp-my-profile-photo">
+                  <div className="sp-my-profile-avatar">
+                    {profilePhoto ? <img src={profilePhoto} alt="Your selected profile photo" /> : studentName.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="sp-my-profile-identity">
+                    <h2>{studentName}</h2>
+                    <p>{studentCode || 'Student account'}</p>
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="sp-profile-file-input"
+                      id="sp-profile-photo-input"
+                      onChange={selectPhoto}
+                      disabled={!studentId}
+                    />
+                    <label htmlFor="sp-profile-photo-input" className="sp-profile-upload-button">Choose profile photo</label>
+                    <p className="sp-muted">JPG, PNG or WebP · Max 2 MB · Saved on this browser only</p>
+                    {photoMessage && <p role="status" className="sp-muted">{photoMessage}</p>}
+                  </div>
                 </div>
-              </section>
-              <section className="sp-panel"><h2>Personal Details</h2>
-                <dl className="sp-details">
+                <div className="sp-profile-divider" aria-hidden="true" />
+                <h2 id="sp-profile-details-title" className="sp-profile-details-title">Personal Details</h2>
+                <dl className="sp-details sp-profile-details">
                   <div><dt>Student code</dt><dd>{display(studentCode)}</dd></div>
                   <div><dt>Full name</dt><dd>{studentName}</dd></div>
                   <div><dt>Email</dt><dd>{display(readField(studentRecord, 'emailAddress', 'email_Address') || identity.email || session.email)}</dd></div>
@@ -227,10 +281,6 @@ export default function StudentAccount() {
           </div>}
           {recordLoading && <div className="sp-alert" role="status">Loading your registration information…</div>}
           {recordError && <div className="sp-alert" role="alert">{recordError}</div>}
-          <section className="sp-panel sp-hero">
-            <div className="sp-avatar" aria-hidden="true">{studentName.charAt(0).toUpperCase()}</div>
-            <div><span className="sp-eyebrow">STUDENT PROFILE</span><h2>{studentName}</h2><p>{studentCode || 'Student'} · {display(readField(studentRecord, 'branchName', 'branch_Name'))}</p></div>
-          </section>
           <div className="sp-stats">
             <div className="sp-panel"><span>Enrolled courses</span><strong>{studentRecord ? courseRows.length : '—'}</strong></div>
             <div className="sp-panel"><span>Assigned batches</span><strong>{studentRecord ? batchRows.length : '—'}</strong></div>
@@ -238,17 +288,6 @@ export default function StudentAccount() {
             <div className="sp-panel"><span>Payment total</span><strong>{paymentRows.length ? currency(totalPaid) : '—'}</strong></div>
           </div>
           <div className="sp-columns">
-            <section id="student-profile" className="sp-panel">
-              <h2>Personal information</h2>
-              <dl className="sp-details">
-                <div><dt>Student code</dt><dd>{display(studentCode)}</dd></div>
-                <div><dt>Name</dt><dd>{studentName}</dd></div>
-                <div><dt>Email</dt><dd>{display(readField(studentRecord, 'emailAddress', 'email_Address') || identity.email || session.email)}</dd></div>
-                <div><dt>Mobile</dt><dd>{display(readField(studentRecord, 'mobileNumber', 'mobile_Number'))}</dd></div>
-                <div><dt>Qualification</dt><dd>{display(readField(studentRecord, 'qualification'))}</dd></div>
-                <div><dt>Branch</dt><dd>{display(readField(studentRecord, 'branchName', 'branch_Name'))}</dd></div>
-              </dl>
-            </section>
             <section id="student-course" className="sp-panel">
               <h2>My courses</h2>
               {courseRows.length ? <div className="sp-stack">{courseRows.map((row, index) =>
