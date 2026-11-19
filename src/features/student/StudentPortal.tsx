@@ -1,3 +1,4 @@
+import { useOutletContext } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { studentApi, type StudentRow, type PaymentRow } from '@/api/studentApi';
 import { batchApi, batchStudentApi } from '@/api/batchApi';
@@ -24,8 +25,11 @@ export default function StudentPortal() {
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [batches, setBatches] = useState<Row[]>([]);
   const [assignments, setAssignments] = useState<Row[]>([]);
-  const [selectedId, setSelectedId] = useState<number>(0);
-  const [search, setSearch] = useState('');
+  const { portalStudentId: selectedId, setPortalStudentId: setSelectedId, setPortalStudents } = useOutletContext<{
+    portalStudentId: number;
+    setPortalStudentId: (id: number) => void;
+    setPortalStudents: (students: { studentId: number; name: string }[]) => void;
+  }>();
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState<string[]>([]);
 
@@ -58,7 +62,11 @@ export default function StudentPortal() {
     return () => { active = false; };
   }, []);
 
-  const filteredStudents = useMemo(() => students.filter(s => (nameOf(s) + ' ' + (s.studentCode ?? '') + ' ' + s.studentId).toLowerCase().includes(search.toLowerCase())).sort((a, b) => nameOf(a).localeCompare(nameOf(b))), [students, search]);
+  const studentOptions = useMemo(() => students.map(s => ({ studentId: s.studentId, name: nameOf(s) + ' · ' + (s.studentCode || s.studentId) })).sort((a, b) => a.name.localeCompare(b.name)), [students]);
+  useEffect(() => {
+    setPortalStudents(studentOptions);
+    return () => setPortalStudents([]);
+  }, [studentOptions, setPortalStudents]);
   const student = students.find(s => s.studentId === selectedId);
   const myRegistrations = registrations.filter(r => id(r, 'studentId', 'student_Id', 'student_id') === selectedId);
   const registrationIds = new Set(myRegistrations.map(r => id(r, 'registrationId', 'registration_Id', 'registration_id')).filter(Boolean));
@@ -69,21 +77,9 @@ export default function StudentPortal() {
 
   return <main className="ciit-student-portal">
     <header className="sp-heading">
-      <div><span className="sp-eyebrow">CIIT · STUDENT WORKSPACE</span><h1>Student Portal</h1><p>Preview registered students' learning and enrollment information.</p></div>
-      <span className="sp-preview">Staff preview · No student login</span>
+      <div><span className="sp-eyebrow">CIIT · STUDENT WORKSPACE</span><h1>Student Portal</h1><p>View registered students' learning and enrollment information.</p></div>
+      <span className="sp-preview">Authorized staff access</span>
     </header>
-    <section className="sp-panel sp-picker" aria-label="Choose student">
-      <div><h2>Choose a student</h2><p>Switch between registered students without logging out.</p></div>
-      <div className="sp-controls">
-        <label htmlFor="sp-search">Search students</label>
-        <input id="sp-search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or ID" />
-        <label htmlFor="sp-select">Registered student</label>
-        <select id="sp-select" value={selectedId || ''} onChange={e => setSelectedId(Number(e.target.value))} disabled={loading || !filteredStudents.length}>
-          <option value="">Select a student</option>
-          {filteredStudents.map(s => <option key={s.studentId} value={s.studentId}>{nameOf(s)} · {s.studentCode || s.studentId}</option>)}
-        </select>
-      </div>
-    </section>
     {loading && <div className="sp-panel" role="status">Loading student records…</div>}
     {!!errors.length && <div className="sp-alert" role="alert">Could not load: {errors.join(', ')}. Some information may be unavailable. Refresh to retry.</div>}
     {!loading && !students.length && <div className="sp-panel">No student records are available for this account.</div>}
