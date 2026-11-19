@@ -43,7 +43,10 @@ export default function CourseMapping() {
 
   async function refreshMappings(id: number) {
     const items = await trainingCourseTopicApi.getByCourse(id);
-    setMappings(items);
+    setMappings(current => [
+      ...items,
+      ...current.filter(item => item.isDeleted && !items.some(latest => latest.courseTopicId === item.courseTopicId)),
+    ]);
     setSelectedTopicIds([...new Set(items.filter(item => !item.isDeleted).map(item => item.topicId))]);
   }
 
