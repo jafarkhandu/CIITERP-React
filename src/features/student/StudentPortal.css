@@ -687,3 +687,113 @@ html[data-theme="dark"] .ciit-student-public-shell .ciit-student-portal .sp-prof
     -webkit-backdrop-filter: none;
   }
 }
+
+
+/* Student-only glass refinement: richer depth, precise interaction states. */
+.ciit-student-public-shell .ciit-student-portal .sp-panel {
+  background:
+    linear-gradient(125deg, rgba(255, 255, 255, .88), rgba(255, 255, 255, .42) 58%, rgba(218, 237, 255, .52));
+  box-shadow:
+    0 22px 55px rgba(26, 68, 119, .10),
+    0 3px 10px rgba(26, 68, 119, .045),
+    inset 0 1px 0 rgba(255, 255, 255, .96);
+}
+
+.ciit-student-public-shell .ciit-student-portal .sp-hero,
+.ciit-student-public-shell .ciit-student-portal .sp-profile-glass {
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(124, 192, 255, .26), transparent 60%),
+    linear-gradient(120deg, rgba(255, 255, 255, .86), rgba(224, 241, 255, .48));
+}
+
+.ciit-student-public-shell .ciit-student-portal .sp-heading h1 {
+  font-weight: 800;
+  letter-spacing: -.045em;
+}
+
+.ciit-student-public-shell .ciit-student-portal .sp-stats .sp-panel {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(103, 176, 250, .14), transparent 65%),
+    linear-gradient(135deg, rgba(255, 255, 255, .88), rgba(241, 248, 255, .52));
+}
+
+.ciit-student-public-shell .ciit-student-portal .sp-stats .sp-panel::before {
+  width: 4px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #3a9ff4, #6568e9);
+}
+
+.ciit-student-public-shell .ciit-student-portal .sp-dashboard-panel-heading {
+  padding-bottom: 4px;
+}
+
+.ciit-student-public-shell .ciit-student-portal .sp-dashboard-panel-heading h2,
+.ciit-student-public-shell .ciit-student-portal .sp-panel > h2 {
+  letter-spacing: -.025em;
+}
+
+.ciit-student-public-shell .ciit-student-portal .sp-entry,
+.ciit-student-public-shell .ciit-student-portal .sp-dashboard-record-list li,
+.ciit-student-public-shell .ciit-student-portal .sp-dashboard-shortcut,
+.ciit-student-public-shell .ciit-student-portal .sp-dashboard-learning-item,
+.ciit-student-public-shell .ciit-student-portal .sp-profile-details > div {
+  background: linear-gradient(135deg, rgba(255, 255, 255, .69), rgba(240, 248, 255, .37));
+  box-shadow: 0 5px 18px rgba(28, 76, 131, .035), inset 0 1px rgba(255, 255, 255, .7);
+}
+
+.ciit-student-public-shell .ciit-student-portal .sp-dashboard-shortcut,
+.ciit-student-public-shell .ciit-student-portal .sp-profile-upload-button {
+  transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .ciit-student-public-shell .ciit-student-portal .sp-dashboard-shortcut:hover,
+  .ciit-student-public-shell .ciit-student-portal .sp-profile-upload-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 25px rgba(29, 83, 154, .12);
+  }
+}
+
+.ciit-student-public-shell .ciit-student-portal :is(a, button, input, select, label[for]):focus-visible {
+  outline: 3px solid #3d8de5;
+  outline-offset: 3px;
+}
+
+html[data-theme="dark"] .ciit-student-public-shell .ciit-student-portal .sp-panel,
+html[data-theme="dark"] .ciit-student-public-shell .ciit-student-portal .sp-hero,
+html[data-theme="dark"] .ciit-student-public-shell .ciit-student-portal .sp-profile-glass {
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(60, 119, 188, .19), transparent 60%),
+    linear-gradient(135deg, rgba(38, 60, 91, .86), rgba(20, 37, 60, .73));
+}
+
+html[data-theme="dark"] .ciit-student-public-shell .ciit-student-portal .sp-stats .sp-panel {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(63, 127, 198, .18), transparent 65%),
+    linear-gradient(135deg, rgba(38, 60, 91, .86), rgba(20, 37, 60, .73));
+}
+
+html[data-theme="dark"] .ciit-student-public-shell .ciit-student-portal .sp-entry,
+html[data-theme="dark"] .ciit-student-public-shell .ciit-student-portal .sp-dashboard-record-list li,
+html[data-theme="dark"] .ciit-student-public-shell .ciit-student-portal .sp-dashboard-shortcut,
+html[data-theme="dark"] .ciit-student-public-shell .ciit-student-portal .sp-dashboard-learning-item,
+html[data-theme="dark"] .ciit-student-public-shell .ciit-student-portal .sp-profile-details > div {
+  background: linear-gradient(135deg, rgba(35, 57, 85, .62), rgba(17, 33, 55, .48));
+  box-shadow: inset 0 1px rgba(255, 255, 255, .045);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ciit-student-public-shell .ciit-student-portal .sp-dashboard-shortcut,
+  .ciit-student-public-shell .ciit-student-portal .sp-profile-upload-button {
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .ciit-student-public-shell .ciit-student-portal .sp-panel,
+  .ciit-student-public-shell .ciit-student-portal .sp-hero,
+  .ciit-student-public-shell .ciit-student-portal .sp-profile-glass,
+  .ciit-student-public-shell .ciit-student-portal .sp-stats .sp-panel {
+    background: var(--ciit-surface, #fff);
+  }
+}
