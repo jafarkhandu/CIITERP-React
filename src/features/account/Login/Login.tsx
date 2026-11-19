@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authApi } from '@/api/authApi';
 import { findCurrentUser, getAllUsers, getCachedUsers } from '@/api/userApi';
 import { authService } from '@/core/auth/authService';
@@ -11,6 +11,9 @@ const REMEMBERED_USERNAME_KEY = 'rememberedUsername';
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const requestedPath = (location.state as { from?: unknown } | null)?.from;
+  const postLoginPath = requestedPath === '/main/student-portal' ? requestedPath : '/main/dashboard';
 
   const [username, setUsername] = useState(() => localStorage.getItem(REMEMBERED_USERNAME_KEY) ?? '');
   const [password, setPassword] = useState('');
@@ -34,7 +37,7 @@ export default function Login() {
       // A user-details failure is NOT a login failure.
       console.error('User information API error:', error);
     }
-    navigate('/main/dashboard');
+    navigate(postLoginPath, { replace: true });
   }
 
   async function submit(e: FormEvent) {
@@ -264,8 +267,8 @@ export default function Login() {
                 </button>
               </form>
 
-              <Link className="student-preview-link" to="/main/student-portal">
-                <span aria-hidden="true">🎓</span> Staff Student Portal <span aria-hidden="true">→</span>
+              <Link className="student-preview-link" to="/login" state={{ from: '/main/student-portal' }}>
+                <span aria-hidden="true">🎓</span> Student Access <span aria-hidden="true">→</span>
               </Link>
 
               {/* Security note */}
