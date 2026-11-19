@@ -5,6 +5,7 @@ import type { FormEvent, ReactNode } from 'react';
 import { Fragment } from 'react';
 import { API_ENDPOINTS } from '@/core/config/api-endpoints';
 import { http } from '@/core/http/httpClient';
+import { apiErrorMessage } from '@/core/http/errors';
 import { courseApi, type TrainingCourseRecord } from '@/api/courseApi';
 import { directoryApi, type BranchOption } from '@/api/directoryApi';
 import { studentApi, type RegistrationRequest, type StudentRow } from '@/api/studentApi';
@@ -177,7 +178,10 @@ export default function StudentRegistration() {
     const payload: RegistrationRequest = { ...form, registrationDate: iso(form.registrationDate), birthDate: iso(form.birthDate), paymentDate: iso(form.paymentDate), leadId: null };
     setSaving(true);
     try { await studentApi.registerStudent(payload); setSuccess('Student registered successfully.'); setModal(null); await loadData(); }
-    catch (err) { console.error('Student registration failed:', err); setError('Registration failed. Please verify the details and try again.'); }
+    catch (err) {
+      console.error('Student registration failed:', err);
+      setError(apiErrorMessage(err, 'Registration failed. Please verify the details and try again.'));
+    }
     finally { setSaving(false); }
   }
   async function submitExisting(e: FormEvent<HTMLFormElement>) {
