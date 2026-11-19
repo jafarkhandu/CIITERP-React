@@ -41,3 +41,39 @@ html[data-theme="dark"] .ciit-student-portal .sp-entry{background:rgba(30,49,77,
 .ciit-student-public-shell .ciit-public-login-link:hover{background:rgba(255,255,255,.15);color:#fff}
 .ciit-student-public-shell .ciit-public-login-link:focus-visible{outline:3px solid #bfdbfe;outline-offset:2px}
 @media(max-width:700px){.ciit-student-public-shell .ciit-topbar{flex-wrap:wrap}.ciit-student-public-shell .ciit-portal-topbar-picker select{max-width:150px}.ciit-student-public-shell .ciit-student-public-content{gap:14px}}
+
+
+/* Signed-in student identity and logout control. */
+.ciit-student-public-shell .ciit-student-identity {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  max-width: 225px;
+  color: #fff;
+}
+
+.ciit-student-public-shell .ciit-student-identity span {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: .78;
+}
+
+.ciit-student-public-shell .ciit-student-identity strong {
+  font-size: 12px;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.ciit-student-public-shell button.ciit-public-login-link {
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .ciit-student-public-shell .ciit-student-identity {
+    max-width: 110px;
+  }
+}
