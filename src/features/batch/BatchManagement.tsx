@@ -48,6 +48,7 @@ export default function BatchManagement() {
   const [success, setSuccess] = useState('');
   const [tab, setTab] = useState<'active' | 'deleted'>('active');
   const [scheduleBatch, setScheduleBatch] = useState<BatchRow | null>(null);
+  const [scheduleViewTab, setScheduleViewTab] = useState<'schedule' | 'students' | 'sessions' | 'records'>('schedule');
   const [schedules, setSchedules] = useState<Row[]>([]);
   const [roster, setRoster] = useState<StudentRow[]>([]);
   const [attendanceSessions, setAttendanceSessions] = useState<Row[]>([]);
@@ -202,6 +203,9 @@ export default function BatchManagement() {
   }
 
   async function viewSchedule(row: BatchRow) {
+    if (scheduleBatch?.batchId !== row.batchId) {
+      setScheduleViewTab('schedule');
+    }
     setScheduleBatch(row); setEditingScheduleId(0); setError('');
     try {
       const [scheduleRows, studentRows, allSessions, allAttendance] = await Promise.all([
@@ -420,9 +424,29 @@ export default function BatchManagement() {
     </header>
     {error && <div className="batch-error" role="alert">{error}<button type="button" onClick={() => void load()}>Retry</button></div>}
     {success && <div className="batch-success" role="status">{success}</div>}
-    {scheduleBatch ? <section className="batch-table-card">
-      <div className="batch-table-heading"><div><button className="batch-secondary" type="button" onClick={() => setScheduleBatch(null)}>← Back to Batches</button><h2>Schedule — {scheduleBatch.batchName}</h2></div><button className="batch-primary" type="button" disabled={saving} onClick={() => void generateSchedule(scheduleBatch)}>Generate Schedule</button></div>
-      <div className="batch-table-scroll"><table className="batch-table"><thead><tr><th>#</th><th>Content / Topic</th><th>Expected Date</th><th>Expected Day</th><th>Actual Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+    {scheduleBatch ? <section className="batch-table-card batch-schedule-view">
+      <div className="batch-table-heading batch-schedule-heading">
+        <div>
+          <button className="batch-secondary" type="button" onClick={() => setScheduleBatch(null)}>← Back to Batches</button>
+          <h2>Schedule — {scheduleBatch.batchName}</h2>
+        </div>
+        <button className="batch-primary" type="button" disabled={saving} onClick={() => void generateSchedule(scheduleBatch)}>Generate Schedule</button>
+      </div>
+      <div className="batch-schedule-tabs" role="group" aria-label="Batch schedule sections">
+        <button type="button" className={scheduleViewTab === 'schedule' ? 'is-active' : ''} aria-pressed={scheduleViewTab === 'schedule'} onClick={() => setScheduleViewTab('schedule')}>
+          Schedule <span className="batch-count">{schedules.length}</span>
+        </button>
+        <button type="button" className={scheduleViewTab === 'students' ? 'is-active' : ''} aria-pressed={scheduleViewTab === 'students'} onClick={() => setScheduleViewTab('students')}>
+          Students <span className="batch-count">{roster.length}</span>
+        </button>
+        <button type="button" className={scheduleViewTab === 'sessions' ? 'is-active' : ''} aria-pressed={scheduleViewTab === 'sessions'} onClick={() => setScheduleViewTab('sessions')}>
+          Attendance Sessions <span className="batch-count">{attendanceSessions.length}</span>
+        </button>
+        <button type="button" className={scheduleViewTab === 'records' ? 'is-active' : ''} aria-pressed={scheduleViewTab === 'records'} onClick={() => setScheduleViewTab('records')}>
+          Attendance Records <span className="batch-count">{studentAttendanceRecords.length}</span>
+        </button>
+      </div>
+      {scheduleViewTab === 'schedule' && <div className="batch-table-scroll batch-schedule-table-scroll"><table className="batch-table batch-schedule-table"><thead><tr><th>#</th><th>Content / Topic</th><th>Expected Date</th><th>Expected Day</th><th>Actual Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>
         {schedules.map((row, index) => <tr key={String(read(row, 'batch_schedule_id', 'batchScheduleId', 'id') ?? index)}><td>{index + 1}</td><td>{String(read(row, 'content_name', 'contentName', 'topic_name') ?? '—')}</td><td>{formatDate(read(row, 'expected_date', 'expectedDate'))}</td><td>{String(read(row, 'expected_day', 'expectedDay') ?? '—')}</td><td>{formatDate(read(row, 'actual_date', 'actualDate'))}</td><td>{String(read(row, 'status') ?? '—')}</td><td><RowActionsMenu label="Schedule actions" disabled={saving} actions={deleted(row) ? [
           { label: 'Restore schedule', onSelect: () => void restoreSchedule(row) },
         ] : [
@@ -430,27 +454,33 @@ export default function BatchManagement() {
           { label: 'Delete schedule', danger: true, onSelect: () => void removeSchedule(row) },
         ]} /></td></tr>)}
         {!schedules.length && <tr><td colSpan={7} className="batch-empty">No schedule entries found.</td></tr>}
-      </tbody></table></div>
+      </tbody></table></div>}
       {editingScheduleId > 0 && createPortal(<div className="batch-modal-backdrop" onMouseDown={() => setEditingScheduleId(0)}><form onSubmit={submitScheduleEdit} className="batch-modal batch-modal-small" role="dialog" aria-modal="true" aria-labelledby="schedule-edit-title" onMouseDown={(event) => event.stopPropagation()}><header><h2 id="schedule-edit-title">Update Schedule</h2><button type="button" aria-label="Close schedule editor" onClick={() => setEditingScheduleId(0)}>×</button></header><div className="batch-form-grid"><label>Actual Date<input type="date" value={String(scheduleEdit.actual_date ?? '')} onChange={(e) => setScheduleEdit({ ...scheduleEdit, actual_date: e.target.value ? localMidnightIso(e.target.value) : null })}/></label><label>Status<input value={String(scheduleEdit.status ?? '')} onChange={(e) => setScheduleEdit({ ...scheduleEdit, status: e.target.value })}/></label></div><footer><button type="button" className="batch-secondary" onClick={() => setEditingScheduleId(0)}>Cancel</button><button type="submit" className="batch-primary" disabled={saving}>Update</button></footer></form></div>, document.body)}
-      <div className="batch-table-heading"><div><h2>Assigned Students</h2><p>Students currently assigned to this batch</p></div><span className="batch-count">{roster.length} students</span></div>
-      <div className="batch-table-scroll"><table className="batch-table"><thead><tr><th>#</th><th>Student</th><th>Registration ID</th><th>Action</th></tr></thead><tbody>{roster.map((student, index) => <tr key={student.batchStudentId}><td>{index + 1}</td><td>{student.studentName}</td><td>{student.registrationId}</td><td><RowActionsMenu label={`Actions for ${student.studentName}`} disabled={saving} actions={[
+      {scheduleViewTab === 'students' && <>
+      <div className="batch-table-heading batch-schedule-section-heading"><div><h2>Assigned Students</h2><p>Students currently assigned to this batch</p></div><span className="batch-count">{roster.length} students</span></div>
+      <div className="batch-table-scroll batch-schedule-table-scroll"><table className="batch-table batch-schedule-table batch-schedule-table-short"><thead><tr><th>#</th><th>Student</th><th>Registration ID</th><th>Action</th></tr></thead><tbody>{roster.map((student, index) => <tr key={student.batchStudentId}><td>{index + 1}</td><td>{student.studentName}</td><td>{student.registrationId}</td><td><RowActionsMenu label={`Actions for ${student.studentName}`} disabled={saving} actions={[
           { label: 'Remove from batch', danger: true, onSelect: () => void removeStudent(student) },
         ]} /></td></tr>)}{!roster.length && <tr><td colSpan={4} className="batch-empty">No students assigned.</td></tr>}</tbody></table></div>
-      <div className="batch-table-heading"><div><h2>Attendance Sessions</h2><p>Attendance session records for this batch</p></div><span className="batch-count">{attendanceSessions.length} sessions</span></div>
-      <div className="batch-table-scroll"><table className="batch-table"><thead><tr><th>Session ID</th><th>Schedule ID</th><th>Attendance Date</th><th>Actions</th></tr></thead><tbody>{attendanceSessions.map((item, index) => { const sessionId = Number(read(item, 'schedule_attendance_id', 'scheduleAttendanceId', 'batch_schedule_attendance_id', 'id') ?? 0); const isDeleted = deleted(item); return <tr key={sessionId || index}><td>{sessionId}</td><td>{Number(read(item, 'batch_schedule_id', 'batchScheduleId') ?? 0)}</td><td>{formatDate(read(item, 'attendance_date', 'attendanceDate'))}</td><td><RowActionsMenu label={`Actions for attendance session ${sessionId}`} disabled={saving} actions={isDeleted ? [
+      </>}
+      {scheduleViewTab === 'sessions' && <>
+      <div className="batch-table-heading batch-schedule-section-heading"><div><h2>Attendance Sessions</h2><p>Attendance session records for this batch</p></div><span className="batch-count">{attendanceSessions.length} sessions</span></div>
+      <div className="batch-table-scroll batch-schedule-table-scroll"><table className="batch-table batch-schedule-table batch-schedule-table-short"><thead><tr><th>Session ID</th><th>Schedule ID</th><th>Attendance Date</th><th>Actions</th></tr></thead><tbody>{attendanceSessions.map((item, index) => { const sessionId = Number(read(item, 'schedule_attendance_id', 'scheduleAttendanceId', 'batch_schedule_attendance_id', 'id') ?? 0); const isDeleted = deleted(item); return <tr key={sessionId || index}><td>{sessionId}</td><td>{Number(read(item, 'batch_schedule_id', 'batchScheduleId') ?? 0)}</td><td>{formatDate(read(item, 'attendance_date', 'attendanceDate'))}</td><td><RowActionsMenu label={`Actions for attendance session ${sessionId}`} disabled={saving} actions={isDeleted ? [
           { label: 'Restore session', onSelect: () => void restoreSession(item) },
         ] : [
           { label: 'Edit session', onSelect: () => { setEditingSessionId(sessionId); setSessionEditDate(dateInput(read(item, 'attendance_date', 'attendanceDate'))); } },
           { label: 'Delete session', danger: true, onSelect: () => void removeSession(item) },
         ]} /></td></tr>; })}{!attendanceSessions.length && <tr><td colSpan={4} className="batch-empty">No attendance sessions found.</td></tr>}</tbody></table></div>
+      </>}
       {editingSessionId > 0 && createPortal(<div className="batch-modal-backdrop" onMouseDown={() => setEditingSessionId(0)}><form onSubmit={submitSessionEdit} className="batch-modal batch-modal-small" role="dialog" aria-modal="true" aria-labelledby="attendance-edit-title" onMouseDown={(event) => event.stopPropagation()}><header><h2 id="attendance-edit-title">Edit Attendance Session</h2><button type="button" aria-label="Close attendance editor" onClick={() => setEditingSessionId(0)}>×</button></header><div className="batch-form-grid"><label>Attendance Date<input type="date" required value={sessionEditDate} onChange={(e) => setSessionEditDate(e.target.value)}/></label></div><footer><button type="button" className="batch-secondary" onClick={() => setEditingSessionId(0)}>Cancel</button><button type="submit" className="batch-primary" disabled={saving}>Update Session</button></footer></form></div>, document.body)}
-      <div className="batch-table-heading"><div><h2>Student Attendance Records</h2><p>Toggle present/absent or manage individual records</p></div><span className="batch-count">{studentAttendanceRecords.length} records</span></div>
-      <div className="batch-table-scroll"><table className="batch-table"><thead><tr><th>Record ID</th><th>Session ID</th><th>Registration ID</th><th>Present</th><th>Actions</th></tr></thead><tbody>{studentAttendanceRecords.map((item, index) => { const recordId = Number(read(item, 'attendance_id', 'attendanceId', 'id') ?? 0); const isDeleted = deleted(item); const isPresent = Number(read(item, 'is_present', 'isPresent') ?? 0) === 1 || read(item, 'is_present', 'isPresent') === true; return <tr key={recordId || index}><td>{recordId}</td><td>{Number(read(item, 'schedule_attendance_id', 'scheduleAttendanceId') ?? 0)}</td><td>{Number(read(item, 'registration_id', 'registrationId') ?? 0)}</td><td>{isPresent ? 'Present' : 'Absent'}</td><td><RowActionsMenu label={`Actions for attendance record ${recordId}`} disabled={saving} actions={isDeleted ? [
+      {scheduleViewTab === 'records' && <>
+      <div className="batch-table-heading batch-schedule-section-heading"><div><h2>Student Attendance Records</h2><p>Toggle present/absent or manage individual records</p></div><span className="batch-count">{studentAttendanceRecords.length} records</span></div>
+      <div className="batch-table-scroll batch-schedule-table-scroll"><table className="batch-table batch-schedule-table batch-schedule-table-short"><thead><tr><th>Record ID</th><th>Session ID</th><th>Registration ID</th><th>Present</th><th>Actions</th></tr></thead><tbody>{studentAttendanceRecords.map((item, index) => { const recordId = Number(read(item, 'attendance_id', 'attendanceId', 'id') ?? 0); const isDeleted = deleted(item); const isPresent = Number(read(item, 'is_present', 'isPresent') ?? 0) === 1 || read(item, 'is_present', 'isPresent') === true; return <tr key={recordId || index}><td>{recordId}</td><td>{Number(read(item, 'schedule_attendance_id', 'scheduleAttendanceId') ?? 0)}</td><td>{Number(read(item, 'registration_id', 'registrationId') ?? 0)}</td><td>{isPresent ? 'Present' : 'Absent'}</td><td><RowActionsMenu label={`Actions for attendance record ${recordId}`} disabled={saving} actions={isDeleted ? [
           { label: 'Restore attendance', onSelect: () => void restoreStudentAttendance(item) },
         ] : [
           { label: isPresent ? 'Mark absent' : 'Mark present', onSelect: () => void toggleStudentAttendance(item) },
           { label: 'Delete attendance', danger: true, onSelect: () => void removeStudentAttendance(item) },
         ]} /></td></tr>; })}{!studentAttendanceRecords.length && <tr><td colSpan={5} className="batch-empty">No individual attendance records found.</td></tr>}</tbody></table></div>
+      </>}
     </section> : <>
       <div className="batch-tabs"><button type="button" className={tab === 'active' ? 'active' : ''} onClick={() => setTab('active')}>Active Batches <span>{active.length}</span></button><button type="button" className={tab === 'deleted' ? 'active' : ''} onClick={() => setTab('deleted')}>Deleted Batches <span>{removed.length}</span></button></div>
       <section className="batch-table-card"><div className="batch-table-heading"><div><h2>{tab === 'active' ? 'Active Batches' : 'Deleted Batches'}</h2><p>Batch overview and quick actions</p></div><span className="batch-count">{displayed.length} records</span></div>
