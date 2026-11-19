@@ -179,6 +179,17 @@ export default function StudentAccount() {
     readField(studentRecord, 'studentName', 'student_Name', 'name') ||
     identity.displayName || session.employeeName || session.username,
   );
+  const qualifications = nestedRows(studentRecord, 'qualifications', 'Qualifications');
+  const qualification = readField(
+    studentRecord,
+    'qualification',
+    'qualificationName',
+    'qualification_Name',
+    'qualification_name',
+    'Qualification',
+    'QualificationName',
+  ) ?? readField(qualifications[0] ?? null, 'qualification_Name', 'qualificationName', 'qualification_name', 'QualificationName');
+
   const studentCode = identity.username || session.username;
   const belongsToStudent = (row: StudentRecord): boolean => {
     const explicitId = readField(row, 'studentId', 'student_Id', 'student_id', 'StudentId');
@@ -304,7 +315,7 @@ export default function StudentAccount() {
                   <div><dt>Full name</dt><dd>{studentName}</dd></div>
                   <div><dt>Email</dt><dd>{display(readField(studentRecord, 'emailAddress', 'email_Address') || identity.email || session.email)}</dd></div>
                   <div><dt>Mobile number</dt><dd>{display(readField(studentRecord, 'mobileNumber', 'mobile_Number'))}</dd></div>
-                  <div><dt>Qualification</dt><dd>{display(readField(studentRecord, 'qualification', 'qualificationName', 'qualification_Name', 'qualification_name', 'Qualification', 'QualificationName'))}</dd></div>
+                  <div><dt>Qualification</dt><dd>{display(qualification)}</dd></div>
                   <div><dt>Branch</dt><dd>{display(readField(studentRecord, 'branchName', 'branch_Name'))}</dd></div>
                 </dl>
               </section>
