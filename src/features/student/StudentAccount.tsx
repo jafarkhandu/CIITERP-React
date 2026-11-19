@@ -457,10 +457,10 @@ export default function StudentAccount() {
                     <span className="sp-student-detail-actions"><strong>{currency(Number(readField(row, 'paymentAmount', 'payment_Amount')) || 0)}</strong><i className={`bi bi-chevron-${expanded ? 'up' : 'down'}`} aria-hidden="true" /></span>
                   </button>
                   {expanded && <dl className="sp-student-detail-grid" id={`detail-${key}`}>
-                    <div><dt>Payment date</dt><dd>{formatStudentDate(readField(row, 'paymentDate', 'payment_Date'))}</dd></div>
-                    <div><dt>Payment mode</dt><dd>{display(readField(row, 'paymentMode', 'payment_Mode'))}</dd></div>
                     <div><dt>Payment ID</dt><dd>{display(id)}</dd></div>
                     <div><dt>Registration code</dt><dd>{display(registration ? readField(registration, 'registrationCode', 'registration_Code') : null)}</dd></div>
+                    <div><dt>Payment date</dt><dd>{formatStudentDate(readField(row, 'paymentDate', 'payment_Date'))}</dd></div>
+                    <div><dt>Payment mode</dt><dd>{display(readField(row, 'paymentMode', 'payment_Mode'))}</dd></div>
                     <div className="sp-student-detail-wide"><dt>Description</dt><dd>{display(readField(row, 'paymentDescription', 'payment_Description'))}</dd></div>
                   </dl>}
                 </article>;
