@@ -1,4 +1,4 @@
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { authService } from '@/core/auth/authService';
 import { useSession } from '@/core/auth/hooks';
@@ -63,10 +63,12 @@ export default function StudentAccount() {
   const [recordLoading, setRecordLoading] = useState(Boolean(studentId));
   const [recordError, setRecordError] = useState('');
   const { page } = useParams<{ page: string }>();
-  const activeSection = sections.find(section => section.slug === (page ?? 'dashboard'))?.id;
+  const { hash } = useLocation();
+  const legacyPage = sections.find(section => '#' + section.id === hash)?.slug;
+  const activeSection = sections.find(section => section.slug === (page ?? legacyPage ?? 'dashboard'))?.id;
 
   // Start each routed page at the top, even when navigating from a scrolled view.
-  useEffect(() => { window.scrollTo(0, 0); }, [page]);
+  useEffect(() => { window.scrollTo(0, 0); }, [page, hash]);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [photoMessage, setPhotoMessage] = useState('');
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -327,7 +329,7 @@ export default function StudentAccount() {
           )}
           {activeSection === 'student-overview' && (
             <div className="sp-section-page">
-              <header className="sp-heading">
+              <header id="student-overview" className="sp-heading">
                 <div><span className="sp-eyebrow">CIIT · STUDENT WORKSPACE</span><h1>Dashboard</h1><p>Your learning and payment overview.</p></div>
                 <span className="sp-preview">Student account</span>
               </header>
