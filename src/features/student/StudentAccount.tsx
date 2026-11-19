@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { authService } from '@/core/auth/authService';
 import { useSession } from '@/core/auth/hooks';
@@ -10,12 +10,12 @@ import '@/layouts/MainLayout.css';
 import './StudentPortal.css';
 
 const sections = [
-  { id: 'student-overview', title: 'Dashboard', icon: 'bi-grid-1x2-fill' },
-  { id: 'student-profile', title: 'My Profile', icon: 'bi-person-vcard' },
-  { id: 'student-course', title: 'My Courses', icon: 'bi-journal-bookmark-fill' },
-  { id: 'student-batch', title: 'My Batches', icon: 'bi-calendar2-week' },
-  { id: 'student-payments', title: 'Payments', icon: 'bi-wallet2' },
-];
+  { id: 'student-overview', slug: 'dashboard', path: '/student-portal', title: 'Dashboard', icon: 'bi-grid-1x2-fill' },
+  { id: 'student-profile', slug: 'profile', path: '/student-portal/profile', title: 'My Profile', icon: 'bi-person-vcard' },
+  { id: 'student-course', slug: 'courses', path: '/student-portal/courses', title: 'My Courses', icon: 'bi-journal-bookmark-fill' },
+  { id: 'student-batch', slug: 'batches', path: '/student-portal/batches', title: 'My Batches', icon: 'bi-calendar2-week' },
+  { id: 'student-payments', slug: 'payments', path: '/student-portal/payments', title: 'Payments', icon: 'bi-wallet2' },
+] as const;
 
 type StudentRecord = Record<string, unknown>;
 
@@ -62,7 +62,8 @@ export default function StudentAccount() {
   const [studentRecord, setStudentRecord] = useState<StudentRecord | null>(null);
   const [recordLoading, setRecordLoading] = useState(Boolean(studentId));
   const [recordError, setRecordError] = useState('');
-  const [activeSection, setActiveSection] = useState('student-overview');
+  const { page } = useParams<{ page: string }>();
+  const activeSection = sections.find(section => section.slug === (page ?? 'dashboard'))?.id;
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [photoMessage, setPhotoMessage] = useState('');
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -216,6 +217,8 @@ export default function StudentAccount() {
       return next;
     });
   }
+  if (!activeSection) return <Navigate to="/student-portal" replace />;
+
   return (
     <div className={'cmp-main-layout ciit-app-shell ciit-student-public-shell' + (isSidebarCollapsed ? ' is-sidebar-collapsed' : '')}>
       <header className="ciit-topbar">
@@ -244,12 +247,27 @@ export default function StudentAccount() {
           </div>
           <div className="ciit-sidebar-section-label">STUDENT MENU</div>
           <nav className="ciit-sidebar-nav" aria-label="Student sections"><ul className="ciit-sidebar-list">
-            {sections.map(section => <li key={section.id}><a href={'#' + section.id} className={activeSection === section.id ? 'active-link' : ''} onClick={(event) => { if (section.id === 'student-profile' || activeSection === 'student-profile') event.preventDefault(); setActiveSection(section.id); setIsMobileSidebarOpen(false); if (section.id !== 'student-profile') window.setTimeout(() => document.getElementById(section.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0); }}><i className={'bi ' + section.icon} aria-hidden="true" /><span className="ciit-menu-label">{section.title}</span><span className="ciit-menu-active-mark" aria-hidden="true" /></a></li>)}
+            {sections.map(section => (
+              <li key={section.id}>
+                <Link to={section.path} className={activeSection === section.id ? 'active-link' : ''} aria-current={activeSection === section.id ? 'page' : undefined} onClick={() => setIsMobileSidebarOpen(false)}>
+                  <i className={'bi ' + section.icon} aria-hidden="true" />
+                  <span className="ciit-menu-label">{section.title}</span>
+                  <span className="ciit-menu-active-mark" aria-hidden="true" />
+                </Link>
+              </li>
+            ))}
           </ul></nav>
           <div className="ciit-sidebar-footer"><span className="ciit-sidebar-footer-mark"><i className="bi bi-mortarboard-fill" aria-hidden="true" /></span><span><strong>CIIT ERP</strong><small>Training Institute</small></span></div>
         </aside>
         <main className="ciit-workspace"><div className="ciit-content"><div className="ciit-page-transition"><div className="ciit-student-portal ciit-student-public-content">
-          {activeSection === 'student-profile' ? (
+
+          {!studentId && <div className="sp-alert" role="status">
+            Your login was successful, but a student ID was not provided by the authentication service.
+            Student records cannot be safely linked without it.
+          </div>}
+          {recordLoading && <div className="sp-alert" role="status">Loading your registration information…</div>}
+          {recordError && <div className="sp-alert" role="alert">{recordError}</div>}
+          {activeSection === 'student-profile' && (
             <div className="sp-my-profile" id="student-profile">
               <header className="sp-heading"><div><span className="sp-eyebrow">STUDENT WORKSPACE</span><h1>My Profile</h1><p>View your account information and profile picture.</p></div></header>
               <section className="sp-panel sp-profile-glass" aria-labelledby="sp-profile-details-title">
@@ -292,25 +310,25 @@ export default function StudentAccount() {
               </section>
               <section className="sp-panel"><h2>Change Password</h2><p className="sp-muted">Student password changes are not yet available. The existing ERP change-password API belongs to staff accounts and cannot safely be used for student credentials.</p></section>
             </div>
-          ) : (<>
-          <header id="student-overview" className="sp-heading">
-            <div><span className="sp-eyebrow">CIIT · STUDENT WORKSPACE</span><h1>Student Portal</h1><p>Your learning and registration information</p></div>
-            <span className="sp-preview">Student account</span>
-          </header>
-          {!studentId && <div className="sp-alert" role="status">
-            Your login was successful, but a student ID was not provided by the authentication service.
-            Student records cannot be safely linked without it.
-          </div>}
-          {recordLoading && <div className="sp-alert" role="status">Loading your registration information…</div>}
-          {recordError && <div className="sp-alert" role="alert">{recordError}</div>}
-          <div className="sp-stats">
+          )}
+          {activeSection === 'student-overview' && (
+            <div className="sp-section-page">
+              <header className="sp-heading">
+                <div><span className="sp-eyebrow">CIIT · STUDENT WORKSPACE</span><h1>Dashboard</h1><p>Your learning and payment overview.</p></div>
+                <span className="sp-preview">Student account</span>
+              </header>
+              <div className="sp-stats">
             <div className="sp-panel"><span>Enrolled courses</span><strong>{studentRecord ? courseRows.length : '—'}</strong></div>
             <div className="sp-panel"><span>Assigned batches</span><strong>{studentRecord ? batchRows.length : '—'}</strong></div>
             <div className="sp-panel"><span>Recorded payments</span><strong>{studentRecord ? paymentRows.length : '—'}</strong></div>
             <div className="sp-panel"><span>Payment total</span><strong>{paymentRows.length ? currency(totalPaid) : '—'}</strong></div>
           </div>
-          <div className="sp-columns">
-            <section id="student-course" className="sp-panel">
+            </div>
+          )}
+          {activeSection === 'student-course' && (
+            <div className="sp-section-page">
+              <header className="sp-heading"><div><span className="sp-eyebrow">STUDENT WORKSPACE</span><h1>My Courses</h1><p>View your registered courses and enrollment status.</p></div></header>
+              <section id="student-course" className="sp-panel">
               <h2>My courses</h2>
               {courseRows.length ? <div className="sp-stack">{courseRows.map((row, index) =>
                 <article className="sp-entry" key={String(readField(row, 'registrationId', 'registration_Id') ?? index)}>
@@ -320,7 +338,12 @@ export default function StudentAccount() {
                 </article>,
               )}</div> : <p className="sp-muted">No course records available from your student registration details.</p>}
             </section>
-            <section id="student-batch" className="sp-panel">
+            </div>
+          )}
+          {activeSection === 'student-batch' && (
+            <div className="sp-section-page">
+              <header className="sp-heading"><div><span className="sp-eyebrow">STUDENT WORKSPACE</span><h1>My Batches</h1><p>View the batches assigned to your account.</p></div></header>
+              <section id="student-batch" className="sp-panel">
               <h2>My batches</h2>
               {batchRows.length ? <div className="sp-stack">{batchRows.map((row, index) =>
                 <article className="sp-entry" key={String(readField(row, 'batchId', 'batch_Id') ?? index)}>
@@ -329,7 +352,12 @@ export default function StudentAccount() {
                 </article>,
               )}</div> : <p className="sp-muted">Batch information is not available from the student-scoped registration response.</p>}
             </section>
-            <section id="student-payments" className="sp-panel">
+            </div>
+          )}
+          {activeSection === 'student-payments' && (
+            <div className="sp-section-page">
+              <header className="sp-heading"><div><span className="sp-eyebrow">STUDENT WORKSPACE</span><h1>Payments</h1><p>Review your recorded payments and available attendance information.</p></div></header>
+              <section id="student-payments" className="sp-panel">
               <h2>Payments and attendance</h2>
               {paymentRows.length ? <div className="sp-stack">{paymentRows.map((row, index) =>
                 <article className="sp-entry sp-payment" key={String(readField(row, 'paymentId', 'payment_Id') ?? index)}>
@@ -340,8 +368,8 @@ export default function StudentAccount() {
               )}</div> : <p className="sp-muted">No payment records available from your registration details.</p>}
               <p className="sp-muted">Attendance will appear when a student-scoped attendance API is available.</p>
             </section>
-          </div>
-          </>)}
+            </div>
+          )}
         </div></div></div></main>
       </div>
     </div>
