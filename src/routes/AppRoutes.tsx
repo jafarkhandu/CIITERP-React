@@ -16,6 +16,8 @@ const EditUserRoles = lazy(() => import('@/features/employee/EditUserRoles'));
 const Lead = lazy(() => import('@/features/lead/Lead'));
 const LeadFollowup = lazy(() => import('@/features/lead/LeadFollowup'));
 const Course = lazy(() => import('@/features/course/Course'));
+const Topics = lazy(() => import('@/features/developer/Topics'));
+const CourseMapping = lazy(() => import('@/features/developer/CourseMapping'));
 const Enquiry = lazy(() => import('@/features/enquiry/Enquiry'));
 const EnquiryForm = lazy(() => import('@/features/enquiry/EnquiryForm'));
 const EnquiryFollowup = lazy(() => import('@/features/enquiry/EnquiryFollowup'));
@@ -54,6 +56,8 @@ export default function AppRoutes() {
       <Route path="enquiry/edit/:id" element={guarded(<EnquiryForm />, { permission: PERMISSIONS.ENQUIRY_UPDATE })} />
       <Route path="enquiry/followup/:enquiryId" element={guarded(<EnquiryFollowup />, { permission: PERMISSIONS.ENQUIRY_FOLLOWUP })} />
       <Route path="course" element={guarded(<Course />, { permission: PERMISSIONS.COURSE_VIEW })} />
+      <Route path="topics" element={guarded(<Topics />, { roles: ['Developer'], permission: PERMISSIONS.COURSE_VIEW })} />
+      <Route path="course-mapping" element={guarded(<CourseMapping />, { roles: ['Developer'], permission: PERMISSIONS.COURSE_VIEW })} />
       <Route path="function-management" element={guarded(<FunctionManagement />, { permission: PERMISSIONS.FUNCTION_MANAGEMENT_VIEW, roles: ['Admin', 'Super User'] })} />
       <Route path="reports" element={guarded(<Reports />, { permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User'] })} />
       <Route path="student-registration" element={guarded(<StudentRegistration />)} />
