@@ -4,7 +4,7 @@ import { authApi } from '@/api/authApi';
 import { findCurrentUser, getAllUsers, getCachedUsers } from '@/api/userApi';
 import { authService } from '@/core/auth/authService';
 import { userSession } from '@/core/auth/session';
-import { hasStudentRole, readTokenIdentity } from '@/core/auth/tokenIdentity';
+import { isStudentOnlyAccount, readTokenIdentity } from '@/core/auth/tokenIdentity';
 import { apiErrorMessage, httpStatus } from '@/core/http/errors';
 import './Login.css';
 
@@ -47,7 +47,7 @@ export default function Login() {
     ].filter((role): role is string => typeof role === 'string');
     const roles = [...identity.roles, ...responseRoles];
 
-    if (hasStudentRole(roles)) {
+    if (isStudentOnlyAccount(roles)) {
       // The successful Auth login identifies this account as a student.
       // Do not request the staff user directory or expose staff routes.
       userSession.setUser({
@@ -71,7 +71,7 @@ export default function Login() {
       const currentUser = findCurrentUser(users, loginUsername);
       if (currentUser) {
         userSession.setUser(currentUser);
-        if (userSession.hasRole('Student')) {
+        if (isStudentOnlyAccount(userSession.roles)) {
           navigate('/student-portal', { replace: true });
           return;
         }
