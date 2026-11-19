@@ -97,11 +97,25 @@ export default function StudentAccount() {
     identity.displayName || session.employeeName || session.username,
   );
   const studentCode = identity.username || session.username;
-  const registrations = nestedRows(studentRecord, 'registrations', 'Registrations');
+  const belongsToStudent = (row: StudentRecord): boolean => {
+    const explicitId = readField(row, 'studentId', 'student_Id', 'student_id', 'StudentId');
+    return explicitId === null || Number(explicitId) === identity.studentId;
+  };
+  const registrations = nestedRows(studentRecord, 'registrations', 'Registrations')
+    .filter(belongsToStudent);
   const courseRows = registrations.length ? registrations :
-    readField(studentRecord, 'registrationId', 'registration_Id') ? [studentRecord!] : [];
-  const paymentRows = courseRows.flatMap((row) => nestedRows(row, 'payments', 'Payments'));
-  const batchRows = nestedRows(studentRecord, 'batches', 'Batches');
+    studentRecord && (
+      readField(studentRecord, 'registrationId', 'registration_Id') ||
+      readField(studentRecord, 'courseName', 'course_Name')
+    ) ? [studentRecord] : [];
+  const paymentRows = [
+    ...nestedRows(studentRecord, 'payments', 'Payments'),
+    ...courseRows.flatMap((row) => nestedRows(row, 'payments', 'Payments')),
+  ].filter(belongsToStudent);
+  const batchRows = [
+    ...nestedRows(studentRecord, 'batches', 'Batches'),
+    ...courseRows.flatMap((row) => nestedRows(row, 'batches', 'Batches')),
+  ].filter(belongsToStudent);
   const totalPaid = paymentRows.reduce((sum, row) =>
     sum + (Number(readField(row, 'paymentAmount', 'payment_Amount')) || 0), 0);
 
