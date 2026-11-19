@@ -29,6 +29,7 @@ export default function Login() {
 
   async function loadUserAndNavigate(
     loginUsername: string,
+    loginPassword: string,
     accessToken: string,
     loginResponse: unknown,
   ) {
@@ -48,9 +49,27 @@ export default function Login() {
     const roles = [...identity.roles, ...responseRoles];
 
     if (isStudentOnlyAccount(roles)) {
+      // Staff authentication identifies the role; the StudentLogin service
+      // authenticates this student and returns the numeric student identity.
+      const studentLogin = await authApi.studentLogin({
+        studentCode: loginUsername,
+        password: loginPassword,
+      });
+      const studentId = Number(studentLogin.data?.studentId);
+      const studentToken = studentLogin.data?.token;
+
+      if (!Number.isSafeInteger(studentId) || studentId <= 0 || !studentToken) {
+        throw new Error('Student login response did not include a valid student ID and token.');
+      }
+
+      // StudentLogin issues its own token with no refresh token.
+      // Never reuse the staff Auth refresh token for a student token.
+      authService.saveLoginData(studentToken, '');
+
       // The successful Auth login identifies this account as a student.
       // Do not request the staff user directory or expose staff routes.
       userSession.setUser({
+        studentId,
         userName: identity.username || loginUsername,
         employeeName: identity.displayName ||
           (typeof responseUser.studentName === 'string' ? responseUser.studentName : '') ||
@@ -118,8 +137,9 @@ export default function Login() {
       userSession.clear();
       authService.saveLoginData(response.token, response.refreshToken);
       localStorage.setItem('username', username);
-      await loadUserAndNavigate(username, response.token, response);
+      await loadUserAndNavigate(username, password, response.token, response);
     } catch (error) {
+      authService.clearSession();
       console.error('Login processing error:', error);
       setErrormessage('Login could not be completed. Please try again.');
       setIsLoading(false);
