@@ -5,7 +5,7 @@ import { useSession } from '@/core/auth/hooks';
 import { readTokenIdentity } from '@/core/auth/tokenIdentity';
 import { tokenService } from '@/core/services/tokenService';
 import { studentApi } from '@/api/studentApi';
-import { loadStudentPhoto, saveStudentPhoto } from './studentPhotoStorage';
+import { loadStudentPhoto, removeStudentPhoto, saveStudentPhoto } from './studentPhotoStorage';
 import '@/layouts/MainLayout.css';
 import './StudentPortal.css';
 
@@ -125,6 +125,23 @@ export default function StudentAccount() {
     reader.onerror = () => setPhotoMessage('Unable to read the selected image. Please try another file.');
     reader.readAsDataURL(file);
   }
+  async function handleRemovePhoto() {
+    if (!studentId || !profilePhoto) return;
+
+    const revision = ++photoRevision.current;
+    try {
+      await removeStudentPhoto(studentId);
+      if (revision !== photoRevision.current) return;
+      setProfilePhoto(null);
+      setPhotoMessage('Profile photo removed from this browser.');
+      if (photoInputRef.current) photoInputRef.current.value = '';
+    } catch {
+      if (revision === photoRevision.current) {
+        setPhotoMessage('Could not remove the photo. Please try again.');
+      }
+    }
+  }
+
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => localStorage.getItem('ciit-sidebar-collapsed') === 'true');
   const [isDarkTheme, setIsDarkTheme] = useState(() => (localStorage.getItem('ciit-theme') || localStorage.getItem('theme')) === 'dark');
@@ -253,6 +270,11 @@ export default function StudentAccount() {
                       disabled={!studentId}
                     />
                     <label htmlFor="sp-profile-photo-input" className="sp-profile-upload-button">Choose profile photo</label>
+                    {profilePhoto && (
+                      <button type="button" className="btn btn-outline-danger btn-sm ms-2" onClick={() => void handleRemovePhoto()}>
+                        Remove photo
+                      </button>
+                    )}
                     <p className="sp-muted">JPG, PNG or WebP · Max 2 MB · Saved on this browser only</p>
                     {photoMessage && <p role="status" className="sp-muted">{photoMessage}</p>}
                   </div>
@@ -264,7 +286,7 @@ export default function StudentAccount() {
                   <div><dt>Full name</dt><dd>{studentName}</dd></div>
                   <div><dt>Email</dt><dd>{display(readField(studentRecord, 'emailAddress', 'email_Address') || identity.email || session.email)}</dd></div>
                   <div><dt>Mobile number</dt><dd>{display(readField(studentRecord, 'mobileNumber', 'mobile_Number'))}</dd></div>
-                  <div><dt>Qualification</dt><dd>{display(readField(studentRecord, 'qualification'))}</dd></div>
+                  <div><dt>Qualification</dt><dd>{display(readField(studentRecord, 'qualification', 'qualificationName', 'qualification_Name', 'qualification_name', 'Qualification', 'QualificationName'))}</dd></div>
                   <div><dt>Branch</dt><dd>{display(readField(studentRecord, 'branchName', 'branch_Name'))}</dd></div>
                 </dl>
               </section>
