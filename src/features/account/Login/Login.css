@@ -877,3 +877,6 @@
         transition-duration: 0.01ms !important;
     }
 }
+
+/* Public demo entry; separate from employee authentication. */
+.cmp-login .student-preview-link{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;margin:12px 0 0;padding:12px 14px;border:1px solid #bfd5f4;border-radius:9px;background:#edf5ff;color:#1256a5;font-size:12px;font-weight:750;text-decoration:none;transition:background .15s ease,border-color .15s ease}.cmp-login .student-preview-link:hover{background:#e0efff;border-color:#8db7eb;color:#104a90}.cmp-login .student-preview-link:focus-visible{outline:3px solid #80b7ff;outline-offset:2px}
