@@ -153,3 +153,77 @@ html[data-theme="dark"] .email-center-status.pending {
   color: #fde68a;
   background: #47351b;
 }
+
+
+/* Manual email composer: full-width stacked form controls. */
+.email-center-compose-form {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+.email-center-compose-form > label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.email-center-compose-form > label > input,
+.email-center-compose-form > label > textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 11px 13px;
+  border: 1px solid var(--border-color, #dce3ed);
+  border-radius: 9px;
+  background: var(--surface-card, #fff);
+  color: inherit;
+  font: inherit;
+  font-weight: 400;
+}
+
+.email-center-compose-form > label > input {
+  min-height: 44px;
+}
+
+.email-center-compose-form > label > textarea {
+  min-height: 190px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.email-center-compose-form > button[type="submit"] {
+  justify-self: start;
+  min-height: 44px;
+  padding: 10px 20px;
+  border: 0;
+  border-radius: 9px;
+  background: #2458a6;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.email-center-compose-form > button[type="submit"]:disabled {
+  opacity: .65;
+  cursor: wait;
+}
+
+html[data-theme="dark"] .email-center-compose-form > label > input,
+html[data-theme="dark"] .email-center-compose-form > label > textarea {
+  color: #eef5ff;
+  background-color: #0e1e31;
+  border-color: #405875;
+}
+
+@media (max-width: 680px) {
+  .email-center-compose-form > button[type="submit"] {
+    justify-self: stretch;
+  }
+}
