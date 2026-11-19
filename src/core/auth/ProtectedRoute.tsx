@@ -4,6 +4,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { tokenService } from '@/core/services/tokenService';
 import { PERMISSIONS, permissionService, type Permission } from '@/core/services/permissionService';
 import { userSession } from './session';
+import { isStudentOnlyAccount } from './tokenIdentity';
 import { usePermissionVersion, useSession } from './hooks';
 
 interface Props {
@@ -22,7 +23,7 @@ export default function ProtectedRoute({ permission, permissions, roles, childre
   if (!tokenService.isLoggedIn()) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
 
   // Students use their separate portal; keep ERP staff pages off the student session.
-  if (location.pathname.startsWith('/main') && userSession.hasRole('Student')) {
+  if (location.pathname.startsWith('/main') && isStudentOnlyAccount(userSession.roles)) {
     return <Navigate to="/student-portal" replace />;
   }
 
