@@ -844,3 +844,21 @@ html:not([data-theme="dark"]) .ciit-student-public-shell .ciit-student-public-co
     background: #d7e6f7;
   }
 }
+
+
+/* Student course and payment detail cards. */
+.ciit-student-public-shell .sp-student-detail-card { padding: 20px; }
+.ciit-student-public-shell .sp-student-detail-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.ciit-student-public-shell .sp-student-detail-header h3 { margin: 0; }
+.ciit-student-public-shell .sp-student-status { border-radius: 999px; padding: 6px 12px; background: rgba(43, 117, 214, .12); color: var(--ciit-primary, #1769d2); font-size: 12px; font-weight: 750; }
+.ciit-student-public-shell .sp-student-detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0; }
+.ciit-student-public-shell .sp-student-detail-grid > div { min-width: 0; }
+.ciit-student-public-shell .sp-student-detail-grid dt { font-size: 12px; color: var(--ciit-muted, #687b94); margin-bottom: 5px; }
+.ciit-student-public-shell .sp-student-detail-grid dd { margin: 0; font-weight: 650; overflow-wrap: anywhere; }
+.ciit-student-public-shell .sp-student-detail-wide { grid-column: 1 / -1; }
+.ciit-student-public-shell .sp-student-payment-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+.ciit-student-public-shell .sp-student-payment-summary > div { padding: 18px; border-radius: 16px; border: 1px solid var(--ciit-border, #dce6f2); background: rgba(255, 255, 255, .32); display: grid; gap: 8px; }
+.ciit-student-public-shell .sp-student-payment-summary span { font-size: 13px; color: var(--ciit-muted, #687b94); }
+.ciit-student-public-shell .sp-student-payment-summary strong { font-size: 24px; }
+@media (max-width: 700px) { .ciit-student-public-shell .sp-student-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .ciit-student-public-shell .sp-student-detail-grid, .ciit-student-public-shell .sp-student-payment-summary { grid-template-columns: 1fr; } }
