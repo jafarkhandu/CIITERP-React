@@ -31,7 +31,10 @@ export default function Topics() {
 
   async function refreshTopics() {
     const next = await trainingTopicApi.getAll();
-    setTopics(next);
+    setTopics(current => [
+      ...next,
+      ...current.filter(item => item.isDeleted && !next.some(latest => latest.topicId === item.topicId)),
+    ]);
     setSelectedTopicId(current =>
       next.some(item => item.topicId === current && !item.isDeleted)
         ? current
@@ -39,7 +42,11 @@ export default function Topics() {
   }
 
   async function refreshContents(topicId: number) {
-    setContents(await trainingTopicContentApi.getByTopic(topicId));
+    const next = await trainingTopicContentApi.getByTopic(topicId);
+    setContents(current => [
+      ...next,
+      ...current.filter(item => item.isDeleted && !next.some(latest => latest.contentId === item.contentId)),
+    ]);
   }
 
   useEffect(() => {
@@ -267,7 +274,7 @@ export default function Topics() {
             : <ul className="dt-topic-list">
               {visibleTopics.map(item => (
                 <li key={item.topicId} className={item.topicId === selectedTopicId ? 'dt-selected' : ''}>
-                  <button type="button" className="dt-topic-select"
+                  <button type="button" className="dt-topic-select" disabled={saving}
                     onClick={() => { setSelectedTopicId(item.topicId); setContentEditor(null); setError(''); }}>
                     <strong>{item.topicName}</strong>
                     <small>Topic ID: {item.topicId}{item.isDeleted ? ' · Deleted' : ''}</small>
