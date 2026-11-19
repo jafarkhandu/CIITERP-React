@@ -878,3 +878,47 @@ html:not([data-theme="dark"]) .ciit-student-public-shell .ciit-student-public-co
     padding: 10px 8px 4px;
   }
 }
+
+
+/* Compact, accessible single-expand student detail cards. */
+.ciit-student-public-shell .sp-student-detail-card {
+  padding: 0;
+  overflow: hidden;
+}
+.ciit-student-public-shell .sp-student-detail-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 17px 20px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ciit-student-public-shell .sp-student-detail-toggle:focus-visible {
+  outline: 3px solid #2779d9;
+  outline-offset: -3px;
+}
+.ciit-student-public-shell .sp-student-detail-main {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.ciit-student-public-shell .sp-student-detail-main small {
+  color: var(--ciit-muted, #687b94);
+  font-size: 12px;
+}
+.ciit-student-public-shell .sp-student-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+.ciit-student-public-shell .sp-student-detail-card > .sp-student-detail-grid {
+  padding: 18px 20px 20px;
+  border-top: 1px solid rgba(116, 152, 196, .2);
+}
