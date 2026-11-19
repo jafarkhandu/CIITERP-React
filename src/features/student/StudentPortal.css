@@ -228,3 +228,19 @@ html[data-theme="dark"] .ciit-student-portal .sp-profile-details > div {
     background: transparent;
   }
 }
+
+
+/* Dedicated Student Portal pages share the existing responsive glass cards. */
+.ciit-student-public-shell .ciit-student-public-content .sp-section-page {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.ciit-student-public-shell .sp-section-page .sp-heading {
+  margin-bottom: 0;
+}
+
+.ciit-student-public-shell .sp-section-page > .sp-panel {
+  min-width: 0;
+}
