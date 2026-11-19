@@ -325,7 +325,7 @@ export default function StudentAccount() {
           {recordError && <div className="sp-alert" role="alert">{recordError}</div>}
           {activeSection === 'student-profile' && (
             <div className="sp-my-profile" id="student-profile">
-              <header className="sp-heading"><div><span className="sp-eyebrow">STUDENT WORKSPACE</span><h1>Profile</h1><p>View your account information and profile picture.</p></div></header>
+              
               <section className="sp-panel sp-profile-glass" aria-labelledby="sp-profile-details-title">
                 <div className="sp-my-profile-photo">
                   <div className="sp-my-profile-avatar">
@@ -369,7 +369,6 @@ export default function StudentAccount() {
           )}
           {activeSection === 'student-overview' && (
             <StudentDashboard
-              studentName={studentName}
               studentRecordLoaded={studentRecord !== null}
               loading={recordLoading}
               courseRows={courseRows}
@@ -380,7 +379,7 @@ export default function StudentAccount() {
           )}
           {activeSection === 'student-course' && (
             <div className="sp-section-page">
-              <header className="sp-heading"><div><span className="sp-eyebrow">STUDENT WORKSPACE</span><h1>Courses</h1><p>View your registered courses and enrollment status.</p></div></header>
+              
               <section id="student-course" className="sp-panel">
               <h2>Courses ({courseRows.length})</h2>
               {courseRows.length ? <div className="sp-stack">{courseRows.map((row, index) => {
@@ -428,7 +427,7 @@ export default function StudentAccount() {
           )}
           {activeSection === 'student-batch' && (
             <div className="sp-section-page">
-              <header className="sp-heading"><div><span className="sp-eyebrow">STUDENT WORKSPACE</span><h1>Batches</h1><p>View the batches assigned to your account.</p></div></header>
+              
               <section id="student-batch" className="sp-panel">
               <h2>Batches</h2>
               {batchRows.length ? <div className="sp-stack">{batchRows.map((row, index) =>
@@ -442,7 +441,7 @@ export default function StudentAccount() {
           )}
           {activeSection === 'student-payments' && (
             <div className="sp-section-page">
-              <header className="sp-heading"><div><span className="sp-eyebrow">STUDENT WORKSPACE</span><h1>Payments</h1><p>Review your recorded payments and available attendance information.</p></div></header>
+              
               <section id="student-payments" className="sp-panel">
               <div className="sp-student-payment-summary"><div><span>Total Amount Paid</span><strong>{currency(totalPaid)}</strong></div><div><span>Payment entries</span><strong>{paymentRows.length}</strong></div></div>
               <h2>Payment history</h2>
