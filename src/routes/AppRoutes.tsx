@@ -56,8 +56,8 @@ export default function AppRoutes() {
       <Route path="enquiry/edit/:id" element={guarded(<EnquiryForm />, { permission: PERMISSIONS.ENQUIRY_UPDATE })} />
       <Route path="enquiry/followup/:enquiryId" element={guarded(<EnquiryFollowup />, { permission: PERMISSIONS.ENQUIRY_FOLLOWUP })} />
       <Route path="course" element={guarded(<Course />, { permission: PERMISSIONS.COURSE_VIEW })} />
-      <Route path="topics" element={guarded(<Topics />, { roles: ['Developer', 'Super User'], permission: PERMISSIONS.COURSE_VIEW })} />
-      <Route path="course-mapping" element={guarded(<CourseMapping />, { roles: ['Developer', 'Super User'], permission: PERMISSIONS.COURSE_VIEW })} />
+      <Route path="topics" element={guarded(<Topics />, { roles: ['Developer'], permission: PERMISSIONS.COURSE_VIEW })} />
+      <Route path="course-mapping" element={guarded(<CourseMapping />, { roles: ['Developer'], permission: PERMISSIONS.COURSE_VIEW })} />
       <Route path="function-management" element={guarded(<FunctionManagement />, { permission: PERMISSIONS.FUNCTION_MANAGEMENT_VIEW, roles: ['Admin', 'Super User'] })} />
       <Route path="reports" element={guarded(<Reports />, { permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User'] })} />
       <Route path="student-registration" element={guarded(<StudentRegistration />)} />
