@@ -375,3 +375,65 @@
   top: 0;
   z-index: 1;
 }
+
+/* Course Mapping only: replace the long vertical checklist with responsive topic cards. */
+.dt-mapping-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.dt-mapping-topic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr));
+  gap: 10px;
+  max-height: none;
+  overflow: visible;
+  margin-top: 14px;
+  padding: 0;
+}
+
+.dt-mapping-topic-grid .dt-mapping-topic-card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  min-height: 67px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--ciit-border, #dce6f2);
+  border-radius: 11px;
+  background: var(--ciit-surface, #fff);
+  transition: border-color .15s ease, background .15s ease;
+}
+
+.dt-mapping-topic-grid .dt-mapping-topic-card:hover {
+  border-color: #8bbaf5;
+}
+
+.dt-mapping-topic-grid .dt-mapping-topic-card.is-selected {
+  border-color: #6da7f4;
+  background: rgba(59, 130, 246, .1);
+}
+
+.dt-mapping-topic-grid .dt-mapping-topic-card:focus-within {
+  outline: 2px solid #6da7f4;
+  outline-offset: 2px;
+}
+
+.dt-mapping-topic-grid .dt-mapping-topic-card input {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.dt-mapping-topic-grid .dt-mapping-topic-card span {
+  min-width: 0;
+}
+
+.dt-mapping-topic-grid .dt-mapping-topic-card strong {
+  display: block;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.dt-mapping-topic-grid .dt-mapping-topic-card small {
+  margin-top: 5px;
+}
