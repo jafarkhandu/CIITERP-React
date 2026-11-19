@@ -65,3 +65,13 @@ export function readTokenIdentity(token: string): TokenIdentity {
 export function hasStudentRole(roles: string[]): boolean {
   return roles.some((role) => role.trim().toLowerCase() === 'student');
 }
+
+/** A mixed staff/student role assignment must preserve the existing staff login flow. */
+export function isStudentOnlyAccount(roles: string[]): boolean {
+  const staffRoles = new Set([
+    'admin', 'superuser', 'accountant', 'trainer',
+    'developer', 'counsellor', 'groupleader',
+  ]);
+  const normalized = roles.map((role) => role.trim().toLowerCase().replace(/[\s_-]+/g, ''));
+  return hasStudentRole(roles) && !normalized.some((role) => staffRoles.has(role));
+}
