@@ -21,6 +21,11 @@ export default function ProtectedRoute({ permission, permissions, roles, childre
 
   if (!tokenService.isLoggedIn()) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
 
+  // Students use their separate portal; keep ERP staff pages off the student session.
+  if (location.pathname.startsWith('/main') && userSession.hasRole('Student')) {
+    return <Navigate to="/student-portal" replace />;
+  }
+
   const accessDenied = (
     <Navigate to={userSession.hasPermission(PERMISSIONS.DASHBOARD_VIEW) ? '/main/dashboard' : '/login'} replace />
   );
