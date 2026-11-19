@@ -188,7 +188,7 @@ export default function CourseMapping() {
         </label>
       </div>
 
-      <div className="dt-split">
+      <div className="dt-split dt-mapping-layout">
         <div className="dt-panel">
           <h2>Choose Topics</h2>
           <p className="dt-muted">Select the topics that should belong to this course.</p>
@@ -196,10 +196,10 @@ export default function CourseMapping() {
             <input className="dt-search" aria-label="Search available topics"
               placeholder="Search topics..." value={search}
               onChange={event => setSearch(event.target.value)} />
-            <div className="dt-check-list">
+            <div className="dt-check-list dt-mapping-topic-grid">
               {loading ? <p className="dt-muted">Loading topics…</p>
                 : matchingTopics.length === 0 ? <p className="dt-muted">No active topics found.</p>
-                  : matchingTopics.map(topic => <label key={topic.topicId} className="dt-topic-checkbox">
+                  : matchingTopics.map(topic => <label key={topic.topicId} className={`dt-topic-checkbox dt-mapping-topic-card${selectedTopicIds.includes(topic.topicId) ? ' is-selected' : ''}`}>
                     <input type="checkbox" checked={selectedTopicIds.includes(topic.topicId)}
                       disabled={!courseId || mappingLoading || saving}
                       onChange={() => toggleTopic(topic.topicId)} />
