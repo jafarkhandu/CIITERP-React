@@ -20,7 +20,6 @@ const Enquiry = lazy(() => import('@/features/enquiry/Enquiry'));
 const EnquiryForm = lazy(() => import('@/features/enquiry/EnquiryForm'));
 const EnquiryFollowup = lazy(() => import('@/features/enquiry/EnquiryFollowup'));
 const FunctionManagement = lazy(() => import('@/features/function-management/FunctionManagement'));
-const EmailCenter = lazy(() => import('@/features/settings/EmailCenter'));
 const StudentRegistration = lazy(() => import('@/features/student/StudentRegistration'));
 const StudentPayments = lazy(() => import('@/features/student/StudentPayments'));
 const StudentPortal = lazy(() => import('@/features/student/StudentPortal'));
@@ -57,7 +56,6 @@ export default function AppRoutes() {
       <Route path="course" element={guarded(<Course />, { permission: PERMISSIONS.COURSE_VIEW })} />
       <Route path="function-management" element={guarded(<FunctionManagement />, { permission: PERMISSIONS.FUNCTION_MANAGEMENT_VIEW, roles: ['Admin', 'Super User'] })} />
       <Route path="reports" element={guarded(<Reports />, { permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User'] })} />
-      <Route path="email-services" element={guarded(<EmailCenter />, { roles: ['Admin', 'Super User'] })} />
       <Route path="student-registration" element={guarded(<StudentRegistration />)} />
       <Route path="student-details/:studentId" element={guarded(soon('Student Details', 3))} />
       <Route path="account/student-registration" element={guarded(<StudentRegistration />)} />
