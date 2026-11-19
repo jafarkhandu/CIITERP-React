@@ -56,8 +56,10 @@ const currency = (amount: number) =>
 export default function StudentAccount() {
   const session = useSession();
   const [identity] = useState(() => readTokenIdentity(tokenService.getAccessToken() ?? ''));
+  // StudentLogin returns studentId in its response body, not necessarily in JWT claims.
+  const studentId = identity.studentId ?? session.currentUser?.studentId ?? null;
   const [studentRecord, setStudentRecord] = useState<StudentRecord | null>(null);
-  const [recordLoading, setRecordLoading] = useState(Boolean(identity.studentId));
+  const [recordLoading, setRecordLoading] = useState(Boolean(studentId));
   const [recordError, setRecordError] = useState('');
   const [activeSection, setActiveSection] = useState('student-overview');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -69,13 +71,13 @@ export default function StudentAccount() {
   }, [isDarkTheme]);
 
   useEffect(() => {
-    if (!identity.studentId) return;
+    if (!studentId) return;
 
     let active = true;
-    studentApi.getRegistrationById(identity.studentId)
+    studentApi.getRegistrationById(studentId)
       .then((response) => {
         if (!active) return;
-        const record = ownedRegistrationResponse(response, identity.studentId!);
+        const record = ownedRegistrationResponse(response, studentId);
         if (!record) {
           setRecordError('Student registration details could not be matched to your signed-in account.');
           return;
@@ -90,7 +92,7 @@ export default function StudentAccount() {
       });
 
     return () => { active = false; };
-  }, [identity.studentId]);
+  }, [studentId]);
 
   const studentName = display(
     readField(studentRecord, 'studentName', 'student_Name', 'name') ||
@@ -99,7 +101,7 @@ export default function StudentAccount() {
   const studentCode = identity.username || session.username;
   const belongsToStudent = (row: StudentRecord): boolean => {
     const explicitId = readField(row, 'studentId', 'student_Id', 'student_id', 'StudentId');
-    return explicitId === null || Number(explicitId) === identity.studentId;
+    return explicitId === null || Number(explicitId) === studentId;
   };
   const registrations = nestedRows(studentRecord, 'registrations', 'Registrations')
     .filter(belongsToStudent);
@@ -171,8 +173,8 @@ export default function StudentAccount() {
             <div><span className="sp-eyebrow">CIIT · STUDENT WORKSPACE</span><h1>Student Portal</h1><p>Your learning and registration information</p></div>
             <span className="sp-preview">Student account</span>
           </header>
-          {!identity.studentId && <div className="sp-alert" role="status">
-            Your login was successful, but the authentication token did not provide a student ID.
+          {!studentId && <div className="sp-alert" role="status">
+            Your login was successful, but a student ID was not provided by the authentication service.
             Student records cannot be safely linked without it.
           </div>}
           {recordLoading && <div className="sp-alert" role="status">Loading your registration information…</div>}
