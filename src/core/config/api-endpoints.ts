@@ -16,6 +16,8 @@ export const API_ENDPOINTS = Object.freeze({
   lead: 'https://leadapis.ciitstudent.com/api',
   leadDirectHost: 'https://leadapis.ciitstudent.com',
 
+  developerTraining: 'https://developer.ciitstudent.com/api',
+
   studentLogin: 'https://student.ciitstudent.com/api/StudentLogin',
   studentRegistration: 'https://student.ciitstudent.com/api/StudentRegistration',
   studentDetails: 'https://student.ciitstudent.com/api/StudentDetails',
