@@ -862,3 +862,19 @@ html:not([data-theme="dark"]) .ciit-student-public-shell .ciit-student-public-co
 .ciit-student-public-shell .sp-student-payment-summary strong { font-size: 24px; }
 @media (max-width: 700px) { .ciit-student-public-shell .sp-student-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 420px) { .ciit-student-public-shell .sp-student-detail-grid, .ciit-student-public-shell .sp-student-payment-summary { grid-template-columns: 1fr; } }
+
+
+/* Align Profile and Courses titles with the same inset as other student pages. */
+.ciit-student-public-shell .ciit-student-public-content .sp-my-profile > .sp-heading,
+.ciit-student-public-shell .ciit-student-public-content .sp-section-page > .sp-heading {
+  box-sizing: border-box;
+  padding: 18px 20px 8px;
+  margin: 0;
+}
+
+@media (max-width: 650px) {
+  .ciit-student-public-shell .ciit-student-public-content .sp-my-profile > .sp-heading,
+  .ciit-student-public-shell .ciit-student-public-content .sp-section-page > .sp-heading {
+    padding: 10px 8px 4px;
+  }
+}
