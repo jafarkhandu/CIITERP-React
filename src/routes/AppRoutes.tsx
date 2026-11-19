@@ -23,7 +23,7 @@ const FunctionManagement = lazy(() => import('@/features/function-management/Fun
 const StudentRegistration = lazy(() => import('@/features/student/StudentRegistration'));
 const StudentPayments = lazy(() => import('@/features/student/StudentPayments'));
 const StudentPortal = lazy(() => import('@/features/student/StudentPortal'));
-const StudentPortalPreview = lazy(() => import('@/features/student/StudentPortalPreview'));
+const StudentAccount = lazy(() => import('@/features/student/StudentAccount'));
 const TrainerBatches = lazy(() => import('@/features/trainer/TrainerBatches'));
 const TrainerBatchDetails = lazy(() => import('@/features/trainer/TrainerBatchDetails'));
 const BatchManagement = lazy(() => import('@/features/batch/BatchManagement'));
@@ -35,7 +35,7 @@ const soon = (title: string, phase: 2 | 3 | 4) => <ComingSoon title={title} phas
 export default function AppRoutes() {
   return <Suspense fallback={<div role="status" aria-live="polite" style={{ minHeight: '40vh', display: 'grid', placeItems: 'center', padding: '2rem', color: 'var(--text-muted, #6b7280)' }}>Loading module…</div>}><Routes>
     <Route path="/login" element={<Login />} />
-    <Route path="/student-portal" element={guarded(<StudentPortalPreview />, { roles: ['Student'] })} />
+    <Route path="/student-portal" element={guarded(<StudentAccount />, { roles: ['Student'] })} />
     <Route path="/forgot-password" element={<ForgotPassword />} />
     <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/main" element={guarded(<MainLayout />)}>
