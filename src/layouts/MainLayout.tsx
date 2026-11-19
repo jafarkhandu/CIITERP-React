@@ -24,6 +24,7 @@ const MENUS: SidebarMenu[] = [
   { label: 'Course', route: '/main/course', icon: 'bi-journal-bookmark-fill', permission: PERMISSIONS.COURSE_VIEW, roles: ['Super User', 'Admin', 'Counsellor', 'Developer'] },
   { label: 'Student Registration', route: '/main/student-registration', icon: 'bi-mortarboard-fill', roles: ['Accountant', 'Admin', 'Super User'] },
   { label: 'Student Payments', route: '/main/student-payments', icon: 'bi-wallet2', roles: ['Accountant', 'Admin', 'Super User'] },
+  { label: 'Student Portal', route: '/main/student-portal', icon: 'bi-person-vcard', roles: ['Accountant', 'Admin', 'Super User'] },
   { label: 'Manage Batch', route: '/main/batch', icon: 'bi-calendar2-week-fill', roles: ['Super User', 'Admin', 'Group Leader'], permission: PERMISSIONS.GROUP_LEADER_BATCH_VIEW },
   { label: 'My Batches', route: '/main/trainer', icon: 'bi-easel2-fill', roles: ['Trainer', 'Admin'], permission: PERMISSIONS.TRAINER_BATCH_VIEW },
   { label: 'Reports', route: '/main/reports', icon: 'bi-graph-up-arrow', permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User'] },
