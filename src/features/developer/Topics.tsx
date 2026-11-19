@@ -26,6 +26,7 @@ export default function Topics() {
   const [contentEditor, setContentEditor] = useState<number | 'new' | null>(null);
   const [topicForm, setTopicForm] = useState<TopicInput>(EMPTY_TOPIC);
   const [contentForm, setContentForm] = useState<ContentInput>(EMPTY_CONTENT);
+  const [contentTopicId, setContentTopicId] = useState(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -108,6 +109,7 @@ export default function Topics() {
     setSuccess('');
     setTopicEditor(null);
     setContentEditor(item?.contentId ?? 'new');
+    setContentTopicId(item?.topicId ?? selectedTopicId);
     setContentForm(item
       ? { contentName: item.contentName, slides: item.slides, videoName: item.videoName }
       : { ...EMPTY_CONTENT });
@@ -144,8 +146,11 @@ export default function Topics() {
 
   async function submitContent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedTopicId || contentForm.contentName.trim().length < 2) {
-      setError('Select a topic and enter a content name with at least 2 characters.');
+    const targetTopicId = typeof contentEditor === 'number' ? contentTopicId : selectedTopicId;
+    if (!targetTopicId ||
+        !topics.some(topic => topic.topicId === targetTopicId && !topic.isDeleted) ||
+        contentForm.contentName.trim().length < 2) {
+      setError('Select an active topic and enter a content name with at least 2 characters.');
       return;
     }
     setError('');
@@ -158,11 +163,16 @@ export default function Topics() {
     };
     try {
       if (typeof contentEditor === 'number') {
-        await trainingTopicContentApi.update(contentEditor, selectedTopicId, payload);
+        await trainingTopicContentApi.update(contentEditor, targetTopicId, payload);
       } else {
         await trainingTopicContentApi.create(selectedTopicId, [payload]);
       }
-      await refreshContents(selectedTopicId);
+      if (targetTopicId === selectedTopicId) {
+        await refreshContents(selectedTopicId);
+      } else {
+        // Load the destination topic so the moved content is visible immediately.
+        setSelectedTopicId(targetTopicId);
+      }
       setContentEditor(null);
       setSuccess('Topic content saved successfully.');
     } catch (requestError) {
@@ -309,6 +319,17 @@ export default function Topics() {
                   onClick={() => setContentEditor(null)} aria-label="Close content editor">×</button>
               </div>
               <div className="dt-fields">
+                {typeof contentEditor === 'number' && (
+                  <label>Topic *
+                    <select required value={contentTopicId || ''}
+                      onChange={event => setContentTopicId(Number(event.target.value))}>
+                      <option value="" disabled>Select topic</option>
+                      {topics.filter(topic => !topic.isDeleted).map(topic => (
+                        <option key={topic.topicId} value={topic.topicId}>{topic.topicName}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 <label>Content Name *
                   <input required minLength={2} value={contentForm.contentName}
                     onChange={event => setContentForm({ ...contentForm, contentName: event.target.value })} />
