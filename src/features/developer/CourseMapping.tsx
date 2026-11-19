@@ -160,7 +160,7 @@ export default function CourseMapping() {
   }
 
   return (
-    <section className="dt-page">
+    <section className="dt-page dt-mapping-page">
       <header className="dt-heading">
         <div>
           <h1>Course Mapping</h1>
