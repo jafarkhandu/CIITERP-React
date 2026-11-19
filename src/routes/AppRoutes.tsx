@@ -23,6 +23,7 @@ const FunctionManagement = lazy(() => import('@/features/function-management/Fun
 const EmailCenter = lazy(() => import('@/features/settings/EmailCenter'));
 const StudentRegistration = lazy(() => import('@/features/student/StudentRegistration'));
 const StudentPayments = lazy(() => import('@/features/student/StudentPayments'));
+const StudentPortal = lazy(() => import('@/features/student/StudentPortal'));
 const TrainerBatches = lazy(() => import('@/features/trainer/TrainerBatches'));
 const TrainerBatchDetails = lazy(() => import('@/features/trainer/TrainerBatchDetails'));
 const BatchManagement = lazy(() => import('@/features/batch/BatchManagement'));
@@ -61,6 +62,7 @@ export default function AppRoutes() {
       <Route path="student-registration/add" element={guarded(<StudentRegistration />)} />
       <Route path="student-registration/new" element={guarded(<StudentRegistration />)} />
       <Route path="student-payments" element={guarded(<StudentPayments />)} />
+      <Route path="student-portal" element={guarded(<StudentPortal />, { roles: ['Accountant', 'Admin', 'Super User'] })} />
       <Route path="student-payments/create" element={guarded(<StudentPayments />)} />
       <Route index element={<Navigate to="dashboard" replace />} />
     </Route>
