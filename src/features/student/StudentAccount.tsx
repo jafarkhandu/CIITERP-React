@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { authService } from '@/core/auth/authService';
 import { useSession } from '@/core/auth/hooks';
 import { readTokenIdentity } from '@/core/auth/tokenIdentity';
@@ -62,6 +62,29 @@ export default function StudentAccount() {
   const [recordLoading, setRecordLoading] = useState(Boolean(studentId));
   const [recordError, setRecordError] = useState('');
   const [activeSection, setActiveSection] = useState('student-overview');
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [photoMessage, setPhotoMessage] = useState('');
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => () => { if (photoInputRef.current) photoInputRef.current.value = ''; }, []);
+
+  function selectPhoto(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+      setPhotoMessage('Choose a JPG, PNG or WebP image smaller than 2 MB.');
+      event.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') return;
+      setProfilePhoto(reader.result);
+      setPhotoMessage('Photo preview only. Uploading to your account requires a student photo API.');
+    };
+    reader.onerror = () => setPhotoMessage('Unable to read the selected image. Please try another file.');
+    reader.readAsDataURL(file);
+  }
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => localStorage.getItem('ciit-sidebar-collapsed') === 'true');
   const [isDarkTheme, setIsDarkTheme] = useState(() => (localStorage.getItem('ciit-theme') || localStorage.getItem('theme')) === 'dark');
@@ -159,16 +182,41 @@ export default function StudentAccount() {
         <button type="button" className="ciit-sidebar-backdrop" aria-label="Close navigation" tabIndex={isMobileSidebarOpen ? 0 : -1} onClick={() => setIsMobileSidebarOpen(false)} />
         <aside id="ciit-student-sidebar" className="ciit-shell-sidebar" aria-label="Student navigation">
           <div className="ciit-sidebar-user">
-            <span className="ciit-sidebar-avatar">{studentName.charAt(0).toUpperCase()}</span>
+            <span className="ciit-sidebar-avatar">{profilePhoto ? <img src={profilePhoto} alt="" className="sp-profile-avatar-image" /> : studentName.charAt(0).toUpperCase()}</span>
             <div className="ciit-sidebar-user-copy"><strong>{studentName}</strong><small>{studentCode || 'Student account'}</small></div>
           </div>
           <div className="ciit-sidebar-section-label">STUDENT MENU</div>
           <nav className="ciit-sidebar-nav" aria-label="Student sections"><ul className="ciit-sidebar-list">
-            {sections.map(section => <li key={section.id}><a href={'#' + section.id} className={activeSection === section.id ? 'active-link' : ''} onClick={() => { setActiveSection(section.id); setIsMobileSidebarOpen(false); }}><i className={'bi ' + section.icon} aria-hidden="true" /><span className="ciit-menu-label">{section.title}</span><span className="ciit-menu-active-mark" aria-hidden="true" /></a></li>)}
+            {sections.map(section => <li key={section.id}><a href={'#' + section.id} className={activeSection === section.id ? 'active-link' : ''} onClick={(event) => { if (section.id === 'student-profile' || activeSection === 'student-profile') event.preventDefault(); setActiveSection(section.id); setIsMobileSidebarOpen(false); if (section.id !== 'student-profile') window.setTimeout(() => document.getElementById(section.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0); }}><i className={'bi ' + section.icon} aria-hidden="true" /><span className="ciit-menu-label">{section.title}</span><span className="ciit-menu-active-mark" aria-hidden="true" /></a></li>)}
           </ul></nav>
           <div className="ciit-sidebar-footer"><span className="ciit-sidebar-footer-mark"><i className="bi bi-mortarboard-fill" aria-hidden="true" /></span><span><strong>CIIT ERP</strong><small>Training Institute</small></span></div>
         </aside>
         <main className="ciit-workspace"><div className="ciit-content"><div className="ciit-page-transition"><div className="ciit-student-portal ciit-student-public-content">
+          {activeSection === 'student-profile' ? (
+            <div className="sp-my-profile" id="student-profile">
+              <header className="sp-heading"><div><span className="sp-eyebrow">STUDENT WORKSPACE</span><h1>My Profile</h1><p>View your account information and profile picture.</p></div></header>
+              <section className="sp-panel sp-my-profile-photo">
+                <div className="sp-my-profile-avatar">{profilePhoto ? <img src={profilePhoto} alt="Selected student profile preview" /> : studentName.charAt(0).toUpperCase()}</div>
+                <div><h2>{studentName}</h2><p>{studentCode || 'Student account'}</p>
+                  <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sp-profile-file-input" id="sp-profile-photo-input" onChange={selectPhoto} />
+                  <label htmlFor="sp-profile-photo-input" className="sp-profile-upload-button">Choose profile photo</label>
+                  <p className="sp-muted">JPG, PNG or WebP · Maximum 2 MB</p>
+                  {photoMessage && <p role="status" className="sp-muted">{photoMessage}</p>}
+                </div>
+              </section>
+              <section className="sp-panel"><h2>Personal Details</h2>
+                <dl className="sp-details">
+                  <div><dt>Student code</dt><dd>{display(studentCode)}</dd></div>
+                  <div><dt>Full name</dt><dd>{studentName}</dd></div>
+                  <div><dt>Email</dt><dd>{display(readField(studentRecord, 'emailAddress', 'email_Address') || identity.email || session.email)}</dd></div>
+                  <div><dt>Mobile number</dt><dd>{display(readField(studentRecord, 'mobileNumber', 'mobile_Number'))}</dd></div>
+                  <div><dt>Qualification</dt><dd>{display(readField(studentRecord, 'qualification'))}</dd></div>
+                  <div><dt>Branch</dt><dd>{display(readField(studentRecord, 'branchName', 'branch_Name'))}</dd></div>
+                </dl>
+              </section>
+              <section className="sp-panel"><h2>Change Password</h2><p className="sp-muted">Student password changes are not yet available. The existing ERP change-password API belongs to staff accounts and cannot safely be used for student credentials.</p></section>
+            </div>
+          ) : (<>
           <header id="student-overview" className="sp-heading">
             <div><span className="sp-eyebrow">CIIT · STUDENT WORKSPACE</span><h1>Student Portal</h1><p>Your learning and registration information</p></div>
             <span className="sp-preview">Student account</span>
@@ -232,6 +280,7 @@ export default function StudentAccount() {
               <p className="sp-muted">Attendance will appear when a student-scoped attendance API is available.</p>
             </section>
           </div>
+          </>)}
         </div></div></div></main>
       </div>
     </div>
