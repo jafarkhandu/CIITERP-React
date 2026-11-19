@@ -797,3 +797,23 @@ html[data-theme="dark"] .ciit-student-public-shell .ciit-student-portal .sp-prof
     background: var(--ciit-surface, #fff);
   }
 }
+
+
+/* Keep page titles comfortably inset from the glass workspace edges. */
+.ciit-student-public-shell .ciit-student-public-content > .sp-heading,
+.ciit-student-public-shell .ciit-student-public-content .sp-section-page > .sp-heading {
+  width: 100%;
+  padding: 18px 20px 8px;
+  margin: 0;
+}
+
+.ciit-student-public-shell .ciit-student-public-content .sp-section-page {
+  gap: 22px;
+}
+
+@media (max-width: 650px) {
+  .ciit-student-public-shell .ciit-student-public-content > .sp-heading,
+  .ciit-student-public-shell .ciit-student-public-content .sp-section-page > .sp-heading {
+    padding: 10px 8px 4px;
+  }
+}
