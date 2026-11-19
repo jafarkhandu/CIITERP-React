@@ -155,10 +155,11 @@ export const studentApi = {
               )
             : [];
 
+          // Registration payments are recorded amounts even when is_Paid is 0.
+          // The payment API confirms these amounts in totalPaid.
           const paidAmount = paymentRows.reduce((total, payment) => {
-            const isPaid = Number(payment.is_Paid ?? payment.isPaid ?? payment.IsPaid ?? 0) === 1;
             const amount = Number(payment.payment_Amount ?? payment.paymentAmount ?? payment.PaymentAmount ?? 0);
-            return isPaid ? total + amount : total;
+            return Number.isFinite(amount) ? total + amount : total;
           }, 0);
 
           return {
