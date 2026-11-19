@@ -57,3 +57,22 @@ export async function saveStudentPhoto(studentId: number, photo: string): Promis
     db.close();
   }
 }
+
+export async function removeStudentPhoto(studentId: number): Promise<void> {
+  if (!Number.isSafeInteger(studentId) || studentId <= 0) {
+    throw new Error('A valid student ID is required to remove a profile photo.');
+  }
+
+  const db = await openDatabase();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      transaction.objectStore(STORE_NAME).delete(studentId);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error);
+    });
+  } finally {
+    db.close();
+  }
+}
