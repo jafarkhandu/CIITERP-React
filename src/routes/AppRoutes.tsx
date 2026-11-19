@@ -35,7 +35,7 @@ const soon = (title: string, phase: 2 | 3 | 4) => <ComingSoon title={title} phas
 export default function AppRoutes() {
   return <Suspense fallback={<div role="status" aria-live="polite" style={{ minHeight: '40vh', display: 'grid', placeItems: 'center', padding: '2rem', color: 'var(--text-muted, #6b7280)' }}>Loading module…</div>}><Routes>
     <Route path="/login" element={<Login />} />
-    <Route path="/student-portal" element={guarded(<StudentAccount />, { roles: ['Student'] })} />
+    <Route path="/student-portal/:page?" element={guarded(<StudentAccount />, { roles: ['Student'] })} />
     <Route path="/forgot-password" element={<ForgotPassword />} />
     <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/main" element={guarded(<MainLayout />)}>
