@@ -81,6 +81,7 @@ const rawHttp = axios.create();
 const PUBLIC_URLS = [
   '/api/Auth/login',
   '/api/Auth/refresh',
+  '/api/StudentLogin/login',
   '/api/account/forgot-password',
   '/api/account/reset-password',
 ];
