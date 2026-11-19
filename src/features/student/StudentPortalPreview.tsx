@@ -126,20 +126,26 @@ export default function StudentPortalPreview() {
         <div className="ciit-topbar-left">
           <button type="button" className="ciit-shell-icon-button ciit-mobile-menu-button" onClick={() => setIsMobileSidebarOpen(true)} aria-label="Open navigation" aria-controls="ciit-student-sidebar" aria-expanded={isMobileSidebarOpen}><i className="bi bi-list" aria-hidden="true" /></button>
           <button type="button" className="ciit-shell-icon-button ciit-desktop-collapse-button" onClick={toggleSidebarCollapse} aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} aria-controls="ciit-student-sidebar" aria-expanded={!isSidebarCollapsed} title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}><i className={"bi " + (isSidebarCollapsed ? "bi-layout-sidebar-inset" : "bi-layout-sidebar")} aria-hidden="true" /></button>
-          <Link className="ciit-shell-brand" to="/login" aria-label="CIIT ERP login"><span className="ciit-brand-mark">C</span><span className="ciit-brand-copy"><strong>CIIT</strong><small>TRAINING INSTITUTE</small></span></Link>
+          <Link className="ciit-shell-brand" to="/student-portal" aria-label="Student Portal home"><span className="ciit-brand-mark">C</span><span className="ciit-brand-copy"><strong>CIIT</strong><small>TRAINING INSTITUTE</small></span></Link>
           <div className="ciit-topbar-divider" aria-hidden="true" />
           <div className="ciit-topbar-heading"><span>STUDENT WORKSPACE</span><strong>Student Portal</strong></div>
         </div>
         <div className="ciit-topbar-actions">
-          <label className="ciit-portal-topbar-picker"><span>Student</span><select disabled aria-label="Student selection requires login"><option>Sign in to select student</option></select></label>
+          <div className="ciit-student-identity" aria-label="Signed-in student">
+            <span>Student</span>
+            <strong>{studentCode || studentName}</strong>
+          </div>
           <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={isDarkTheme ? "Switch to light mode" : "Switch to dark mode"} title={isDarkTheme ? "Switch to light mode" : "Switch to dark mode"}><i className={"bi " + (isDarkTheme ? "bi-moon-stars-fill" : "bi-sun-fill")} aria-hidden="true" /><span>{isDarkTheme ? "Dark" : "Light"}</span><span className={"theme-switch-track" + (isDarkTheme ? " is-dark" : "")} aria-hidden="true"><span /></span></button>
-          <Link className="ciit-public-login-link" to="/login">ERP Login</Link>
+          <button type="button" className="ciit-public-login-link" onClick={() => authService.logout()}>Sign out</button>
         </div>
       </header>
       <div className={"ciit-shell-main" + (isMobileSidebarOpen ? " is-mobile-sidebar-open" : "")}>
         <button type="button" className="ciit-sidebar-backdrop" aria-label="Close navigation" tabIndex={isMobileSidebarOpen ? 0 : -1} onClick={() => setIsMobileSidebarOpen(false)} />
         <aside id="ciit-student-sidebar" className="ciit-shell-sidebar" aria-label="Student navigation">
-          <div className="ciit-sidebar-user"><span className="ciit-sidebar-avatar">C</span><div className="ciit-sidebar-user-copy"><strong>Student Workspace</strong><small>CIIT Training Institute</small></div></div>
+          <div className="ciit-sidebar-user">
+            <span className="ciit-sidebar-avatar">{studentName.charAt(0).toUpperCase()}</span>
+            <div className="ciit-sidebar-user-copy"><strong>{studentName}</strong><small>{studentCode || 'Student account'}</small></div>
+          </div>
           <div className="ciit-sidebar-section-label">STUDENT MENU</div>
           <nav className="ciit-sidebar-nav" aria-label="Student sections"><ul className="ciit-sidebar-list">
             {sections.map(section => <li key={section.id}><a href={'#' + section.id} className={activeSection === section.id ? 'active-link' : ''} onClick={() => { setActiveSection(section.id); setIsMobileSidebarOpen(false); }}><i className={'bi ' + section.icon} aria-hidden="true" /><span className="ciit-menu-label">{section.title}</span><span className="ciit-menu-active-mark" aria-hidden="true" /></a></li>)}
@@ -148,22 +154,67 @@ export default function StudentPortalPreview() {
         </aside>
         <main className="ciit-workspace"><div className="ciit-content"><div className="ciit-page-transition"><div className="ciit-student-portal ciit-student-public-content">
           <header id="student-overview" className="sp-heading">
-            <div><span className="sp-eyebrow">CIIT · STUDENT WORKSPACE</span><h1>Student Portal</h1><p>Student dashboard interface</p></div>
-            <span className="sp-preview">Public interface · No records exposed</span>
+            <div><span className="sp-eyebrow">CIIT · STUDENT WORKSPACE</span><h1>Student Portal</h1><p>Your learning and registration information</p></div>
+            <span className="sp-preview">Student account</span>
           </header>
-          <div className="sp-alert" role="status">Student records are protected. Sign in with an authorized ERP account to view registered students.</div>
-          <section className="sp-panel sp-hero"><div className="sp-avatar" aria-hidden="true">C</div><div><span className="sp-eyebrow">STUDENT PROFILE</span><h2>Student information</h2><p>No student selected</p></div></section>
+          {!identity.studentId && <div className="sp-alert" role="status">
+            Your login was successful, but the authentication token did not provide a student ID.
+            Student records cannot be safely linked without it.
+          </div>}
+          {recordLoading && <div className="sp-alert" role="status">Loading your registration information…</div>}
+          {recordError && <div className="sp-alert" role="alert">{recordError}</div>}
+          <section className="sp-panel sp-hero">
+            <div className="sp-avatar" aria-hidden="true">{studentName.charAt(0).toUpperCase()}</div>
+            <div><span className="sp-eyebrow">STUDENT PROFILE</span><h2>{studentName}</h2><p>{studentCode || 'Student'} · {display(readField(studentRecord, 'branchName', 'branch_Name'))}</p></div>
+          </section>
           <div className="sp-stats">
-            <div className="sp-panel"><span>Enrolled courses</span><strong>—</strong></div>
-            <div className="sp-panel"><span>Assigned batches</span><strong>—</strong></div>
-            <div className="sp-panel"><span>Attendance</span><strong>—</strong></div>
-            <div className="sp-panel"><span>Fees</span><strong>—</strong></div>
+            <div className="sp-panel"><span>Enrolled courses</span><strong>{studentRecord ? courseRows.length : '—'}</strong></div>
+            <div className="sp-panel"><span>Assigned batches</span><strong>{studentRecord ? batchRows.length : '—'}</strong></div>
+            <div className="sp-panel"><span>Recorded payments</span><strong>{studentRecord ? paymentRows.length : '—'}</strong></div>
+            <div className="sp-panel"><span>Payment total</span><strong>{paymentRows.length ? currency(totalPaid) : '—'}</strong></div>
           </div>
           <div className="sp-columns">
-            <section id="student-profile" className="sp-panel"><h2>Personal information</h2><p className="sp-muted">Available after authenticated student selection.</p></section>
-            <section id="student-course" className="sp-panel"><h2>My courses</h2><p className="sp-muted">No course information available.</p></section>
-            <section id="student-batch" className="sp-panel"><h2>My batches</h2><p className="sp-muted">No batch information available.</p></section>
-            <section id="student-payments" className="sp-panel"><h2>Payments and attendance</h2><p className="sp-muted">Private student records require authentication.</p></section>
+            <section id="student-profile" className="sp-panel">
+              <h2>Personal information</h2>
+              <dl className="sp-details">
+                <div><dt>Student code</dt><dd>{display(studentCode)}</dd></div>
+                <div><dt>Name</dt><dd>{studentName}</dd></div>
+                <div><dt>Email</dt><dd>{display(readField(studentRecord, 'emailAddress', 'email_Address') || identity.email || session.email)}</dd></div>
+                <div><dt>Mobile</dt><dd>{display(readField(studentRecord, 'mobileNumber', 'mobile_Number'))}</dd></div>
+                <div><dt>Qualification</dt><dd>{display(readField(studentRecord, 'qualification'))}</dd></div>
+                <div><dt>Branch</dt><dd>{display(readField(studentRecord, 'branchName', 'branch_Name'))}</dd></div>
+              </dl>
+            </section>
+            <section id="student-course" className="sp-panel">
+              <h2>My courses</h2>
+              {courseRows.length ? <div className="sp-stack">{courseRows.map((row, index) =>
+                <article className="sp-entry" key={String(readField(row, 'registrationId', 'registration_Id') ?? index)}>
+                  <h3>{display(readField(row, 'courseName', 'course_Name'))}</h3>
+                  <p>Registration: {display(readField(row, 'registrationCode', 'registration_Code'))}</p>
+                  <p>Status: {display(readField(row, 'currentStatus', 'current_Status', 'status'))}</p>
+                </article>,
+              )}</div> : <p className="sp-muted">No course records available from your student registration details.</p>}
+            </section>
+            <section id="student-batch" className="sp-panel">
+              <h2>My batches</h2>
+              {batchRows.length ? <div className="sp-stack">{batchRows.map((row, index) =>
+                <article className="sp-entry" key={String(readField(row, 'batchId', 'batch_Id') ?? index)}>
+                  <h3>{display(readField(row, 'batchName', 'batch_Name'))}</h3>
+                  <p>Time: {display(readField(row, 'batchTime', 'batch_Time'))}</p>
+                </article>,
+              )}</div> : <p className="sp-muted">Batch information is not available from the student-scoped registration response.</p>}
+            </section>
+            <section id="student-payments" className="sp-panel">
+              <h2>Payments and attendance</h2>
+              {paymentRows.length ? <div className="sp-stack">{paymentRows.map((row, index) =>
+                <article className="sp-entry sp-payment" key={String(readField(row, 'paymentId', 'payment_Id') ?? index)}>
+                  <div><h3>{display(readField(row, 'paymentDate', 'payment_Date'))}</h3>
+                    <p>{display(readField(row, 'paymentMode', 'payment_Mode'))}</p></div>
+                  <strong>{currency(Number(readField(row, 'paymentAmount', 'payment_Amount')) || 0)}</strong>
+                </article>,
+              )}</div> : <p className="sp-muted">No payment records available from your registration details.</p>}
+              <p className="sp-muted">Attendance will appear when a student-scoped attendance API is available.</p>
+            </section>
           </div>
         </div></div></div></main>
       </div>
