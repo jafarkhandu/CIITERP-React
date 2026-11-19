@@ -9,3 +9,147 @@
 .email-center-template-form textarea,.email-center-card textarea{line-height:1.6}
 .email-center-header button,.email-center-actions button,.email-center-template-form>button,.email-center-table-wrap button,.email-center-card>button{box-shadow:0 5px 14px rgba(36,88,166,.18);transition:transform .16s ease,box-shadow .16s ease}
 .email-center-header button:hover,.email-center-actions button:hover,.email-center-template-form>button:hover,.email-center-table-wrap button:hover,.email-center-card>button:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(36,88,166,.24)}
+
+
+/* Email Services: dark theme contrast fixes */
+html[data-theme="dark"] .email-center-page {
+  --text-primary: #e6eefb;
+  --text-muted: #b0c2db;
+  --surface-card: #16263b;
+  --surface-subtle: #1b304a;
+  --border-color: #354b66;
+  color: var(--text-primary);
+}
+
+html[data-theme="dark"] .email-center-header h1,
+html[data-theme="dark"] .email-center-card h2,
+html[data-theme="dark"] .email-center-notice strong,
+html[data-theme="dark"] .email-center-rule strong {
+  color: #f1f6ff;
+}
+
+html[data-theme="dark"] .email-center-header span,
+html[data-theme="dark"] .email-center-header p,
+html[data-theme="dark"] .email-center-card > p,
+html[data-theme="dark"] .email-center-notice p,
+html[data-theme="dark"] .email-center-rule small {
+  color: #b0c2db;
+}
+
+html[data-theme="dark"] .email-center-card {
+  color: #e6eefb;
+  background: rgba(22, 38, 59, .96);
+  border-color: #354b66;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .22);
+}
+
+html[data-theme="dark"] .email-center-notice {
+  color: #e6eefb;
+  background: linear-gradient(135deg, #1c3554, #25334c);
+  border-color: #436287;
+}
+
+html[data-theme="dark"] .email-center-tabs {
+  border-bottom-color: #354b66;
+}
+
+html[data-theme="dark"] .email-center-tabs button {
+  color: #c7d8ec;
+  background: rgba(24, 43, 67, .72);
+  border-color: #48617e;
+}
+
+html[data-theme="dark"] .email-center-tabs button:hover:not(.active) {
+  color: #fff;
+  background: #274365;
+}
+
+html[data-theme="dark"] .email-center-tabs button.active {
+  color: #fff;
+  background: #2563bd;
+  border-color: #4b94ef;
+}
+
+html[data-theme="dark"] .email-center-card label,
+html[data-theme="dark"] .email-center-template-form label,
+html[data-theme="dark"] .email-center-rule {
+  color: #dce9f8;
+}
+
+html[data-theme="dark"] .email-center-card input:not([type="checkbox"]),
+html[data-theme="dark"] .email-center-card select,
+html[data-theme="dark"] .email-center-card textarea {
+  color: #eef5ff;
+  background-color: #0e1e31;
+  border: 1px solid #405875;
+  border-radius: 8px;
+}
+
+html[data-theme="dark"] .email-center-card input::placeholder,
+html[data-theme="dark"] .email-center-card textarea::placeholder {
+  color: #a5b9d3;
+  opacity: 1;
+}
+
+html[data-theme="dark"] .email-center-card input:focus-visible,
+html[data-theme="dark"] .email-center-card select:focus-visible,
+html[data-theme="dark"] .email-center-card textarea:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 1px;
+}
+
+html[data-theme="dark"] .email-center-card select option {
+  color: #eef5ff;
+  background: #0e1e31;
+}
+
+html[data-theme="dark"] .email-center-rule {
+  background: rgba(27, 48, 74, .92);
+  border-color: #354b66;
+}
+
+html[data-theme="dark"] .email-center-table-wrap th {
+  color: #e6eefb;
+  background: #213650;
+}
+
+html[data-theme="dark"] .email-center-table-wrap td {
+  color: #dce9f8;
+}
+
+html[data-theme="dark"] .email-center-table-wrap th,
+html[data-theme="dark"] .email-center-table-wrap td {
+  border-bottom-color: #354b66;
+}
+
+html[data-theme="dark"] .email-center-alert.error {
+  color: #ffd4df;
+  background: #3a1c2a;
+  border: 1px solid #713149;
+}
+
+html[data-theme="dark"] .email-center-alert.success {
+  color: #bbf7d0;
+  background: #123326;
+  border: 1px solid #276448;
+}
+
+html[data-theme="dark"] .email-center-status {
+  color: #dce9f8;
+  background: #2c4058;
+}
+
+html[data-theme="dark"] .email-center-status.sent {
+  color: #bbf7d0;
+  background: #123326;
+}
+
+html[data-theme="dark"] .email-center-status.failed {
+  color: #ffd4df;
+  background: #3a1c2a;
+}
+
+html[data-theme="dark"] .email-center-status.pending {
+  color: #fde68a;
+  background: #47351b;
+}
