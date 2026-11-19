@@ -12,9 +12,9 @@ import './StudentPortal.css';
 
 const sections = [
   { id: 'student-overview', slug: 'dashboard', path: '/student-portal', title: 'Dashboard', icon: 'bi-grid-1x2-fill' },
-  { id: 'student-profile', slug: 'profile', path: '/student-portal/profile', title: 'My Profile', icon: 'bi-person-vcard' },
-  { id: 'student-course', slug: 'courses', path: '/student-portal/courses', title: 'My Courses', icon: 'bi-journal-bookmark-fill' },
-  { id: 'student-batch', slug: 'batches', path: '/student-portal/batches', title: 'My Batches', icon: 'bi-calendar2-week' },
+  { id: 'student-profile', slug: 'profile', path: '/student-portal/profile', title: 'Profile', icon: 'bi-person-vcard' },
+  { id: 'student-course', slug: 'courses', path: '/student-portal/courses', title: 'Courses', icon: 'bi-journal-bookmark-fill' },
+  { id: 'student-batch', slug: 'batches', path: '/student-portal/batches', title: 'Batches', icon: 'bi-calendar2-week' },
   { id: 'student-payments', slug: 'payments', path: '/student-portal/payments', title: 'Payments', icon: 'bi-wallet2' },
 ] as const;
 
