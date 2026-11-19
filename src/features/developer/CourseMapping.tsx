@@ -203,7 +203,7 @@ export default function CourseMapping() {
                     <input type="checkbox" checked={selectedTopicIds.includes(topic.topicId)}
                       disabled={!courseId || mappingLoading || saving}
                       onChange={() => toggleTopic(topic.topicId)} />
-                    <span><strong>{topic.topicName}</strong><small>Topic ID: {topic.topicId}</small></span>
+                    <span><strong>{topic.topicName}</strong></span>
                   </label>)}
             </div>
             <div className="dt-form-actions">
