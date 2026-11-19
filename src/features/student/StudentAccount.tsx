@@ -292,7 +292,7 @@ export default function StudentAccount() {
           {recordError && <div className="sp-alert" role="alert">{recordError}</div>}
           {activeSection === 'student-profile' && (
             <div className="sp-my-profile" id="student-profile">
-              <header className="sp-heading"><div><span className="sp-eyebrow">STUDENT WORKSPACE</span><h1>My Profile</h1><p>View your account information and profile picture.</p></div></header>
+              <header className="sp-heading"><div><span className="sp-eyebrow">STUDENT WORKSPACE</span><h1>Profile</h1><p>View your account information and profile picture.</p></div></header>
               <section className="sp-panel sp-profile-glass" aria-labelledby="sp-profile-details-title">
                 <div className="sp-my-profile-photo">
                   <div className="sp-my-profile-avatar">
@@ -347,9 +347,9 @@ export default function StudentAccount() {
           )}
           {activeSection === 'student-course' && (
             <div className="sp-section-page">
-              <header className="sp-heading"><div><span className="sp-eyebrow">STUDENT WORKSPACE</span><h1>My Courses</h1><p>View your registered courses and enrollment status.</p></div></header>
+              <header className="sp-heading"><div><span className="sp-eyebrow">STUDENT WORKSPACE</span><h1>Courses</h1><p>View your registered courses and enrollment status.</p></div></header>
               <section id="student-course" className="sp-panel">
-              <h2>My courses ({courseRows.length})</h2>
+              <h2>Courses ({courseRows.length})</h2>
               {courseRows.length ? <div className="sp-stack">{courseRows.map((row, index) => {
                 const payments = nestedRows(row, 'payments', 'Payments');
                 const paid = payments.reduce((sum, payment) => sum + (Number(readField(payment, 'paymentAmount', 'payment_Amount')) || 0), 0);
