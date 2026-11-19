@@ -400,6 +400,20 @@ export default function StudentAccount() {
                     <div><dt>Discount</dt><dd>{currency(Number(readField(row, 'discount')) || 0)}</dd></div>
                     <div><dt>Payment entries</dt><dd>{payments.length}</dd></div>
                     <div><dt>Amount Paid</dt><dd>{currency(paid)}</dd></div>
+                    <div><dt>Total Amount</dt><dd>{(() => {
+                      const registrationId = Number(readField(row, 'registrationId', 'registration_Id'));
+                      const detail = paymentDetails.find(payment => Number(readField(payment, 'registrationId', 'registration_Id')) === registrationId);
+                      const finalFees = readField(detail ?? null, 'finalFees', 'final_Fees') ??
+                        readField(row, 'finalFees', 'final_Fees');
+                      const balance = readField(detail ?? null, 'remainingBalance', 'remaining_Balance') ??
+                        readField(row, 'remainingBalance', 'remaining_Balance');
+                      if (finalFees !== null && Number.isFinite(Number(finalFees))) return currency(Number(finalFees));
+                      if (balance !== null && Number.isFinite(Number(balance))) {
+                        const totalPaid = readField(detail ?? null, 'totalPaid', 'total_Paid');
+                        return currency((totalPaid !== null ? Number(totalPaid) : paid) + Number(balance));
+                      }
+                      return 'Not available';
+                    })()}</dd></div>
                     <div><dt>Remaining Balance</dt><dd>{(() => {
                       const registrationId = Number(readField(row, 'registrationId', 'registration_Id'));
                       const detail = paymentDetails.find(payment => Number(readField(payment, 'registrationId', 'registration_Id')) === registrationId);
