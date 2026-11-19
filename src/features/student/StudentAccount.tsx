@@ -64,6 +64,9 @@ export default function StudentAccount() {
   const [recordError, setRecordError] = useState('');
   const { page } = useParams<{ page: string }>();
   const activeSection = sections.find(section => section.slug === (page ?? 'dashboard'))?.id;
+
+  // Start each routed page at the top, even when navigating from a scrolled view.
+  useEffect(() => { window.scrollTo(0, 0); }, [page]);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [photoMessage, setPhotoMessage] = useState('');
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -329,11 +332,11 @@ export default function StudentAccount() {
                 <span className="sp-preview">Student account</span>
               </header>
               <div className="sp-stats">
-            <div className="sp-panel"><span>Enrolled courses</span><strong>{studentRecord ? courseRows.length : '—'}</strong></div>
-            <div className="sp-panel"><span>Assigned batches</span><strong>{studentRecord ? batchRows.length : '—'}</strong></div>
-            <div className="sp-panel"><span>Recorded payments</span><strong>{studentRecord ? paymentRows.length : '—'}</strong></div>
-            <div className="sp-panel"><span>Payment total</span><strong>{paymentRows.length ? currency(totalPaid) : '—'}</strong></div>
-          </div>
+                <div className="sp-panel"><span>Enrolled courses</span><strong>{studentRecord ? courseRows.length : '—'}</strong></div>
+                <div className="sp-panel"><span>Assigned batches</span><strong>{studentRecord ? batchRows.length : '—'}</strong></div>
+                <div className="sp-panel"><span>Recorded payments</span><strong>{studentRecord ? paymentRows.length : '—'}</strong></div>
+                <div className="sp-panel"><span>Payment total</span><strong>{paymentRows.length ? currency(totalPaid) : '—'}</strong></div>
+              </div>
             </div>
           )}
           {activeSection === 'student-course' && (
