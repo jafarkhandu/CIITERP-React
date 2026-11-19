@@ -967,3 +967,9 @@ html[data-theme="dark"] .ciit-shell-sidebar .ciit-role-trigger.has-active-menu >
 @media (prefers-reduced-motion: reduce) {
   .ciit-shell-sidebar .ciit-role-trigger { transition: none; }
 }
+
+/* Registered student selector: scoped to the authenticated ERP topbar. */
+.ciit-portal-topbar-picker{display:flex;align-items:center;gap:9px;padding:7px 10px;border:1px solid rgba(255,255,255,.3);border-radius:13px;background:rgba(255,255,255,.12);backdrop-filter:blur(14px);color:#fff;font-size:12px;font-weight:700;min-width:0}
+.ciit-portal-topbar-picker select{max-width:230px;min-width:130px;border:0;border-radius:8px;padding:7px 9px;background:rgba(255,255,255,.95);color:#173b69;font:inherit;cursor:pointer}
+.ciit-portal-topbar-picker select:focus-visible{outline:3px solid #b9dcff;outline-offset:2px}
+@media(max-width:700px){.ciit-portal-topbar-picker{padding:5px;gap:0}.ciit-portal-topbar-picker>span{display:none}.ciit-portal-topbar-picker select{max-width:135px;min-width:90px;font-size:11px}}
