@@ -370,9 +370,9 @@ export default function StudentAccount() {
           )}
           {activeSection === 'student-batch' && (
             <div className="sp-section-page">
-              <header className="sp-heading"><div><span className="sp-eyebrow">STUDENT WORKSPACE</span><h1>My Batches</h1><p>View the batches assigned to your account.</p></div></header>
+              <header className="sp-heading"><div><span className="sp-eyebrow">STUDENT WORKSPACE</span><h1>Batches</h1><p>View the batches assigned to your account.</p></div></header>
               <section id="student-batch" className="sp-panel">
-              <h2>My batches</h2>
+              <h2>Batches</h2>
               {batchRows.length ? <div className="sp-stack">{batchRows.map((row, index) =>
                 <article className="sp-entry" key={String(readField(row, 'batchId', 'batch_Id') ?? index)}>
                   <h3>{display(readField(row, 'batchName', 'batch_Name'))}</h3>
