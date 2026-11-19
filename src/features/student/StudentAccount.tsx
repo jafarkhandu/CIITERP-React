@@ -48,7 +48,7 @@ function ownedRegistrationResponse(response: unknown, studentId: number): Studen
 }
 
 function formatStudentDate(value: unknown): string {
-  if (typeof value !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}/.test(value)) return display(value);
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(value)) return display(value);
   const [year, month, day] = value.slice(0, 10).split('-');
   return `${day}/${month}/${year}`;
 }
@@ -69,6 +69,11 @@ export default function StudentAccount() {
   const [studentRecord, setStudentRecord] = useState<StudentRecord | null>(null);
   const [recordLoading, setRecordLoading] = useState(Boolean(studentId));
   const [recordError, setRecordError] = useState('');
+  const [expandedDetail, setExpandedDetail] = useState<string | null>(null);
+
+  function toggleDetail(key: string) {
+    setExpandedDetail(current => current === key ? null : key);
+  }
   const { page } = useParams<{ page: string }>();
   const { hash } = useLocation();
   const legacyPage = sections.find(section => '#' + section.id === hash)?.slug;
@@ -353,16 +358,22 @@ export default function StudentAccount() {
               {courseRows.length ? <div className="sp-stack">{courseRows.map((row, index) => {
                 const payments = nestedRows(row, 'payments', 'Payments');
                 const paid = payments.reduce((sum, payment) => sum + (Number(readField(payment, 'paymentAmount', 'payment_Amount')) || 0), 0);
-                return <article className="sp-entry sp-student-detail-card" key={String(readField(row, 'registrationId', 'registration_Id') ?? index)}>
-                  <div className="sp-student-detail-header"><h3>{display(readField(row, 'courseName', 'course_Name'))}</h3><span className="sp-student-status">{display(readField(row, 'currentStatus', 'current_Status', 'status'))}</span></div>
-                  <dl className="sp-student-detail-grid">
+                const key = `course-${String(readField(row, 'registrationId', 'registration_Id') ?? index)}`;
+                const expanded = expandedDetail === key;
+                return <article className="sp-entry sp-student-detail-card" key={key}>
+                  <button type="button" className="sp-student-detail-toggle" aria-expanded={expanded} aria-controls={`detail-${key}`} onClick={() => toggleDetail(key)}>
+                    <span className="sp-student-detail-main"><strong>{display(readField(row, 'courseName', 'course_Name'))}</strong><small>Amount Paid: {currency(paid)}</small></span>
+                    <span className="sp-student-detail-actions"><span className="sp-student-status">{display(readField(row, 'currentStatus', 'current_Status', 'status'))}</span><i className={`bi bi-chevron-${expanded ? 'up' : 'down'}`} aria-hidden="true" /></span>
+                  </button>
+                  {expanded && <dl className="sp-student-detail-grid" id={`detail-${key}`}>
                     <div><dt>Registration code</dt><dd>{display(readField(row, 'registrationCode', 'registration_Code'))}</dd></div>
                     <div><dt>Registration date</dt><dd>{formatStudentDate(readField(row, 'registrationDate', 'registration_Date'))}</dd></div>
                     <div><dt>Course ID</dt><dd>{display(readField(row, 'courseId', 'course_Id'))}</dd></div>
                     <div><dt>Discount</dt><dd>{currency(Number(readField(row, 'discount')) || 0)}</dd></div>
                     <div><dt>Payment entries</dt><dd>{payments.length}</dd></div>
-                    <div><dt>Recorded paid</dt><dd>{currency(paid)}</dd></div>
-                  </dl>
+                    <div><dt>Amount Paid</dt><dd>{currency(paid)}</dd></div>
+                    <div><dt>Remaining Balance</dt><dd>{display(readField(row, 'remainingBalance', 'remaining_Balance'))}</dd></div>
+                  </dl>}
                 </article>;
               })}</div> : <p className="sp-muted">No course records available from your student registration details.</p>}
             </section>
@@ -386,20 +397,25 @@ export default function StudentAccount() {
             <div className="sp-section-page">
               <header className="sp-heading"><div><span className="sp-eyebrow">STUDENT WORKSPACE</span><h1>Payments</h1><p>Review your recorded payments and available attendance information.</p></div></header>
               <section id="student-payments" className="sp-panel">
-              <div className="sp-student-payment-summary"><div><span>Total recorded paid</span><strong>{currency(totalPaid)}</strong></div><div><span>Payment entries</span><strong>{paymentRows.length}</strong></div></div>
+              <div className="sp-student-payment-summary"><div><span>Total Amount Paid</span><strong>{currency(totalPaid)}</strong></div><div><span>Payment entries</span><strong>{paymentRows.length}</strong></div></div>
               <h2>Payment history</h2>
               {paymentRows.length ? <div className="sp-stack">{paymentRows.map((row, index) => {
                 const id = readField(row, 'paymentId', 'payment_Id');
                 const registration = courseRows.find(course => nestedRows(course, 'payments', 'Payments').some(payment => String(readField(payment, 'paymentId', 'payment_Id')) === String(id)));
-                return <article className="sp-entry sp-student-detail-card" key={String(id ?? index)}>
-                  <div className="sp-student-detail-header"><h3>{registration ? display(readField(registration, 'courseName', 'course_Name')) : 'Course payment'}</h3><strong>{currency(Number(readField(row, 'paymentAmount', 'payment_Amount')) || 0)}</strong></div>
-                  <dl className="sp-student-detail-grid">
+                const key = `payment-${String(id ?? index)}`;
+                const expanded = expandedDetail === key;
+                return <article className="sp-entry sp-student-detail-card" key={key}>
+                  <button type="button" className="sp-student-detail-toggle" aria-expanded={expanded} aria-controls={`detail-${key}`} onClick={() => toggleDetail(key)}>
+                    <span className="sp-student-detail-main"><strong>{registration ? display(readField(registration, 'courseName', 'course_Name')) : 'Course payment'}</strong><small>{formatStudentDate(readField(row, 'paymentDate', 'payment_Date'))}</small></span>
+                    <span className="sp-student-detail-actions"><strong>{currency(Number(readField(row, 'paymentAmount', 'payment_Amount')) || 0)}</strong><i className={`bi bi-chevron-${expanded ? 'up' : 'down'}`} aria-hidden="true" /></span>
+                  </button>
+                  {expanded && <dl className="sp-student-detail-grid" id={`detail-${key}`}>
                     <div><dt>Payment date</dt><dd>{formatStudentDate(readField(row, 'paymentDate', 'payment_Date'))}</dd></div>
                     <div><dt>Payment mode</dt><dd>{display(readField(row, 'paymentMode', 'payment_Mode'))}</dd></div>
                     <div><dt>Payment ID</dt><dd>{display(id)}</dd></div>
                     <div><dt>Registration code</dt><dd>{display(registration ? readField(registration, 'registrationCode', 'registration_Code') : null)}</dd></div>
                     <div className="sp-student-detail-wide"><dt>Description</dt><dd>{display(readField(row, 'paymentDescription', 'payment_Description'))}</dd></div>
-                  </dl>
+                  </dl>}
                 </article>;
               })}</div> : <p className="sp-muted">No payment records available from your registration details.</p>}
               <p className="sp-muted">Attendance will appear when a student-scoped attendance API is available.</p>
