@@ -332,7 +332,7 @@ export default function Topics() {
           {!selectedTopicId ? <p className="dt-muted">Select a topic from the list.</p>
             : contentsLoading ? <p className="dt-muted">Loading topic content…</p>
               : visibleContents.length === 0 ? <p className="dt-muted">No content available for this topic.</p>
-                : <div className="dt-table-wrap"><table className="dt-table">
+                : <div className="dt-table-wrap dt-topic-content-scroll"><table className="dt-table">
                   <thead><tr><th>Content</th><th>Slides</th><th>Video</th><th>Actions</th></tr></thead>
                   <tbody>{visibleContents.map(item => <tr key={item.contentId}>
                     <td><strong>{item.contentName}</strong><small>ID: {item.contentId}{item.isDeleted ? ' · Deleted' : ''}</small></td>
