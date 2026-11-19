@@ -394,13 +394,7 @@ export default function StudentAccount() {
                     <span className="sp-student-detail-actions"><span className="sp-student-status">{display(readField(row, 'currentStatus', 'current_Status', 'status'))}</span><i className={`bi bi-chevron-${expanded ? 'up' : 'down'}`} aria-hidden="true" /></span>
                   </button>
                   {expanded && <dl className="sp-student-detail-grid" id={`detail-${key}`}>
-                    <div><dt>Registration code</dt><dd>{display(readField(row, 'registrationCode', 'registration_Code'))}</dd></div>
-                    <div><dt>Registration date</dt><dd>{formatStudentDate(readField(row, 'registrationDate', 'registration_Date'))}</dd></div>
-                    <div><dt>Course ID</dt><dd>{display(readField(row, 'courseId', 'course_Id'))}</dd></div>
-                    <div><dt>Discount</dt><dd>{currency(Number(readField(row, 'discount')) || 0)}</dd></div>
-                    <div><dt>Payment entries</dt><dd>{payments.length}</dd></div>
-                    <div><dt>Amount Paid</dt><dd>{currency(paid)}</dd></div>
-                    <div><dt>Total Amount</dt><dd>{(() => {
+                    <div><dt>Course Fee</dt><dd>{(() => {
                       const registrationId = Number(readField(row, 'registrationId', 'registration_Id'));
                       const detail = paymentDetails.find(payment => Number(readField(payment, 'registrationId', 'registration_Id')) === registrationId);
                       const finalFees = readField(detail ?? null, 'finalFees', 'final_Fees') ??
@@ -414,6 +408,8 @@ export default function StudentAccount() {
                       }
                       return 'Not available';
                     })()}</dd></div>
+                    <div><dt>Discount</dt><dd>{currency(Number(readField(row, 'discount')) || 0)}</dd></div>
+                    <div><dt>Amount Paid</dt><dd>{currency(paid)}</dd></div>
                     <div><dt>Remaining Balance</dt><dd>{(() => {
                       const registrationId = Number(readField(row, 'registrationId', 'registration_Id'));
                       const detail = paymentDetails.find(payment => Number(readField(payment, 'registrationId', 'registration_Id')) === registrationId);
@@ -421,6 +417,9 @@ export default function StudentAccount() {
                         readField(row, 'remainingBalance', 'remaining_Balance');
                       return balance === null ? 'Not available' : currency(Number(balance));
                     })()}</dd></div>
+                    <div><dt>Registration code</dt><dd>{display(readField(row, 'registrationCode', 'registration_Code'))}</dd></div>
+                    <div><dt>Registration date</dt><dd>{formatStudentDate(readField(row, 'registrationDate', 'registration_Date'))}</dd></div>
+                    <div><dt>Course ID</dt><dd>{display(readField(row, 'courseId', 'course_Id'))}</dd></div>
                   </dl>}
                 </article>;
               })}</div> : <p className="sp-muted">No course records available from your student registration details.</p>}
