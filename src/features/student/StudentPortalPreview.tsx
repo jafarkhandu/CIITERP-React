@@ -15,7 +15,26 @@ const student = {
 
 export default function StudentPortalPreview() {
   return (
-    <main className="ciit-student-portal sp-public-preview">
+    <div className="sp-demo-shell">
+      <header className="sp-demo-topbar">
+        <div className="sp-demo-brand"><span className="sp-demo-logo">C</span><span><strong>CIIT</strong><small>TRAINING INSTITUTE</small></span></div>
+        <span className="sp-demo-workspace">STUDENT WORKSPACE <strong>My Dashboard</strong></span>
+        <div className="sp-demo-user"><span className="sp-demo-user-avatar">DS</span><span><strong>{student.name}</strong><small>Student · Demo</small></span></div>
+      </header>
+      <div className="sp-demo-layout">
+        <aside className="sp-demo-sidebar" aria-label="Student navigation">
+          <div className="sp-demo-side-profile"><span className="sp-demo-user-avatar">DS</span><div><strong>{student.name}</strong><small>{student.studentId}</small></div></div>
+          <span className="sp-demo-side-label">STUDENT MENU</span>
+          <nav aria-label="Dashboard sections">
+            <a href="#student-overview" className="sp-demo-active">⌂ <span>Overview</span></a>
+            <a href="#student-profile">♙ <span>My Profile</span></a>
+            <a href="#student-course">▤ <span>My Course</span></a>
+            <a href="#student-batch">▦ <span>My Batch</span></a>
+            <a href="#student-payments">▣ <span>Payments & Attendance</span></a>
+          </nav>
+          <div className="sp-demo-sidebar-footer">CIIT ERP · Student Preview</div>
+        </aside>
+        <main id="student-overview" className="ciit-student-portal sp-public-preview">
       <header className="sp-heading">
         <div>
           <span className="sp-eyebrow">CIIT · STUDENT WORKSPACE</span>
@@ -42,7 +61,7 @@ export default function StudentPortalPreview() {
         <div className="sp-panel"><span>Fees</span><strong>—</strong></div>
       </div>
       <div className="sp-columns">
-        <section className="sp-panel">
+        <section id="student-profile" className="sp-panel">
           <h2>Personal information</h2>
           <dl className="sp-details">
             <div><dt>Student ID</dt><dd>{student.studentId}</dd></div>
@@ -51,19 +70,21 @@ export default function StudentPortalPreview() {
             <div><dt>Branch</dt><dd>{student.branch}</dd></div>
           </dl>
         </section>
-        <section className="sp-panel">
+        <section id="student-course" className="sp-panel">
           <h2>My course</h2>
           <article className="sp-entry"><h3>{student.course}</h3><p>Course status: Enrolled (demo)</p></article>
         </section>
-        <section className="sp-panel">
+        <section id="student-batch" className="sp-panel">
           <h2>My batch</h2>
           <article className="sp-entry"><h3>{student.batch}</h3><p>Schedule: {student.schedule}</p><p>Trainer: {student.trainer}</p></article>
         </section>
-        <section className="sp-panel">
+        <section id="student-payments" className="sp-panel">
           <h2>Payments and attendance</h2>
           <p className="sp-muted">Payment history and attendance will appear here when student login is integrated.</p>
         </section>
       </div>
-    </main>
+        </main>
+      </div>
+    </div>
   );
 }
