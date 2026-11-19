@@ -69,6 +69,7 @@ export default function StudentAccount() {
   const [studentRecord, setStudentRecord] = useState<StudentRecord | null>(null);
   const [recordLoading, setRecordLoading] = useState(Boolean(studentId));
   const [recordError, setRecordError] = useState('');
+  const [paymentDetails, setPaymentDetails] = useState<StudentRecord[]>([]);
   const [expandedDetail, setExpandedDetail] = useState<string | null>(null);
 
   function toggleDetail(key: string) {
@@ -191,6 +192,33 @@ export default function StudentAccount() {
 
     return () => { active = false; };
   }, [studentId]);
+
+  useEffect(() => {
+    const owned = nestedRows(studentRecord, 'registrations', 'Registrations').filter(row => {
+      const owner = readField(row, 'studentId', 'student_Id');
+      return owner === null || Number(owner) === studentId;
+    });
+    const registrationIds = new Set(owned.map(row => Number(readField(row, 'registrationId', 'registration_Id'))));
+    const paymentIds = [...new Set(owned.flatMap(row =>
+      nestedRows(row, 'payments', 'Payments').map(payment => Number(readField(payment, 'paymentId', 'payment_Id'))),
+    ))].filter(id => Number.isInteger(id) && id > 0);
+    let active = true;
+    setPaymentDetails([]);
+    if (!studentId || !paymentIds.length) return () => { active = false; };
+
+    Promise.allSettled(paymentIds.map(id => studentApi.getPaymentById(id))).then(results => {
+      if (!active) return;
+      const verified = results.flatMap(result => {
+        if (result.status !== 'fulfilled') return [];
+        const payment = asRecord(result.value);
+        if (!payment || Number(readField(payment, 'studentId', 'student_Id')) !== studentId ||
+            !registrationIds.has(Number(readField(payment, 'registrationId', 'registration_Id')))) return [];
+        return [payment];
+      });
+      setPaymentDetails(verified);
+    });
+    return () => { active = false; };
+  }, [studentId, studentRecord]);
 
   const studentName = display(
     readField(studentRecord, 'studentName', 'student_Name', 'name') ||
@@ -372,7 +400,13 @@ export default function StudentAccount() {
                     <div><dt>Discount</dt><dd>{currency(Number(readField(row, 'discount')) || 0)}</dd></div>
                     <div><dt>Payment entries</dt><dd>{payments.length}</dd></div>
                     <div><dt>Amount Paid</dt><dd>{currency(paid)}</dd></div>
-                    <div><dt>Remaining Balance</dt><dd>{display(readField(row, 'remainingBalance', 'remaining_Balance'))}</dd></div>
+                    <div><dt>Remaining Balance</dt><dd>{(() => {
+                      const registrationId = Number(readField(row, 'registrationId', 'registration_Id'));
+                      const detail = paymentDetails.find(payment => Number(readField(payment, 'registrationId', 'registration_Id')) === registrationId);
+                      const balance = readField(detail ?? null, 'remainingBalance', 'remaining_Balance') ??
+                        readField(row, 'remainingBalance', 'remaining_Balance');
+                      return balance === null ? 'Not available' : currency(Number(balance));
+                    })()}</dd></div>
                   </dl>}
                 </article>;
               })}</div> : <p className="sp-muted">No course records available from your student registration details.</p>}
