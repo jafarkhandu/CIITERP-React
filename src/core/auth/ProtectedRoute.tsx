@@ -1,6 +1,6 @@
 // Port of authGuard. Wrap a route's element with <ProtectedRoute permission=... roles=...>.
 import type { ReactElement } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { tokenService } from '@/core/services/tokenService';
 import { PERMISSIONS, permissionService, type Permission } from '@/core/services/permissionService';
 import { userSession } from './session';
@@ -17,8 +17,9 @@ export default function ProtectedRoute({ permission, permissions, roles, childre
   // subscribe so the guard re-evaluates when session / permissions change
   useSession();
   usePermissionVersion();
+  const location = useLocation();
 
-  if (!tokenService.isLoggedIn()) return <Navigate to="/login" replace />;
+  if (!tokenService.isLoggedIn()) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
 
   const accessDenied = (
     <Navigate to={userSession.hasPermission(PERMISSIONS.DASHBOARD_VIEW) ? '/main/dashboard' : '/login'} replace />
