@@ -6,6 +6,7 @@ import { readTokenIdentity } from '@/core/auth/tokenIdentity';
 import { tokenService } from '@/core/services/tokenService';
 import { studentApi } from '@/api/studentApi';
 import { loadStudentPhoto, removeStudentPhoto, saveStudentPhoto } from './studentPhotoStorage';
+import StudentDashboard from './StudentDashboard';
 import '@/layouts/MainLayout.css';
 import './StudentPortal.css';
 
@@ -328,18 +329,15 @@ export default function StudentAccount() {
             </div>
           )}
           {activeSection === 'student-overview' && (
-            <div className="sp-section-page">
-              <header id="student-overview" className="sp-heading">
-                <div><span className="sp-eyebrow">CIIT · STUDENT WORKSPACE</span><h1>Dashboard</h1><p>Your learning and payment overview.</p></div>
-                <span className="sp-preview">Student account</span>
-              </header>
-              <div className="sp-stats">
-                <div className="sp-panel"><span>Enrolled courses</span><strong>{studentRecord ? courseRows.length : '—'}</strong></div>
-                <div className="sp-panel"><span>Assigned batches</span><strong>{studentRecord ? batchRows.length : '—'}</strong></div>
-                <div className="sp-panel"><span>Recorded payments</span><strong>{studentRecord ? paymentRows.length : '—'}</strong></div>
-                <div className="sp-panel"><span>Payment total</span><strong>{paymentRows.length ? currency(totalPaid) : '—'}</strong></div>
-              </div>
-            </div>
+            <StudentDashboard
+              studentName={studentName}
+              studentRecordLoaded={studentRecord !== null}
+              loading={recordLoading}
+              courseRows={courseRows}
+              batchRows={batchRows}
+              paymentRows={paymentRows}
+              totalPaid={totalPaid}
+            />
           )}
           {activeSection === 'student-course' && (
             <div className="sp-section-page">
