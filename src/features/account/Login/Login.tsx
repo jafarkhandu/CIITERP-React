@@ -27,16 +27,37 @@ export default function Login() {
   const usernameInvalid = !username && touched.username;
   const passwordInvalid = !password && touched.password;
 
-  async function loadUserAndNavigate(loginUsername: string, accessToken: string) {
+  async function loadUserAndNavigate(
+    loginUsername: string,
+    accessToken: string,
+    loginResponse: unknown,
+  ) {
     const identity = readTokenIdentity(accessToken);
+    const loginData = loginResponse && typeof loginResponse === 'object'
+      ? loginResponse as Record<string, unknown> : {};
+    const responseUser = loginData.user && typeof loginData.user === 'object'
+      ? loginData.user as Record<string, unknown> : {};
+    const responseRoles = [
+      loginData.role,
+      loginData.roleName,
+      responseUser.role,
+      responseUser.roleName,
+      ...(Array.isArray(loginData.roles) ? loginData.roles : []),
+      ...(Array.isArray(responseUser.roles) ? responseUser.roles : []),
+    ].filter((role): role is string => typeof role === 'string');
+    const roles = [...identity.roles, ...responseRoles];
 
-    if (hasStudentRole(identity.roles)) {
+    if (hasStudentRole(roles)) {
       // The successful Auth login identifies this account as a student.
       // Do not request the staff user directory or expose staff routes.
       userSession.setUser({
         userName: identity.username || loginUsername,
-        employeeName: identity.displayName || loginUsername,
-        emailAddress: identity.email,
+        employeeName: identity.displayName ||
+          (typeof responseUser.studentName === 'string' ? responseUser.studentName : '') ||
+          (typeof responseUser.employeeName === 'string' ? responseUser.employeeName : '') ||
+          loginUsername,
+        emailAddress: identity.email ||
+          (typeof responseUser.emailAddress === 'string' ? responseUser.emailAddress : ''),
         roleName: 'Student',
         roles: ['Student'],
       });
@@ -97,7 +118,7 @@ export default function Login() {
       userSession.clear();
       authService.saveLoginData(response.token, response.refreshToken);
       localStorage.setItem('username', username);
-      await loadUserAndNavigate(username, response.token);
+      await loadUserAndNavigate(username, response.token, response);
     } catch (error) {
       console.error('Login processing error:', error);
       setErrormessage('Login could not be completed. Please try again.');
