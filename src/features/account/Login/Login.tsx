@@ -267,7 +267,7 @@ export default function Login() {
                 </button>
               </form>
 
-              <Link className="student-preview-link" to="/login" state={{ from: '/main/student-portal' }}>
+              <Link className="student-preview-link" to="/student-preview">
                 <span aria-hidden="true">🎓</span> Student Access <span aria-hidden="true">→</span>
               </Link>
 
