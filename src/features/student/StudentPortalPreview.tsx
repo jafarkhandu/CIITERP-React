@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import './StudentPortal.css';
 
-const student = {
+const demoStudents = [{
   name: 'Demo Student',
   studentId: 'CIIT-DEMO-001',
   email: 'student@example.com',
@@ -11,9 +12,21 @@ const student = {
   batch: 'Demo Batch A',
   schedule: 'Monday – Friday',
   trainer: 'To be assigned',
-};
+}, {
+  name: 'Sample Learner',
+  studentId: 'CIIT-DEMO-002',
+  email: 'learner@example.com',
+  phone: 'Not available',
+  branch: 'Sample Branch',
+  course: 'Data Analytics',
+  batch: 'Demo Batch B',
+  schedule: 'Monday – Friday',
+  trainer: 'To be assigned',
+}];
 
 export default function StudentPortalPreview() {
+  const [selectedId, setSelectedId] = useState(demoStudents[0].studentId);
+  const student = demoStudents.find(item => item.studentId === selectedId) ?? demoStudents[0];
   return (
     <div className="sp-demo-shell">
       <header className="sp-demo-topbar">
@@ -21,19 +34,7 @@ export default function StudentPortalPreview() {
         <span className="sp-demo-workspace">STUDENT WORKSPACE <strong>My Dashboard</strong></span>
         <div className="sp-demo-user"><span className="sp-demo-user-avatar">DS</span><span><strong>{student.name}</strong><small>Student · Demo</small></span></div>
       </header>
-      <div className="sp-demo-layout">
-        <aside className="sp-demo-sidebar" aria-label="Student navigation">
-          <div className="sp-demo-side-profile"><span className="sp-demo-user-avatar">DS</span><div><strong>{student.name}</strong><small>{student.studentId}</small></div></div>
-          <span className="sp-demo-side-label">STUDENT MENU</span>
-          <nav aria-label="Dashboard sections">
-            <a href="#student-overview" className="sp-demo-active">⌂ <span>Overview</span></a>
-            <a href="#student-profile">♙ <span>My Profile</span></a>
-            <a href="#student-course">▤ <span>My Course</span></a>
-            <a href="#student-batch">▦ <span>My Batch</span></a>
-            <a href="#student-payments">▣ <span>Payments & Attendance</span></a>
-          </nav>
-          <div className="sp-demo-sidebar-footer">CIIT ERP · Student Preview</div>
-        </aside>
+      <div className="sp-demo-layout sp-demo-no-sidebar">
         <main id="student-overview" className="ciit-student-portal sp-public-preview">
       <header className="sp-heading">
         <div>
@@ -41,10 +42,16 @@ export default function StudentPortalPreview() {
           <h1>Student Portal</h1>
           <p>Explore the student dashboard interface.</p>
         </div>
-        <Link className="sp-preview-link" to="/login">Back to login</Link>
+        <div className="sp-demo-actions">
+          <label htmlFor="sp-demo-student-select">Choose student</label>
+          <select id="sp-demo-student-select" value={selectedId} onChange={event => setSelectedId(event.target.value)}>
+            {demoStudents.map(item => <option key={item.studentId} value={item.studentId}>{item.name} · {item.studentId}</option>)}
+          </select>
+          <Link className="sp-preview-link" to="/login">Back to login</Link>
+        </div>
       </header>
       <div className="sp-alert" role="status">
-        Demonstration only. All information below is fictional. Real student records require authorized ERP access.
+        Preview uses sample student records. To switch between actual registered students, sign in to the protected ERP portal.
       </div>
       <section className="sp-panel sp-hero">
         <div className="sp-avatar" aria-hidden="true">DS</div>
