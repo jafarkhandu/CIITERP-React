@@ -398,11 +398,11 @@
 .dt-mapping-topic-grid .dt-mapping-topic-card {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
-  min-height: 48px;
+  min-height: 36px;
   margin: 0;
-  padding: 7px 9px;
+  padding: 5px 8px;
   border: 1px solid var(--ciit-border, #dce6f2);
   border-radius: 9px;
   background: var(--ciit-surface, #fff);
