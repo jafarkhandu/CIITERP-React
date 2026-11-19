@@ -491,6 +491,26 @@
   z-index: 1;
 }
 
+/* Keep mapping actions readable in the narrower mapped-topics panel. */
+.dt-mapping-layout > .dt-panel:last-child .dt-table th:last-child,
+.dt-mapping-layout > .dt-panel:last-child .dt-table td:last-child {
+  width: 88px;
+  min-width: 88px;
+  padding-left: 8px;
+  padding-right: 8px;
+  overflow-wrap: normal;
+}
+
+.dt-mapping-layout > .dt-panel:last-child .dt-row-actions {
+  flex-wrap: nowrap;
+}
+
+.dt-mapping-layout > .dt-panel:last-child .dt-row-actions button {
+  white-space: nowrap;
+  min-width: 64px;
+  text-align: center;
+}
+
 .dt-mapping-topic-grid .dt-mapping-topic-card small {
   margin-top: 2px;
 }
