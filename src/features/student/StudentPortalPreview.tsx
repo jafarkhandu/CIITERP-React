@@ -1,5 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { authService } from '@/core/auth/authService';
+import { useSession } from '@/core/auth/hooks';
+import { readTokenIdentity } from '@/core/auth/tokenIdentity';
+import { tokenService } from '@/core/services/tokenService';
+import { studentApi } from '@/api/studentApi';
 import '@/layouts/MainLayout.css';
 import './StudentPortal.css';
 
@@ -11,7 +16,49 @@ const sections = [
   { id: 'student-payments', title: 'Payments', icon: 'bi-wallet2' },
 ];
 
+type StudentRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): StudentRecord | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as StudentRecord : null;
+}
+
+function readField(row: StudentRecord | null, ...keys: string[]): unknown {
+  for (const key of keys) {
+    const value = row?.[key];
+    if (value !== null && value !== undefined && value !== '') return value;
+  }
+  return null;
+}
+
+function display(value: unknown): string {
+  return value === null || value === undefined || value === '' ? 'Not available' : String(value);
+}
+
+function ownedRegistrationResponse(response: unknown, studentId: number): StudentRecord | null {
+  const root = asRecord(response);
+  const data = asRecord(readField(root, 'data', 'result', 'student', 'studentDetails')) ?? root;
+  if (!data) return null;
+
+  // Only render records explicitly linked to the student id in the JWT.
+  const ownerId = Number(readField(data, 'studentId', 'student_Id', 'student_id', 'StudentId'));
+  return ownerId === studentId ? data : null;
+}
+
+function nestedRows(row: StudentRecord | null, ...keys: string[]): StudentRecord[] {
+  const entries = readField(row, ...keys);
+  return Array.isArray(entries) ? entries.filter((item): item is StudentRecord => asRecord(item) !== null) : [];
+}
+
+const currency = (amount: number) =>
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+
 export default function StudentPortalPreview() {
+  const session = useSession();
+  const [identity] = useState(() => readTokenIdentity(tokenService.getAccessToken() ?? ''));
+  const [studentRecord, setStudentRecord] = useState<StudentRecord | null>(null);
+  const [recordLoading, setRecordLoading] = useState(Boolean(identity.studentId));
+  const [recordError, setRecordError] = useState('');
   const [activeSection, setActiveSection] = useState('student-overview');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => localStorage.getItem('ciit-sidebar-collapsed') === 'true');
@@ -20,6 +67,43 @@ export default function StudentPortalPreview() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', isDarkTheme ? 'dark' : 'light');
   }, [isDarkTheme]);
+
+  useEffect(() => {
+    if (!identity.studentId) return;
+
+    let active = true;
+    studentApi.getRegistrationById(identity.studentId)
+      .then((response) => {
+        if (!active) return;
+        const record = ownedRegistrationResponse(response, identity.studentId!);
+        if (!record) {
+          setRecordError('Student registration details could not be matched to your signed-in account.');
+          return;
+        }
+        setStudentRecord(record);
+      })
+      .catch(() => {
+        if (active) setRecordError('Registration details are currently unavailable.');
+      })
+      .finally(() => {
+        if (active) setRecordLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [identity.studentId]);
+
+  const studentName = display(
+    readField(studentRecord, 'studentName', 'student_Name', 'name') ||
+    identity.displayName || session.employeeName || session.username,
+  );
+  const studentCode = identity.username || session.username;
+  const registrations = nestedRows(studentRecord, 'registrations', 'Registrations');
+  const courseRows = registrations.length ? registrations :
+    readField(studentRecord, 'registrationId', 'registration_Id') ? [studentRecord!] : [];
+  const paymentRows = courseRows.flatMap((row) => nestedRows(row, 'payments', 'Payments'));
+  const batchRows = nestedRows(studentRecord, 'batches', 'Batches');
+  const totalPaid = paymentRows.reduce((sum, row) =>
+    sum + (Number(readField(row, 'paymentAmount', 'payment_Amount')) || 0), 0);
 
   function toggleTheme() {
     const next = !isDarkTheme;
