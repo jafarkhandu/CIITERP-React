@@ -11,6 +11,7 @@ export interface LoginResponse {
 export interface User {
   id?: string | number;
   employeeCode?: string;
+  studentId?: number;
   userName?: string;
   employeeName?: string;
   emailAddress?: string;
