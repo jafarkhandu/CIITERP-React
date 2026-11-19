@@ -29,7 +29,6 @@ const MENUS: SidebarMenu[] = [
   { label: 'My Batches', route: '/main/trainer', icon: 'bi-easel2-fill', roles: ['Trainer', 'Admin'], permission: PERMISSIONS.TRAINER_BATCH_VIEW },
   { label: 'Reports', route: '/main/reports', icon: 'bi-graph-up-arrow', permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User'] },
   { label: 'Function Management', route: '/main/function-management', icon: 'bi-sliders2', permission: PERMISSIONS.FUNCTION_MANAGEMENT_VIEW, roles: ['Admin', 'Super User'] },
-  { label: 'Email Services', route: '/main/email-services', icon: 'bi-envelope-at-fill', roles: ['Admin', 'Super User'] },
 ];
 
 function getPageTitle(pathname: string): string {
@@ -208,7 +207,6 @@ export default function MainLayout() {
       '/main/trainer': 'trainer',
       '/main/reports': 'admin',
       '/main/function-management': 'admin',
-      '/main/email-services': 'admin',
     };
     const groups = availableRoles
       .filter((role) => !excludedRoles.has(normalizeRole(role.roleName)))
