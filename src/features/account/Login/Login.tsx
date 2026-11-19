@@ -264,8 +264,8 @@ export default function Login() {
                 </button>
               </form>
 
-              <Link className="student-preview-link" to="/student-preview">
-                <span aria-hidden="true">🎓</span> Student Access <span aria-hidden="true">→</span>
+              <Link className="student-preview-link" to="/main/student-portal">
+                <span aria-hidden="true">🎓</span> Staff Student Portal <span aria-hidden="true">→</span>
               </Link>
 
               {/* Security note */}
