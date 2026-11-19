@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import '@/layouts/MainLayout.css';
 import './StudentPortal.css';
 
 const sections = [
@@ -10,28 +12,30 @@ const sections = [
 ];
 
 export default function StudentPortalPreview() {
+  const [activeSection, setActiveSection] = useState('student-overview');
   return (
-    <div className="sp-demo-shell">
-      <header className="sp-demo-topbar">
-        <div className="sp-demo-brand"><span className="sp-demo-logo">C</span><span><strong>CIIT</strong><small>TRAINING INSTITUTE</small></span></div>
-        <span className="sp-demo-workspace">STUDENT WORKSPACE <strong>Student Portal</strong></span>
-        <div className="sp-demo-actions">
-          <label htmlFor="student-public-selector" style={{ color: '#fff' }}>Student</label>
-          <select id="student-public-selector" disabled aria-label="Student selection requires authentication">
-            <option>Sign in to select student</option>
-          </select>
+    <div className="cmp-main-layout ciit-app-shell ciit-student-public-shell">
+      <header className="ciit-topbar">
+        <div className="ciit-topbar-left">
+          <Link className="ciit-shell-brand" to="/login" aria-label="CIIT ERP login"><span className="ciit-brand-mark">C</span><span className="ciit-brand-copy"><strong>CIIT</strong><small>TRAINING INSTITUTE</small></span></Link>
+          <div className="ciit-topbar-divider" aria-hidden="true" />
+          <div className="ciit-topbar-heading"><span>STUDENT WORKSPACE</span><strong>Student Portal</strong></div>
+        </div>
+        <div className="ciit-topbar-actions">
+          <label className="ciit-portal-topbar-picker"><span>Student</span><select disabled aria-label="Student selection requires login"><option>Sign in to select student</option></select></label>
+          <Link className="ciit-public-login-link" to="/login">ERP Login</Link>
         </div>
       </header>
-      <div className="sp-demo-layout">
-        <aside className="sp-demo-sidebar" aria-label="Student navigation">
-          <div className="sp-demo-side-profile"><span className="sp-demo-user-avatar">C</span><span><strong>Student Workspace</strong><small>CIIT Training Institute</small></span></div>
-          <span className="sp-demo-side-label">STUDENT MENU</span>
-          <nav aria-label="Student sections">
-            {sections.map(section => <a key={section.id} href={'#' + section.id}><i className={'bi ' + section.icon} aria-hidden="true" />{section.title}</a>)}
-          </nav>
-          <div className="sp-demo-sidebar-footer"><Link className="sp-preview-link" to="/login">Back to ERP login</Link></div>
+      <div className="ciit-shell-main">
+        <aside className="ciit-shell-sidebar" aria-label="Student navigation">
+          <div className="ciit-sidebar-user"><span className="ciit-sidebar-avatar">C</span><div className="ciit-sidebar-user-copy"><strong>Student Workspace</strong><small>CIIT Training Institute</small></div></div>
+          <div className="ciit-sidebar-section-label">STUDENT MENU</div>
+          <nav className="ciit-sidebar-nav" aria-label="Student sections"><ul className="ciit-sidebar-list">
+            {sections.map(section => <li key={section.id}><a href={'#' + section.id} className={activeSection === section.id ? 'active-link' : ''} onClick={() => setActiveSection(section.id)}><i className={'bi ' + section.icon} aria-hidden="true" /><span className="ciit-menu-label">{section.title}</span><span className="ciit-menu-active-mark" aria-hidden="true" /></a></li>)}
+          </ul></nav>
+          <div className="ciit-sidebar-footer"><span className="ciit-sidebar-footer-mark"><i className="bi bi-mortarboard-fill" aria-hidden="true" /></span><span><strong>CIIT ERP</strong><small>Training Institute</small></span></div>
         </aside>
-        <main className="ciit-student-portal sp-public-preview">
+        <main className="ciit-workspace"><div className="ciit-content"><div className="ciit-page-transition"><div className="ciit-student-portal ciit-student-public-content">
           <header id="student-overview" className="sp-heading">
             <div><span className="sp-eyebrow">CIIT · STUDENT WORKSPACE</span><h1>Student Portal</h1><p>Student dashboard interface</p></div>
             <span className="sp-preview">Public interface · No records exposed</span>
@@ -50,7 +54,7 @@ export default function StudentPortalPreview() {
             <section id="student-batch" className="sp-panel"><h2>My batches</h2><p className="sp-muted">No batch information available.</p></section>
             <section id="student-payments" className="sp-panel"><h2>Payments and attendance</h2><p className="sp-muted">Private student records require authentication.</p></section>
           </div>
-        </main>
+        </div></div></div></main>
       </div>
     </div>
   );
