@@ -4,6 +4,7 @@ import { authApi } from '@/api/authApi';
 import { findCurrentUser, getAllUsers, getCachedUsers } from '@/api/userApi';
 import { authService } from '@/core/auth/authService';
 import { userSession } from '@/core/auth/session';
+import { hasStudentRole, readTokenIdentity } from '@/core/auth/tokenIdentity';
 import { apiErrorMessage, httpStatus } from '@/core/http/errors';
 import './Login.css';
 
@@ -26,17 +27,39 @@ export default function Login() {
   const usernameInvalid = !username && touched.username;
   const passwordInvalid = !password && touched.password;
 
-  async function loadUserAndNavigate(loginUsername: string) {
+  async function loadUserAndNavigate(loginUsername: string, accessToken: string) {
+    const identity = readTokenIdentity(accessToken);
+
+    if (hasStudentRole(identity.roles)) {
+      // The successful Auth login identifies this account as a student.
+      // Do not request the staff user directory or expose staff routes.
+      userSession.setUser({
+        userName: identity.username || loginUsername,
+        employeeName: identity.displayName || loginUsername,
+        emailAddress: identity.email,
+        roleName: 'Student',
+        roles: ['Student'],
+      });
+      navigate('/student-portal', { replace: true });
+      return;
+    }
+
     try {
-      // cached list is used instantly (same as the Angular startWith(cache) behaviour);
-      // MainLayout refreshes it in the background.
+      // Preserve the existing staff login flow and its cached user lookup.
       const users = getCachedUsers() ?? (await getAllUsers());
       const currentUser = findCurrentUser(users, loginUsername);
-      if (currentUser) userSession.setUser(currentUser);
+      if (currentUser) {
+        userSession.setUser(currentUser);
+        if (userSession.hasRole('Student')) {
+          navigate('/student-portal', { replace: true });
+          return;
+        }
+      }
     } catch (error) {
-      // A user-details failure is NOT a login failure.
+      // A user-details failure is NOT a login failure for existing staff.
       console.error('User information API error:', error);
     }
+
     navigate(postLoginPath, { replace: true });
   }
 
@@ -70,9 +93,11 @@ export default function Login() {
     }
 
     try {
+      // Avoid retaining roles from a previous account when users switch logins.
+      userSession.clear();
       authService.saveLoginData(response.token, response.refreshToken);
       localStorage.setItem('username', username);
-      await loadUserAndNavigate(username);
+      await loadUserAndNavigate(username, response.token);
     } catch (error) {
       console.error('Login processing error:', error);
       setErrormessage('Login could not be completed. Please try again.');
@@ -266,10 +291,6 @@ export default function Login() {
                   )}
                 </button>
               </form>
-
-              <Link className="student-preview-link" to="/student-preview">
-                <span aria-hidden="true">🎓</span> Student Access <span aria-hidden="true">→</span>
-              </Link>
 
               {/* Security note */}
               <div className="secure-note">
