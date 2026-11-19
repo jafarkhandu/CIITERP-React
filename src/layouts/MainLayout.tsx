@@ -62,6 +62,9 @@ export default function MainLayout() {
     () => (localStorage.getItem('ciit-theme') || localStorage.getItem('theme')) === 'dark',
   );
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [portalStudents, setPortalStudents] = useState<{ studentId: number; name: string }[]>([]);
+  const [portalStudentId, setPortalStudentId] = useState(0);
+  const isStudentPortal = location.pathname === '/main/student-portal';
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     () => localStorage.getItem('ciit-sidebar-collapsed') === 'true',
@@ -309,6 +312,15 @@ export default function MainLayout() {
         </div>
 
         <div className="ciit-topbar-actions">
+          {isStudentPortal && (
+            <label className="ciit-portal-topbar-picker">
+              <span>Student</span>
+              <select aria-label="Select registered student" value={portalStudentId || ''} onChange={event => setPortalStudentId(Number(event.target.value))}>
+                <option value="">Select student</option>
+                {portalStudents.map(student => <option key={student.studentId} value={student.studentId}>{student.name}</option>)}
+              </select>
+            </label>
+          )}
           <button
             type="button"
             className="theme-toggle"
@@ -487,7 +499,7 @@ export default function MainLayout() {
         <main className="ciit-workspace">
           <div className="ciit-content">
             <div className="ciit-page-transition" key={location.pathname}>
-              <Outlet />
+              <Outlet context={{ portalStudentId, setPortalStudentId, setPortalStudents }} />
             </div>
           </div>
         </main>
