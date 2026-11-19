@@ -817,3 +817,30 @@ html[data-theme="dark"] .ciit-student-public-shell .ciit-student-portal .sp-prof
     padding: 10px 8px 4px;
   }
 }
+
+
+/* Light-mode student backdrop: cool tint makes existing translucent glass visible.
+   Kept separate from dark mode and from staff/ERP shared layout styles. */
+html:not([data-theme="dark"]) .ciit-student-public-shell .ciit-content {
+  background:
+    radial-gradient(ellipse at 88% 8%, rgba(123, 173, 234, .25), transparent 45%),
+    linear-gradient(135deg, #e2edf9 0%, #cbdff3 54%, #e0e4f6 100%);
+}
+
+html:not([data-theme="dark"]) .ciit-student-public-shell .ciit-student-public-content {
+  background:
+    radial-gradient(ellipse at 95% 4%, rgba(74, 157, 232, .24), transparent 45%),
+    radial-gradient(ellipse at 4% 95%, rgba(118, 122, 216, .16), transparent 50%),
+    linear-gradient(125deg, rgba(214, 232, 250, .68), rgba(197, 220, 245, .57));
+  border-color: rgba(255, 255, 255, .68);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  html:not([data-theme="dark"]) .ciit-student-public-shell .ciit-content {
+    background: #e2edf9;
+  }
+
+  html:not([data-theme="dark"]) .ciit-student-public-shell .ciit-student-public-content {
+    background: #d7e6f7;
+  }
+}
