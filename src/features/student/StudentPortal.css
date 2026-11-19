@@ -14,3 +14,12 @@
 @media(max-width:740px){.sp-demo-topbar{min-height:65px;padding:10px 15px;gap:12px}.sp-demo-workspace{display:none}.sp-demo-layout{display:block;padding:14px}.sp-demo-sidebar{position:static;min-height:0;margin-bottom:15px;padding:10px;border-radius:16px}.sp-demo-side-profile,.sp-demo-side-label,.sp-demo-sidebar-footer{display:none}.sp-demo-sidebar nav{display:flex;gap:6px;overflow-x:auto}.sp-demo-sidebar nav a{white-space:nowrap;padding:10px;font-size:12px}.sp-demo-shell .sp-public-preview .sp-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.sp-demo-shell .sp-public-preview .sp-columns{grid-template-columns:1fr}}
 @media(max-width:420px){.sp-demo-user>span:last-child{display:none}.sp-demo-brand small{font-size:8px}.sp-demo-shell .sp-public-preview .sp-stats{grid-template-columns:1fr}}
 @media(prefers-reduced-transparency:reduce){.sp-demo-shell .sp-public-preview .sp-panel,.sp-demo-sidebar{background:#f8fbff;backdrop-filter:none;-webkit-backdrop-filter:none}}
+
+/* Sidebar-free student preview with accessible glass student switcher. */
+.sp-demo-layout.sp-demo-no-sidebar{display:block;max-width:1480px;margin:0 auto;padding:clamp(16px,2.5vw,34px)}
+.sp-demo-no-sidebar .sp-public-preview{max-width:none;width:100%}
+.sp-demo-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.sp-demo-actions label{font-size:12px;font-weight:750;color:#365c86}
+.sp-demo-actions select{min-width:230px;max-width:100%;padding:12px 35px 12px 14px;border:1px solid rgba(147,184,225,.55);border-radius:12px;background:rgba(255,255,255,.65);color:#193d67;box-shadow:0 8px 22px rgba(32,78,128,.08);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);font:inherit;font-size:13px;font-weight:650}
+.sp-demo-actions select:focus-visible{outline:3px solid #80b7ff;outline-offset:2px}
+@media(max-width:650px){.sp-demo-actions{width:100%}.sp-demo-actions select{flex:1;min-width:160px}.sp-demo-no-sidebar .sp-heading{align-items:flex-start}}
