@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 type StudentRow = Record<string, unknown>;
 
 interface StudentDashboardProps {
-  studentName: string;
   studentRecordLoaded: boolean;
   loading: boolean;
   courseRows: StudentRow[];
@@ -52,7 +51,6 @@ const shortcuts = [
 ] as const;
 
 export default function StudentDashboard({
-  studentName,
   studentRecordLoaded,
   loading,
   courseRows,
@@ -72,16 +70,7 @@ export default function StudentDashboard({
 
   return (
     <div className="sp-section-page sp-dashboard">
-      <header id="student-overview" className="sp-heading sp-dashboard-intro">
-        <div>
-          <span className="sp-eyebrow">CIIT · STUDENT WORKSPACE</span>
-          <h1>Welcome back, {studentName}!</h1>
-          <p>Here's your learning and payment overview.</p>
-        </div>
-        <span className="sp-preview">Student account</span>
-      </header>
-
-      <div className="sp-stats" aria-label="Student account summary">
+      <div id="student-overview" className="sp-stats" aria-label="Student account summary">
         <div className="sp-panel"><span>Enrolled courses</span><strong>{studentRecordLoaded ? courseRows.length : '—'}</strong></div>
         <div className="sp-panel"><span>Assigned batches</span><strong>{studentRecordLoaded ? batchRows.length : '—'}</strong></div>
         <div className="sp-panel"><span>Recorded payments</span><strong>{studentRecordLoaded ? paymentRows.length : '—'}</strong></div>
