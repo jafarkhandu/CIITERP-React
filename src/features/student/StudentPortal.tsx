@@ -76,10 +76,6 @@ export default function StudentPortal() {
   const paid = myPayments.reduce((sum, p) => sum + (Number(p.paymentAmount) || 0), 0);
 
   return <main className="ciit-student-portal">
-    <header className="sp-heading">
-      <div><span className="sp-eyebrow">CIIT · STUDENT WORKSPACE</span><h1>Student Portal</h1><p>View registered students' learning and enrollment information.</p></div>
-      <span className="sp-preview">Authorized staff access</span>
-    </header>
     {loading && <div className="sp-panel" role="status">Loading student records…</div>}
     {!!errors.length && <div className="sp-alert" role="alert">Could not load: {errors.join(', ')}. Some information may be unavailable. Refresh to retry.</div>}
     {!loading && !students.length && <div className="sp-panel">No student records are available for this account.</div>}
@@ -94,9 +90,9 @@ export default function StudentPortal() {
       </div>
       <div className="sp-columns">
         <section className="sp-panel"><h2>Personal information</h2><dl className="sp-details">{fields.map(f => <div key={f.title}><dt>{f.title}</dt><dd>{label(value(student, ...f.keys) ?? value(myRegistrations[0], ...f.keys))}</dd></div>)}</dl></section>
-        <section className="sp-panel"><h2>My courses</h2>{myRegistrations.length ? <div className="sp-stack">{myRegistrations.map((r, i) => <article className="sp-entry" key={String(value(r, 'registrationId', 'registration_id') ?? i)}><h3>{label(value(r, 'courseName', 'course_name', 'CourseName'))}</h3><p>Registration: {label(value(r, 'registrationCode', 'registration_code'))}</p><p>Status: {label(value(r, 'currentStatus', 'status'))}</p></article>)}</div> : <p className="sp-muted">No course registration found.</p>}</section>
-        <section className="sp-panel"><h2>My batches</h2>{myBatches.length ? <div className="sp-stack">{myBatches.map((b, i) => <article className="sp-entry" key={String(id(b, 'batchId', 'batch_id') || i)}><h3>{label(value(b, 'batchName', 'batch_name'))}</h3><p>Time: {label(value(b, 'batchTime', 'batch_time'))}</p><p>Start: {label(value(b, 'startDate', 'start_date'))}</p><p>End: {label(value(b, 'endDate', 'end_date'))}</p></article>)}</div> : <p className="sp-muted">No batch assignment found.</p>}</section>
-        <section className="sp-panel"><h2>Payment history</h2>{myPayments.length ? <div className="sp-stack">{myPayments.map((p, i) => <article className="sp-entry sp-payment" key={p.paymentId || i}><div><h3>{label(p.paymentDate?.slice(0, 10))}</h3><p>{label(p.paymentMode)} · {label(p.courseName)}</p></div><strong>{money(Number(p.paymentAmount) || 0)}</strong></article>)}</div> : <p className="sp-muted">No payment records found.</p>}</section>
+        <section className="sp-panel"><h2>Courses</h2>{myRegistrations.length ? <div className="sp-stack">{myRegistrations.map((r, i) => <article className="sp-entry" key={String(value(r, 'registrationId', 'registration_id') ?? i)}><h3>{label(value(r, 'courseName', 'course_name', 'CourseName'))}</h3><p>Registration: {label(value(r, 'registrationCode', 'registration_code'))}</p><p>Status: {label(value(r, 'currentStatus', 'status'))}</p></article>)}</div> : <p className="sp-muted">No course registration found.</p>}</section>
+        <section className="sp-panel"><h2>Batches</h2>{myBatches.length ? <div className="sp-stack">{myBatches.map((b, i) => <article className="sp-entry" key={String(id(b, 'batchId', 'batch_id') || i)}><h3>{label(value(b, 'batchName', 'batch_name'))}</h3><p>Time: {label(value(b, 'batchTime', 'batch_time'))}</p><p>Start: {label(value(b, 'startDate', 'start_date'))}</p><p>End: {label(value(b, 'endDate', 'end_date'))}</p></article>)}</div> : <p className="sp-muted">No batch assignment found.</p>}</section>
+        <section className="sp-panel"><h2>Payment history</h2>{myPayments.length ? <div className="sp-stack sp-staff-payment-list" role="region" aria-label="Payment history records" tabIndex={0}>{myPayments.map((p, i) => <article className="sp-entry sp-payment" key={p.paymentId || i}><div><h3>{label(p.paymentDate?.slice(0, 10))}</h3><p>{label(p.paymentMode)} · {label(p.courseName)}</p></div><strong>{money(Number(p.paymentAmount) || 0)}</strong></article>)}</div> : <p className="sp-muted">No payment records found.</p>}</section>
       </div>
       <p className="sp-footnote">Information is read-only and comes from existing ERP records. Missing details are not estimated. This preview does not grant students access.</p>
     </div>}
