@@ -4,13 +4,12 @@ import { enquiryApi, type EnquiryRecord } from '@/api/enquiryApi';
 import { enquiryFollowupApi, type EnquiryFollowupRecord } from '@/api/enquiryFollowupApi';
 import { getAllUsers } from '@/api/userApi';
 import type { User } from '@/types/user';
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import './Reports.css';
 
 type FollowupRow = EnquiryFollowupRecord & { deletedAt?: string | null; followupDate?: string; nextFollowUpDate?: string };
 type FilterOption = 'All' | string;
+type ReportKind = 'lead' | 'enquiry';
+type ExportFormat = 'excel' | 'pdf';
 
 const text = (value: unknown): string => value == null ? '' : String(value);
 const parseDate = (value: unknown): Date | null => {
@@ -49,6 +48,8 @@ export default function Reports() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [failedSources, setFailedSources] = useState<string[]>([]);
+  const [exporting, setExporting] = useState<`${ReportKind}-${ExportFormat}` | null>(null);
+  const [exportError, setExportError] = useState('');
 
   const loadReports = useCallback(async () => {
     setLoading(true);
@@ -218,7 +219,8 @@ export default function Reports() {
     return [...stats.values()].sort((a, b) => b.total - a.total);
   }, [filteredLeadFollowups, filteredEnquiryFollowups, allowedCounsellors]);
 
-  const exportExcel = (kind: 'lead' | 'enquiry') => {
+  const exportExcel = async (kind: ReportKind) => {
+    const { writeExcelFile } = await import('@/core/exportExcel');
     const rows = kind === 'lead' ? latestLeadFollowups.map((row, index) => ({
       SR: index + 1, 'Lead ID': row.leadId, Candidate: row.candidateName, Counsellor: row.followUpBy,
       'Last Follow-up': formatDate(row.followUpDate), Status: row.status || '', 'Last Follow-up Comment': row.description || '',
@@ -227,13 +229,12 @@ export default function Reports() {
       SR: index + 1, Candidate: row.candidateName, Counsellor: row.followUpBy,
       'Last Follow-up': formatDate(row.followUpDate ?? row.followupDate), 'Last Follow-up Comment': row.description || '',
     }));
-    const sheet = XLSX.utils.json_to_sheet(rows);
-    const book = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(book, sheet, kind === 'lead' ? 'Lead Follow-up' : 'Enquiry Follow-up');
-    XLSX.writeFile(book, kind === 'lead' ? 'Lead-Followup-Report.xlsx' : 'Enquiry-Followup-Report.xlsx');
+    writeExcelFile(rows, kind === 'lead' ? 'Lead Follow-up' : 'Enquiry Follow-up',
+      kind === 'lead' ? 'Lead-Followup-Report.xlsx' : 'Enquiry-Followup-Report.xlsx');
   };
 
-  const exportPdf = (kind: 'lead' | 'enquiry') => {
+  const exportPdf = async (kind: ReportKind) => {
+    const [{ jsPDF }, { autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
     const doc = new jsPDF('landscape');
     const lead = kind === 'lead';
     doc.setFontSize(16);
@@ -253,6 +254,29 @@ export default function Reports() {
     });
     doc.save(lead ? 'Lead-Followup-Report.pdf' : 'Enquiry-Followup-Report.pdf');
   };
+
+  const runExport = async (kind: ReportKind, format: ExportFormat) => {
+    setExporting(`${kind}-${format}`);
+    setExportError('');
+    try {
+      await (format === 'excel' ? exportExcel(kind) : exportPdf(kind));
+    } catch {
+      setExportError('Unable to export the report. Please try again.');
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const exportActions = (kind: ReportKind) => (
+    <div className="section-actions">
+      <button className="export-btn" type="button" disabled={exporting !== null} onClick={() => void runExport(kind, 'excel')}>
+        {exporting === `${kind}-excel` ? 'Exporting…' : 'Excel'}
+      </button>
+      <button className="export-btn" type="button" disabled={exporting !== null} onClick={() => void runExport(kind, 'pdf')}>
+        {exporting === `${kind}-pdf` ? 'Exporting…' : 'PDF'}
+      </button>
+    </div>
+  );
 
   const clearFilters = () => { setDateFrom(''); setDateTo(''); setBranchFilter('All'); setCourseFilter('All'); setCounsellorFilter('All'); };
   const setCurrentMonth = () => {
@@ -289,11 +313,12 @@ export default function Reports() {
         <button type="button" className="clear-btn" onClick={clearFilters}>Clear Filters</button>
         <button type="button" className="clear-btn" onClick={setCurrentMonth}>Current Month</button>
       </section>
+      {exportError && <div className="error" role="alert">{exportError}</div>}
       {loading ? <div className="state">Loading business reports…</div> : (
         <>
           {error && <div className="error" role="alert"><span>{error}</span><button type="button" onClick={() => void loadReports()}>Retry</button></div>}
           {failedSources.includes('lead follow-ups') ? <section className="section"><div className="state">Lead follow-up data is unavailable. Retry to load this section.</div></section> : (<section className="section">
-            <div className="section-title"><div><h2>1. Lead Follow-up Report</h2><p>Latest follow-up for each lead within the selected period.</p></div><div className="section-actions"><button className="export-btn" onClick={() => exportExcel('lead')}>Excel</button><button className="export-btn" onClick={() => exportPdf('lead')}>PDF</button></div></div>
+            <div className="section-title"><div><h2>1. Lead Follow-up Report</h2><p>Latest follow-up for each lead within the selected period.</p></div>{exportActions('lead')}</div>
             <div className="kpi-grid follow-kpis">
               <Kpi label="Total Follow-ups" value={filteredLeadFollowups.length} /><Kpi label="Completed" value={leadFollowupCompleted} /><Kpi label="Pending" value={leadFollowupPending} /><Kpi label="Overdue" value={leadFollowupOverdue} /><Kpi label="Lost / Not Interested" value={leadFollowupLost} />
             </div>
@@ -304,7 +329,7 @@ export default function Reports() {
             <ReportTable columns={['SR', 'Lead ID', 'Candidate', 'Counsellor', 'Last Follow-up', 'Status', 'Last Follow-up Comment', 'Next Follow-up']} rows={latestLeadFollowups.map((row, index) => [index + 1, row.leadId, row.candidateName, row.followUpBy, formatDate(row.followUpDate), row.status || '—', row.description || '—', formatDate(row.nextFollowupDate)])} />
           </section>)}
           {failedSources.includes('enquiry follow-ups') ? <section className="section"><div className="state">Enquiry follow-up data is unavailable. Retry to load this section.</div></section> : (<section className="section">
-            <div className="section-title"><div><h2>2. Enquiry Follow-up Report</h2><p>Separate enquiry follow-up activity using fields exposed by the API.</p></div><div className="section-actions"><button className="export-btn" onClick={() => exportExcel('enquiry')}>Excel</button><button className="export-btn" onClick={() => exportPdf('enquiry')}>PDF</button></div></div>
+            <div className="section-title"><div><h2>2. Enquiry Follow-up Report</h2><p>Separate enquiry follow-up activity using fields exposed by the API.</p></div>{exportActions('enquiry')}</div>
             <div className="kpi-grid follow-kpis"><Kpi label="Total Recorded" value={filteredEnquiryFollowups.length} /><Kpi label="Upcoming" value={enquiryFollowupUpcoming} /><Kpi label="Past / Recorded" value={enquiryFollowupPast} /></div>
             <ReportTable columns={['SR', 'Candidate', 'Counsellor', 'Last Follow-up', 'Last Follow-up Comment']} rows={latestEnquiryFollowups.map((row, index) => [index + 1, row.candidateName || '—', row.followUpBy || '—', formatDate(row.followUpDate ?? row.followupDate), row.description || '—'])} />
           </section>)}

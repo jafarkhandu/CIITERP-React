@@ -1,10 +1,11 @@
 // Port of UserApi: GET /User/get-all-users with the Angular cache key.
 import { http } from '@/core/http/httpClient';
 import { API_ENDPOINTS } from '@/core/config/api-endpoints';
+import { userSession } from '@/core/auth/session';
 import type { User } from '@/types/user';
 
 const CACHE_KEY = 'erp-users-cache';
-let usersPromise: Promise<User[]> | null = null;
+let usersRequest: { generation: number; promise: Promise<User[]> } | null = null;
 
 export function getCachedUsers(): User[] | null {
   try {
@@ -34,24 +35,27 @@ function saveCache(users: User[]) {
 }
 
 export function getAllUsers(): Promise<User[]> {
-  if (!usersPromise) {
-    usersPromise = http
-      .get(`${API_ENDPOINTS.user}/get-all-users`)
-      .then((response) => {
-        const users = extractUsers(response.data);
-        saveCache(users);
-        return users;
-      })
-      .catch((error) => {
-        usersPromise = null;
-        throw error;
-      });
-  }
-  return usersPromise ?? Promise.resolve([]);
+  const { generation } = userSession.getSnapshot();
+  if (usersRequest?.generation === generation) return usersRequest.promise;
+
+  const promise = http
+    .get(`${API_ENDPOINTS.user}/get-all-users`)
+    .then((response) => {
+      const users = extractUsers(response.data);
+      if (usersRequest?.promise === promise && userSession.getSnapshot().generation === generation) saveCache(users);
+      return users;
+    })
+    .catch((error) => {
+      if (usersRequest?.promise === promise) usersRequest = null;
+      throw error;
+    });
+
+  usersRequest = { generation, promise };
+  return promise;
 }
 
 export function clearUsersCache() {
-  usersPromise = null;
+  usersRequest = null;
   localStorage.removeItem(CACHE_KEY);
 }
 

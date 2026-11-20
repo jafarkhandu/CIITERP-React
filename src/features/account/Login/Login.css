@@ -57,7 +57,7 @@
             rgba(4, 42, 94, 0.55) 45%,
             rgba(4, 37, 82, 0.15) 100%
         ),
-        url("/ciit-campus.png");
+        url("./ciit-campus.webp");
 
     background-position: center;
     background-size: cover;
@@ -778,7 +778,7 @@
                 rgba(3, 30, 76, 0.82),
                 rgba(4, 42, 94, 0.66)
             ),
-            url("/ciit-campus.png");
+            url("./ciit-campus.webp");
 
         background-position: center;
         background-size: cover;

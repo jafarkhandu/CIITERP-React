@@ -69,7 +69,10 @@ export default function StudentAccount() {
   const [studentRecord, setStudentRecord] = useState<StudentRecord | null>(null);
   const [recordLoading, setRecordLoading] = useState(Boolean(studentId));
   const [recordError, setRecordError] = useState('');
-  const [paymentDetails, setPaymentDetails] = useState<StudentRecord[]>([]);
+  const [coursePaymentDetails, setCoursePaymentDetails] = useState<{
+    registration: StudentRecord;
+    rows: StudentRecord[];
+  } | null>(null);
   const [expandedDetail, setExpandedDetail] = useState<string | null>(null);
 
   function toggleDetail(key: string) {
@@ -79,6 +82,8 @@ export default function StudentAccount() {
   const { hash } = useLocation();
   const legacyPage = sections.find(section => '#' + section.id === hash)?.slug;
   const activeSection = sections.find(section => section.slug === (page ?? legacyPage ?? 'dashboard'))?.id;
+  const showingCourses = activeSection === 'student-course';
+  const paymentDetails = coursePaymentDetails?.registration === studentRecord ? coursePaymentDetails.rows : null;
 
   // Start each routed page at the top, even when navigating from a scrolled view.
   useEffect(() => { window.scrollTo(0, 0); }, [page, hash]);
@@ -194,6 +199,8 @@ export default function StudentAccount() {
   }, [studentId]);
 
   useEffect(() => {
+    if (!showingCourses || !studentId || !studentRecord || paymentDetails) return;
+
     const owned = nestedRows(studentRecord, 'registrations', 'Registrations').filter(row => {
       const owner = readField(row, 'studentId', 'student_Id');
       return owner === null || Number(owner) === studentId;
@@ -202,10 +209,9 @@ export default function StudentAccount() {
     const paymentIds = [...new Set(owned.flatMap(row =>
       nestedRows(row, 'payments', 'Payments').map(payment => Number(readField(payment, 'paymentId', 'payment_Id'))),
     ))].filter(id => Number.isInteger(id) && id > 0);
-    let active = true;
-    setPaymentDetails([]);
-    if (!studentId || !paymentIds.length) return () => { active = false; };
+    if (!paymentIds.length) return;
 
+    let active = true;
     Promise.allSettled(paymentIds.map(id => studentApi.getPaymentById(id))).then(results => {
       if (!active) return;
       const verified = results.flatMap(result => {
@@ -215,10 +221,10 @@ export default function StudentAccount() {
             !registrationIds.has(Number(readField(payment, 'registrationId', 'registration_Id')))) return [];
         return [payment];
       });
-      setPaymentDetails(verified);
+      setCoursePaymentDetails({ registration: studentRecord, rows: verified });
     });
     return () => { active = false; };
-  }, [studentId, studentRecord]);
+  }, [showingCourses, studentId, studentRecord, paymentDetails]);
 
   const studentName = display(
     readField(studentRecord, 'studentName', 'student_Name', 'name') ||
@@ -398,7 +404,7 @@ export default function StudentAccount() {
                     <div><dt>Registration date</dt><dd>{formatStudentDate(readField(row, 'registrationDate', 'registration_Date'))}</dd></div>
                     <div><dt>Course Fee</dt><dd>{(() => {
                       const registrationId = Number(readField(row, 'registrationId', 'registration_Id'));
-                      const detail = paymentDetails.find(payment => Number(readField(payment, 'registrationId', 'registration_Id')) === registrationId);
+                      const detail = paymentDetails?.find(payment => Number(readField(payment, 'registrationId', 'registration_Id')) === registrationId);
                       const finalFees = readField(detail ?? null, 'finalFees', 'final_Fees') ??
                         readField(row, 'finalFees', 'final_Fees');
                       const balance = readField(detail ?? null, 'remainingBalance', 'remaining_Balance') ??
@@ -414,7 +420,7 @@ export default function StudentAccount() {
                     <div><dt>Amount Paid</dt><dd>{currency(paid)}</dd></div>
                     <div><dt>Remaining Balance</dt><dd>{(() => {
                       const registrationId = Number(readField(row, 'registrationId', 'registration_Id'));
-                      const detail = paymentDetails.find(payment => Number(readField(payment, 'registrationId', 'registration_Id')) === registrationId);
+                      const detail = paymentDetails?.find(payment => Number(readField(payment, 'registrationId', 'registration_Id')) === registrationId);
                       const balance = readField(detail ?? null, 'remainingBalance', 'remaining_Balance') ??
                         readField(row, 'remainingBalance', 'remaining_Balance');
                       return balance === null ? 'Not available' : currency(Number(balance));

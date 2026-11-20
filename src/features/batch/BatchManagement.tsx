@@ -1,5 +1,5 @@
 import RowActionsMenu from '@/components/RowActionsMenu';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import {
   batchApi,
@@ -43,6 +43,8 @@ export default function BatchManagement() {
   const [employees, setEmployees] = useState<Row[]>([]);
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingCounts, setLoadingCounts] = useState(true);
+  const loadVersion = useRef(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -72,22 +74,34 @@ export default function BatchManagement() {
   const [scheduleEdit, setScheduleEdit] = useState<Row>({});
 
   async function load() {
-    setLoading(true); setError('');
-    let mapped: BatchRow[] = [];
+    const version = ++loadVersion.current;
+    setLoading(true); setLoadingCounts(true); setError('');
+    const batchRequest = batchApi.getAll();
+    const studentsRequest = batchStudentApi.getAll().then(
+      (students) => ({ students, ok: true } as const),
+      (error: unknown) => ({ error, ok: false } as const),
+    );
+    let mapped: BatchRow[];
     try {
-      const records = await batchApi.getAll();
+      const records = await batchRequest;
+      if (version !== loadVersion.current) return;
       mapped = records.map((row) => ({ ...row, batchId: idOf(row), batchName: String(read(row, 'batch_name', 'batchName', 'BatchName') ?? 'Unnamed Batch') }))
         .filter((row) => row.batchId > 0) as BatchRow[];
       setBatches(mapped);
     } catch (requestError: any) {
+      if (version !== loadVersion.current) return;
       setError(requestError?.response?.data?.message || 'Unable to load batches.');
       setLoading(false);
+      setLoadingCounts(false);
       return;
     }
+    setLoading(false);
     try {
-      const allBatchStudents = await batchStudentApi.getAll();
+      const result = await studentsRequest;
+      if (version !== loadVersion.current) return;
+      if (!result.ok) throw result.error;
       const nextCounts: Record<number, number | null> = {};
-      allBatchStudents.forEach((student) => {
+      result.students.forEach((student) => {
         const nestedBatch: Record<string, unknown> = student.batch && typeof student.batch === 'object'
           ? student.batch as Record<string, unknown>
           : {};
@@ -104,7 +118,7 @@ export default function BatchManagement() {
       setCounts(unavailableCounts);
       setError(requestError?.response?.data?.message || 'Loaded batches, but student counts could not be retrieved.');
     }
-    setLoading(false);
+    setLoadingCounts(false);
   }
 
   useEffect(() => {
@@ -115,6 +129,7 @@ export default function BatchManagement() {
         if (employeeResult.status === 'fulfilled') setEmployees(employeeResult.value);
         if (branchResult.status === 'fulfilled') setBranches(branchResult.value);
       });
+    return () => { loadVersion.current += 1; };
   }, []);
 
   const active = useMemo(() => batches.filter((row) => !deleted(row)), [batches]);
@@ -242,7 +257,11 @@ export default function BatchManagement() {
     try {
       await batchStudentApi.remove(student.batchStudentId);
       setRoster((previous) => previous.filter((item) => item.batchStudentId !== student.batchStudentId));
-      if (scheduleBatch) setCounts((previous) => ({ ...previous, [scheduleBatch.batchId]: Math.max(0, (previous[scheduleBatch.batchId] ?? 1) - 1) }));
+      if (loadingCounts) {
+        await load();
+      } else if (scheduleBatch) {
+        setCounts((previous) => ({ ...previous, [scheduleBatch.batchId]: Math.max(0, (previous[scheduleBatch.batchId] ?? 1) - 1) }));
+      }
     } catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to remove student from batch.'); }
     finally { setSaving(false); }
   }
@@ -420,7 +439,7 @@ export default function BatchManagement() {
 
   return <section className="batch-page">
     <header className="batch-header"><div><div className="batch-eyebrow">GROUP LEADER / BATCH MANAGEMENT</div><h1>Batch Management</h1><p>Manage active batches, students and class schedules.</p></div>
-      <div className="batch-header-actions"><button className="batch-secondary" type="button" onClick={() => void load()} disabled={loading}>↻ Refresh</button><button className="batch-primary" type="button" onClick={openCreate}>＋ New Batch</button></div>
+      <div className="batch-header-actions"><button className="batch-secondary" type="button" onClick={() => void load()} disabled={loading || loadingCounts || saving}>↻ Refresh</button><button className="batch-primary" type="button" onClick={openCreate}>＋ New Batch</button></div>
     </header>
     {error && <div className="batch-error" role="alert">{error}<button type="button" onClick={() => void load()}>Retry</button></div>}
     {success && <div className="batch-success" role="status">{success}</div>}
@@ -485,7 +504,7 @@ export default function BatchManagement() {
       <div className="batch-tabs"><button type="button" className={tab === 'active' ? 'active' : ''} onClick={() => setTab('active')}>Active Batches <span>{active.length}</span></button><button type="button" className={tab === 'deleted' ? 'active' : ''} onClick={() => setTab('deleted')}>Deleted Batches <span>{removed.length}</span></button></div>
       <section className="batch-table-card"><div className="batch-table-heading"><div><h2>{tab === 'active' ? 'Active Batches' : 'Deleted Batches'}</h2><p>Batch overview and quick actions</p></div><span className="batch-count">{displayed.length} records</span></div>
         <div className="batch-table-scroll"><table className="batch-table"><thead><tr><th>#</th><th>Batch Name</th><th>Topic Name</th><th>Trainer Name</th><th>Start Date</th><th>End Date</th><th>Batch Time</th><th># Students</th><th>Action</th></tr></thead><tbody>
-          {loading ? <tr><td colSpan={9} className="batch-empty">Loading batches...</td></tr> : displayed.map((row, i) => <tr key={row.batchId}><td>{i + 1}</td><td><strong>{row.batchName}</strong><small>ID: {row.batchId}</small></td><td>{String(read(row, 'topic_name', 'topicName') ?? `Topic #${read(row, 'topic_id', 'topicId') ?? '—'}`)}</td><td>{String(read(row, 'employee_name', 'employeeName') ?? `Employee #${read(row, 'employee_id', 'employeeId') ?? '—'}`)}</td><td>{formatDate(read(row, 'start_date', 'startDate'))}</td><td>{formatDate(read(row, 'end_date', 'endDate'))}</td><td>{String(read(row, 'batch_time', 'batchTime') ?? '—')}</td><td><span className="batch-student-count">{counts[row.batchId] ?? '—'}</span></td><td><RowActionsMenu label={`Actions for batch ${row.batchName}`} disabled={saving} actions={tab === 'active' ? [
+          {loading ? <tr><td colSpan={9} className="batch-empty">Loading batches...</td></tr> : displayed.map((row, i) => <tr key={row.batchId}><td>{i + 1}</td><td><strong>{row.batchName}</strong><small>ID: {row.batchId}</small></td><td>{String(read(row, 'topic_name', 'topicName') ?? `Topic #${read(row, 'topic_id', 'topicId') ?? '—'}`)}</td><td>{String(read(row, 'employee_name', 'employeeName') ?? `Employee #${read(row, 'employee_id', 'employeeId') ?? '—'}`)}</td><td>{formatDate(read(row, 'start_date', 'startDate'))}</td><td>{formatDate(read(row, 'end_date', 'endDate'))}</td><td>{String(read(row, 'batch_time', 'batchTime') ?? '—')}</td><td><span className="batch-student-count" aria-label={loadingCounts ? 'Loading student count' : undefined}>{loadingCounts ? '…' : counts[row.batchId] ?? '—'}</span></td><td><RowActionsMenu label={`Actions for batch ${row.batchName}`} disabled={saving} actions={tab === 'active' ? [
               { label: 'View schedule', onSelect: () => void viewSchedule(row) },
               { label: 'Add students', onSelect: () => void openAddStudents(row) },
               { label: 'Attendance', onSelect: () => void openAttendance(row) },
@@ -509,7 +528,7 @@ export default function BatchManagement() {
           <div><dt>Topic</dt><dd>{String(read(detailsBatch, 'topic_name', 'topicName') ?? '—')}</dd></div>
           <div><dt>Trainer</dt><dd>{String(read(detailsBatch, 'employee_name', 'employeeName') ?? '—')}</dd></div>
           <div><dt>Branch</dt><dd>{String(read(detailsBatch, 'branch_name', 'branchName') ?? '—')}</dd></div>
-          <div><dt>Students</dt><dd>{counts[detailsBatch.batchId] ?? 'Not available'}</dd></div>
+          <div><dt>Students</dt><dd>{loadingCounts ? 'Loading…' : counts[detailsBatch.batchId] ?? 'Not available'}</dd></div>
           <div><dt>Start Date</dt><dd>{formatDate(read(detailsBatch, 'start_date', 'startDate'))}</dd></div>
           <div><dt>End Date</dt><dd>{formatDate(read(detailsBatch, 'end_date', 'endDate'))}</dd></div>
           <div><dt>Batch Time</dt><dd>{String(read(detailsBatch, 'batch_time', 'batchTime') ?? '—')}</dd></div>

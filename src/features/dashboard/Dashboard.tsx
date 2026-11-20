@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from '@/core/auth/hooks';
 import { PERMISSIONS, permissionService, type Permission } from '@/core/services/permissionService';
-import { leadApi, type LeadRecord, type LeadFollowupRecord } from '@/api/leadApi';
-import { enquiryApi, type EnquiryRecord } from '@/api/enquiryApi';
-import { courseApi, type TrainingCourseRecord } from '@/api/courseApi';
+import { leadApi, type LeadRecord } from '@/api/leadApi';
+import { enquiryApi } from '@/api/enquiryApi';
+import { courseApi } from '@/api/courseApi';
 import { batchApi, batchStudentApi, batchScheduleApi } from '@/api/batchApi';
-import { studentApi, trainerApi, type PaymentRow, type StudentRow } from '@/api/studentApi';
+import { studentApi, trainerApi, type PaymentRow } from '@/api/studentApi';
 import './Dashboard.css';
 
 type DashboardCard = {
@@ -33,22 +33,35 @@ type ChartItem = { label: string; value: number; displayValue?: string };
 type BatchSummary = { id: number; name: string; course: string; students: number; route: string };
 type RecentPayment = { id: number; student: string; course: string; mode: string; date: string; amount: number };
 
-type DashboardSnapshot = {
-  metrics: Metric[];
-  pipeline: ChartItem[];
-  paymentModes: ChartItem[];
-  batches: BatchSummary[];
-  recentPayments: RecentPayment[];
+type PaymentSummary = { count: number; total: number; modes: ChartItem[]; recent: RecentPayment[] };
+type DashboardData = {
+  leads?: { count: number; converted: number };
+  enquiries?: number;
+  leadFollowups?: number;
+  courses?: number;
+  batches?: { count: number; cards: BatchSummary[] };
+  batchStudents?: number;
+  schedules?: number;
+  assignedBatches?: { count: number; cards: BatchSummary[]; studentCount?: number };
+  students?: number;
+  registrations?: number;
+  payments?: PaymentSummary;
+};
+
+type DashboardLoad = {
+  requestId: number;
+  scope: string;
+  data: DashboardData;
+  loading: boolean;
   failedSources: string[];
   updatedAt: Date | null;
 };
 
-const emptySnapshot: DashboardSnapshot = {
-  metrics: [],
-  pipeline: [],
-  paymentModes: [],
-  batches: [],
-  recentPayments: [],
+const initialLoad: DashboardLoad = {
+  requestId: 0,
+  scope: '',
+  data: {},
+  loading: true,
   failedSources: [],
   updatedAt: null,
 };
@@ -70,13 +83,14 @@ const isDeleted = (row: object): boolean => {
   return ['true', '1', 'yes', 'deleted'].includes(String(marker ?? '').trim().toLowerCase());
 };
 
-const formatMoney = (value: number): string => new Intl.NumberFormat('en-IN', {
+const moneyFormatter = new Intl.NumberFormat('en-IN', {
   style: 'currency',
   currency: 'INR',
   maximumFractionDigits: 0,
-}).format(value);
-
-const formatCount = (value: number): string => new Intl.NumberFormat('en-IN').format(value);
+});
+const countFormatter = new Intl.NumberFormat('en-IN');
+const formatMoney = (value: number): string => moneyFormatter.format(value);
+const formatCount = (value: number): string => countFormatter.format(value);
 
 const formatDate = (value: unknown): string => {
   if (!value) return '—';
@@ -86,27 +100,164 @@ const formatDate = (value: unknown): string => {
     : date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
-function buildBatchSummary(rows: Record<string, unknown>[]): BatchSummary[] {
-  return rows.map((row) => ({
-    id: numberValue(field(row, 'batchId', 'batch_id', 'BatchId', 'id')),
-    name: String(field(row, 'batchName', 'batch_name', 'name') ?? 'Unnamed batch'),
-    course: String(field(row, 'courseName', 'course_name', 'course', 'topicName', 'topic_name') ?? 'Course not specified'),
-    students: numberValue(field(row, 'studentCount', 'student_count', 'totalStudents')),
-    route: '/main/trainer',
-  })).filter((batch) => batch.id > 0);
+function buildBatchSummary(rows: Record<string, unknown>[], limit: number, route: string): BatchSummary[] {
+  const cards: BatchSummary[] = [];
+  for (const row of rows) {
+    const id = numberValue(field(row, 'batchId', 'batch_id', 'BatchId', 'id'));
+    if (id <= 0) continue;
+
+    cards.push({
+      id,
+      name: String(field(row, 'batchName', 'batch_name', 'name') ?? 'Unnamed batch'),
+      course: String(field(row, 'courseName', 'course_name', 'course', 'topicName', 'topic_name') ?? 'Course not specified'),
+      students: numberValue(field(row, 'studentCount', 'student_count', 'totalStudents')),
+      route,
+    });
+    if (cards.length === limit) break;
+  }
+  return cards;
+}
+
+function summarizeLeads(rows: LeadRecord[]): NonNullable<DashboardData['leads']> {
+  let count = 0;
+  let converted = 0;
+  for (const row of rows) {
+    if (row.deletedAt) continue;
+    count += 1;
+    if (/convert/i.test(row.status || '')) converted += 1;
+  }
+  return { count, converted };
+}
+
+function summarizePayments(rows: PaymentRow[]): PaymentSummary {
+  const modeTotals = new Map<string, number>();
+  const latest: { row: PaymentRow; timestamp: number }[] = [];
+  let count = 0;
+  let total = 0;
+  for (const row of rows) {
+    if (isDeleted(row)) continue;
+    const mode = String(row.paymentMode || 'Other').trim() || 'Other';
+    const amount = numberValue(row.paymentAmount);
+    count += 1;
+    total += amount;
+    modeTotals.set(mode, (modeTotals.get(mode) || 0) + amount);
+
+    const timestamp = new Date(String(row.paymentDate || '')).getTime() || 0;
+    if (latest.length < 5 || timestamp > latest[4].timestamp) {
+      latest.push({ row, timestamp });
+      latest.sort((a, b) => b.timestamp - a.timestamp);
+      if (latest.length > 5) latest.pop();
+    }
+  }
+
+  const modes = Array.from(modeTotals, ([label, amount]) => ({
+    label,
+    value: Number.isFinite(amount) ? amount : 0,
+  }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5)
+    .map((mode) => ({ ...mode, displayValue: formatMoney(mode.value) }));
+
+  const recent = latest.map(({ row }) => ({
+    id: row.paymentId,
+    student: [row.studentName, row.lastName].filter(Boolean).join(' ') || 'Student',
+    course: row.courseName || '—',
+    mode: row.paymentMode || '—',
+    date: formatDate(row.paymentDate),
+    amount: numberValue(row.paymentAmount),
+  }));
+
+  return { count, total, modes, recent };
+}
+
+type DashboardRole = 'admin' | 'accountant' | 'trainer' | 'group leader' | 'counsellor' | 'developer';
+
+function buildOverview(loaded: DashboardData, role: DashboardRole | undefined) {
+  const metrics: Metric[] = [];
+  const pipeline: ChartItem[] = [];
+  let batches: BatchSummary[] = [];
+
+  if (role === 'admin') {
+    if (loaded.leads) {
+      metrics.push({ label: 'Total Leads', value: loaded.leads.count, detail: 'Active lead records', icon: 'bi-person-lines-fill', tone: 'blue', route: '/main/lead' });
+      pipeline.push({ label: 'Leads', value: loaded.leads.count });
+    }
+    if (loaded.enquiries !== undefined) {
+      metrics.push({ label: 'Enquiries', value: loaded.enquiries, detail: 'Candidate enquiries', icon: 'bi-chat-square-text', tone: 'teal', route: '/main/enquiry' });
+      pipeline.push({ label: 'Enquiries', value: loaded.enquiries });
+      if (loaded.leads) pipeline.push({ label: 'Converted leads', value: loaded.leads.converted });
+    }
+    if (loaded.students !== undefined) {
+      metrics.push({ label: 'Students', value: loaded.students, detail: 'Registered student profiles', icon: 'bi-mortarboard', tone: 'violet', route: '/main/student-registration' });
+    }
+    if (loaded.payments) {
+      metrics.push({ label: 'Total Collected', value: loaded.payments.total, detail: `${formatCount(loaded.payments.count)} payment records`, icon: 'bi-wallet2', tone: 'amber', route: '/main/student-payments', format: 'currency' });
+    }
+    if (loaded.courses !== undefined) {
+      metrics.push({ label: 'Courses', value: loaded.courses, detail: 'Available course records', icon: 'bi-journal-bookmark', tone: 'orange', route: '/main/course' });
+    }
+    if (loaded.batches) {
+      metrics.push({ label: 'Batches', value: loaded.batches.count, detail: 'Training batches', icon: 'bi-calendar2-week', tone: 'slate', route: '/main/batch' });
+      batches = loaded.batches.cards;
+    }
+  } else if (role === 'accountant') {
+    if (loaded.students !== undefined) metrics.push({ label: 'Students', value: loaded.students, detail: 'Registered student profiles', icon: 'bi-mortarboard', tone: 'violet', route: '/main/student-registration' });
+    if (loaded.registrations !== undefined) metrics.push({ label: 'Course Registrations', value: loaded.registrations, detail: 'Enrollment records', icon: 'bi-journal-check', tone: 'blue', route: '/main/student-registration' });
+    if (loaded.payments) {
+      metrics.push({ label: 'Payment Records', value: loaded.payments.count, detail: 'Transactions in the payment register', icon: 'bi-receipt', tone: 'teal', route: '/main/student-payments' });
+      metrics.push({ label: 'Total Collected', value: loaded.payments.total, detail: 'Sum of loaded payment amounts', icon: 'bi-wallet2', tone: 'amber', route: '/main/student-payments', format: 'currency' });
+    }
+  } else if (role === 'trainer') {
+    if (loaded.assignedBatches) {
+      batches = loaded.assignedBatches.cards;
+      metrics.push({ label: 'Assigned Batches', value: loaded.assignedBatches.count, detail: 'Batches returned for your trainer account', icon: 'bi-easel2', tone: 'blue', route: '/main/trainer' });
+      if (loaded.assignedBatches.studentCount !== undefined) {
+        metrics.push({ label: 'Assigned Students', value: loaded.assignedBatches.studentCount, detail: 'Sum of student counts supplied by the batch API', icon: 'bi-people', tone: 'teal', route: '/main/trainer' });
+      }
+    }
+  } else if (role === 'group leader') {
+    if (loaded.batches) {
+      metrics.push({ label: 'Batches', value: loaded.batches.count, detail: 'Managed training batches', icon: 'bi-calendar2-week', tone: 'blue', route: '/main/batch' });
+      batches = loaded.batches.cards;
+    }
+    if (loaded.batchStudents !== undefined) metrics.push({ label: 'Assigned Students', value: loaded.batchStudents, detail: 'Batch assignment records', icon: 'bi-people', tone: 'teal', route: '/main/batch' });
+    if (loaded.schedules !== undefined) metrics.push({ label: 'Schedule Records', value: loaded.schedules, detail: 'Generated batch schedule entries', icon: 'bi-calendar-check', tone: 'violet', route: '/main/batch' });
+  } else if (role === 'counsellor') {
+    if (loaded.leads) {
+      const { count, converted } = loaded.leads;
+      metrics.push({ label: 'Total Leads', value: count, detail: 'Active lead records', icon: 'bi-person-lines-fill', tone: 'blue', route: '/main/lead' });
+      metrics.push({ label: 'Lead Conversion', value: count ? Math.round(converted * 1000 / count) / 10 : 0, detail: `${converted} converted leads`, icon: 'bi-graph-up-arrow', tone: 'teal', route: '/main/lead' });
+      pipeline.push({ label: 'Leads', value: count }, { label: 'Converted leads', value: converted });
+    }
+    if (loaded.enquiries !== undefined) {
+      metrics.push({ label: 'Enquiries', value: loaded.enquiries, detail: 'Candidate enquiries', icon: 'bi-chat-square-text', tone: 'violet', route: '/main/enquiry' });
+      pipeline.push({ label: 'Enquiries', value: loaded.enquiries });
+    }
+    if (loaded.leadFollowups !== undefined) metrics.push({ label: 'Follow-ups', value: loaded.leadFollowups, detail: 'Recorded lead follow-ups', icon: 'bi-calendar2-check', tone: 'amber', route: '/main/lead' });
+  } else if (role === 'developer' && loaded.courses !== undefined) {
+    metrics.push({ label: 'Courses', value: loaded.courses, detail: 'Available course records', icon: 'bi-journal-bookmark', tone: 'blue', route: '/main/course' });
+  }
+
+  return {
+    metrics,
+    pipeline,
+    batches,
+    paymentModes: loaded.payments?.modes ?? [],
+    recentPayments: loaded.payments?.recent ?? [],
+  };
 }
 
 export default function Dashboard() {
   const session = useSession();
 
   const roles = useMemo(
-    () => session.roles.map((role) => role.trim().toLowerCase()),
+    () => session.roles.map((role) => role.trim().toLowerCase().replace(/[\s_-]+/g, '')),
     [session.roles],
   );
-  const isAdmin = roles.some((role) => ['admin', 'super user'].includes(role));
+  const isAdmin = roles.includes('admin') || roles.includes('superuser');
   const isCounsellor = roles.some((role) => ['counsellor', 'counciler'].includes(role));
   const isAccountant = roles.includes('accountant');
-  const isGroupLeader = roles.some((role) => ['group leader', 'groupleader'].includes(role));
+  const isGroupLeader = roles.includes('groupleader');
   const isTrainer = roles.includes('trainer');
   const isDeveloper = roles.includes('developer');
 
@@ -129,227 +280,107 @@ export default function Dashboard() {
     && (!card.accounting || accountingRole)
   ));
 
-  const [snapshot, setSnapshot] = useState<DashboardSnapshot>(emptySnapshot);
-  const [loading, setLoading] = useState(true);
+  const dashboardRoles: [DashboardRole, boolean][] = [
+    ['admin', isAdmin],
+    ['accountant', isAccountant],
+    ['trainer', isTrainer],
+    ['group leader', isGroupLeader],
+    ['counsellor', isCounsellor],
+    ['developer', isDeveloper],
+  ];
+  const dashboardRole = dashboardRoles.find(([, enabled]) => enabled)?.[0];
+  const scope = `${session.generation}:${dashboardRole ?? ''}`;
+  const requestId = useRef(0);
+  const [load, setLoad] = useState(initialLoad);
+  const { data, failedSources, loading, updatedAt } = load.scope === scope ? load : initialLoad;
+  const snapshot = buildOverview(data, dashboardRole);
+
   const loadDashboard = useCallback(async () => {
-    setLoading(true);
+    const id = ++requestId.current;
+    setLoad((current) => ({
+      ...initialLoad,
+      requestId: id,
+      scope,
+      data: current.scope === scope ? current.data : initialLoad.data,
+      updatedAt: current.scope === scope ? current.updatedAt : null,
+    }));
 
-    let leads: LeadRecord[] | null = null;
-    let enquiries: EnquiryRecord[] | null = null;
-    let leadFollowups: LeadFollowupRecord[] | null = null;
-    let courses: TrainingCourseRecord[] | null = null;
-    let batches: Record<string, unknown>[] | null = null;
-    let batchStudents: Record<string, unknown>[] | null = null;
-    let schedules: Record<string, unknown>[] | null = null;
-    let assignedBatches: Record<string, unknown>[] | null = null;
-    let students: StudentRow[] | null = null;
-    let registrations: Record<string, unknown>[] | null = null;
-    let payments: PaymentRow[] | null = null;
-    const failedSources: string[] = [];
+    const update = (apply: (current: DashboardLoad) => DashboardLoad) => {
+      if (requestId.current !== id) return;
+      setLoad((current) => current.requestId === id ? apply(current) : current);
+    };
     const jobs: Promise<void>[] = [];
-
-    const request = <T,>(
+    const request = <Key extends keyof DashboardData>(
+      key: Key,
       label: string,
-      load: () => Promise<T>,
-      assign: (value: T) => void,
+      fetch: () => Promise<NonNullable<DashboardData[Key]>>,
     ) => {
       jobs.push((async () => {
         try {
-          assign(await load());
+          const result = await fetch();
+          update((current) => ({ ...current, data: { ...current.data, [key]: result } }));
         } catch (error) {
           console.error(`Dashboard data load failed (${label}):`, error);
-          failedSources.push(label);
+          update((current) => {
+            const data = { ...current.data };
+            delete data[key];
+            return { ...current, data, failedSources: [...current.failedSources, label] };
+          });
         }
       })());
     };
 
-    if (isAdmin || isCounsellor) {
-      request('leads', () => leadApi.getAll(), (value) => { leads = value.filter((row) => !row.deletedAt); });
-      request('enquiries', () => enquiryApi.getAll(), (value) => { enquiries = value.filter((row) => !row.deletedAt); });
-      if (isCounsellor && !isAdmin) {
-        request('lead follow-ups', () => leadApi.getAllFollowups(), (value) => { leadFollowups = value.filter((row) => !row.deletedAt); });
-      }
+    if (dashboardRole === 'admin' || dashboardRole === 'counsellor') {
+      request('leads', 'leads', async () => summarizeLeads(await leadApi.getAll()));
+      request('enquiries', 'enquiries', async () => (await enquiryApi.getAll()).filter((row) => !row.deletedAt).length);
+    }
+    if (dashboardRole === 'counsellor') {
+      request('leadFollowups', 'lead follow-ups', async () => (await leadApi.getAllFollowups()).filter((row) => !row.deletedAt).length);
     }
 
-    if (isAdmin || isAccountant) {
-      request('students', () => studentApi.getStudents(), (value) => { students = value; });
-      request('payments', () => studentApi.getPayments(), (value) => {
-        payments = value.filter((row) => !isDeleted(row));
+    if (dashboardRole === 'admin' || dashboardRole === 'accountant') {
+      request('students', 'students', async () => (await studentApi.getStudents()).length);
+      request('payments', 'payments', async () => summarizePayments(await studentApi.getPayments()));
+    }
+    if (dashboardRole === 'accountant') {
+      request('registrations', 'registrations', async () => (await studentApi.getRegistrations()).length);
+    }
+
+    if (dashboardRole === 'admin' || dashboardRole === 'group leader') {
+      request('batches', 'batches', async () => {
+        const rows = (await batchApi.getAll()).filter((row) => !isDeleted(row));
+        return { count: rows.length, cards: buildBatchSummary(rows, dashboardRole === 'admin' ? 4 : 6, '/main/batch') };
       });
-      if (isAccountant && !isAdmin) {
-        request('registrations', () => studentApi.getRegistrations(), (value) => { registrations = value; });
-      }
+    }
+    if (dashboardRole === 'group leader') {
+      request('batchStudents', 'batch assignments', async () => (await batchStudentApi.getAll()).filter((row) => !isDeleted(row)).length);
+      request('schedules', 'batch schedules', async () => (await batchScheduleApi.getAll()).filter((row) => !isDeleted(row)).length);
     }
 
-    if (isAdmin || isGroupLeader) {
-      request('batches', () => batchApi.getAll(), (value) => { batches = value.filter((row) => !isDeleted(row)); });
-      if (!isAdmin) {
-        request('batch assignments', () => batchStudentApi.getAll(), (value) => {
-          batchStudents = value.filter((row) => !isDeleted(row));
-        });
-        request('batch schedules', () => batchScheduleApi.getAll(), (value) => {
-          schedules = value.filter((row) => !isDeleted(row));
-        });
-      }
+    if (dashboardRole === 'admin' || dashboardRole === 'developer') {
+      request('courses', 'courses', async () => (await courseApi.getAll()).filter((row) => !row.deletedAt).length);
     }
-
-    if (isAdmin || isDeveloper) {
-      request('courses', () => courseApi.getAll(), (value) => { courses = value.filter((row) => !row.deletedAt); });
-    }
-
-    if (isTrainer && !isAdmin) {
-      request('assigned batches', () => trainerApi.getMyBatches(), (value) => {
-        assignedBatches = value;
+    if (dashboardRole === 'trainer') {
+      request('assignedBatches', 'assigned batches', async () => {
+        const rows = await trainerApi.getMyBatches();
+        let studentCount: number | undefined;
+        for (const row of rows) {
+          const count = field(row, 'studentCount', 'student_count', 'totalStudents');
+          if (count !== undefined) studentCount = (studentCount ?? 0) + numberValue(count);
+        }
+        return { count: rows.length, cards: buildBatchSummary(rows, 6, '/main/trainer'), studentCount };
       });
     }
 
     await Promise.all(jobs);
-
-    // Read the callback-populated values through a typed snapshot after all jobs settle.
-    // TypeScript cannot track assignments made inside the request callbacks above.
-    const loaded = {
-      leads: leads as LeadRecord[] | null,
-      enquiries: enquiries as EnquiryRecord[] | null,
-      leadFollowups: leadFollowups as LeadFollowupRecord[] | null,
-      courses: courses as TrainingCourseRecord[] | null,
-      batches: batches as Record<string, unknown>[] | null,
-      batchStudents: batchStudents as Record<string, unknown>[] | null,
-      schedules: schedules as Record<string, unknown>[] | null,
-      assignedBatches: assignedBatches as Record<string, unknown>[] | null,
-      students: students as StudentRow[] | null,
-      registrations: registrations as Record<string, unknown>[] | null,
-      payments: payments as PaymentRow[] | null,
-    };
-
-    const metrics: Metric[] = [];
-    const pipeline: ChartItem[] = [];
-    const paymentTotals = new Map<string, number>();
-    let recentPayments: RecentPayment[] = [];
-    let batchCards: BatchSummary[] = [];
-
-    if (isAdmin) {
-      if (loaded.leads !== null) {
-        metrics.push({ label: 'Total Leads', value: loaded.leads.length, detail: 'Active lead records', icon: 'bi-person-lines-fill', tone: 'blue', route: '/main/lead' });
-        pipeline.push({ label: 'Leads', value: loaded.leads.length });
-      }
-      if (loaded.enquiries !== null) {
-        metrics.push({ label: 'Enquiries', value: loaded.enquiries.length, detail: 'Candidate enquiries', icon: 'bi-chat-square-text', tone: 'teal', route: '/main/enquiry' });
-        pipeline.push({ label: 'Enquiries', value: loaded.enquiries.length });
-      }
-      if (loaded.students !== null) {
-        metrics.push({ label: 'Students', value: loaded.students.length, detail: 'Registered student profiles', icon: 'bi-mortarboard', tone: 'violet', route: '/main/student-registration' });
-      }
-      if (loaded.payments !== null) {
-        const total = loaded.payments.reduce((sum, row) => sum + numberValue(row.paymentAmount), 0);
-        metrics.push({ label: 'Total Collected', value: total, detail: `${formatCount(loaded.payments.length)} payment records`, icon: 'bi-wallet2', tone: 'amber', route: '/main/student-payments', format: 'currency' });
-      }
-      if (loaded.courses !== null) {
-        metrics.push({ label: 'Courses', value: loaded.courses.length, detail: 'Available course records', icon: 'bi-journal-bookmark', tone: 'orange', route: '/main/course' });
-      }
-      if (loaded.batches !== null) {
-        metrics.push({ label: 'Batches', value: loaded.batches.length, detail: 'Training batches', icon: 'bi-calendar2-week', tone: 'slate', route: '/main/batch' });
-        batchCards = buildBatchSummary(loaded.batches).slice(0, 4).map((batch) => ({ ...batch, route: '/main/batch' }));
-      }
-    } else if (isAccountant) {
-      if (loaded.students !== null) metrics.push({ label: 'Students', value: loaded.students.length, detail: 'Registered student profiles', icon: 'bi-mortarboard', tone: 'violet', route: '/main/student-registration' });
-      if (loaded.registrations !== null) metrics.push({ label: 'Course Registrations', value: loaded.registrations.length, detail: 'Enrollment records', icon: 'bi-journal-check', tone: 'blue', route: '/main/student-registration' });
-      if (loaded.payments !== null) {
-        const total = loaded.payments.reduce((sum, row) => sum + numberValue(row.paymentAmount), 0);
-        metrics.push({ label: 'Payment Records', value: loaded.payments.length, detail: 'Transactions in the payment register', icon: 'bi-receipt', tone: 'teal', route: '/main/student-payments' });
-        metrics.push({ label: 'Total Collected', value: total, detail: 'Sum of loaded payment amounts', icon: 'bi-wallet2', tone: 'amber', route: '/main/student-payments', format: 'currency' });
-      }
-    } else if (isTrainer) {
-      if (loaded.assignedBatches !== null) {
-        batchCards = buildBatchSummary(loaded.assignedBatches).slice(0, 6);
-        metrics.push({ label: 'Assigned Batches', value: loaded.assignedBatches.length, detail: 'Batches returned for your trainer account', icon: 'bi-easel2', tone: 'blue', route: '/main/trainer' });
-        const studentCountIsAvailable = loaded.assignedBatches.some((row) => field(row, 'studentCount', 'student_count', 'totalStudents') !== undefined);
-        if (studentCountIsAvailable) {
-          const studentTotal = loaded.assignedBatches.reduce((sum, row) => sum + numberValue(field(row, 'studentCount', 'student_count', 'totalStudents')), 0);
-          metrics.push({ label: 'Assigned Students', value: studentTotal, detail: 'Sum of student counts supplied by the batch API', icon: 'bi-people', tone: 'teal', route: '/main/trainer' });
-        }
-      }
-    } else if (isGroupLeader) {
-      if (loaded.batches !== null) {
-        metrics.push({ label: 'Batches', value: loaded.batches.length, detail: 'Managed training batches', icon: 'bi-calendar2-week', tone: 'blue', route: '/main/batch' });
-        batchCards = buildBatchSummary(loaded.batches).slice(0, 6).map((batch) => ({ ...batch, route: '/main/batch' }));
-      }
-      if (loaded.batchStudents !== null) metrics.push({ label: 'Assigned Students', value: loaded.batchStudents.length, detail: 'Batch assignment records', icon: 'bi-people', tone: 'teal', route: '/main/batch' });
-      if (loaded.schedules !== null) metrics.push({ label: 'Schedule Records', value: loaded.schedules.length, detail: 'Generated batch schedule entries', icon: 'bi-calendar-check', tone: 'violet', route: '/main/batch' });
-    } else if (isCounsellor) {
-      if (loaded.leads !== null) {
-        const converted = loaded.leads.filter((row) => /convert/i.test(row.status || '')).length;
-        metrics.push({ label: 'Total Leads', value: loaded.leads.length, detail: 'Active lead records', icon: 'bi-person-lines-fill', tone: 'blue', route: '/main/lead' });
-        metrics.push({ label: 'Lead Conversion', value: loaded.leads.length ? Math.round(converted * 1000 / loaded.leads.length) / 10 : 0, detail: `${converted} converted leads`, icon: 'bi-graph-up-arrow', tone: 'teal', route: '/main/lead' });
-        pipeline.push({ label: 'Leads', value: loaded.leads.length });
-        pipeline.push({ label: 'Converted leads', value: converted });
-      }
-      if (loaded.enquiries !== null) {
-        metrics.push({ label: 'Enquiries', value: loaded.enquiries.length, detail: 'Candidate enquiries', icon: 'bi-chat-square-text', tone: 'violet', route: '/main/enquiry' });
-        pipeline.push({ label: 'Enquiries', value: loaded.enquiries.length });
-      }
-      if (loaded.leadFollowups !== null) metrics.push({ label: 'Follow-ups', value: loaded.leadFollowups.length, detail: 'Recorded lead follow-ups', icon: 'bi-calendar2-check', tone: 'amber', route: '/main/lead' });
-    } else if (isDeveloper) {
-      if (loaded.courses !== null) metrics.push({ label: 'Courses', value: loaded.courses.length, detail: 'Available course records', icon: 'bi-journal-bookmark', tone: 'blue', route: '/main/course' });
-    }
-
-    if (loaded.leads !== null && !isCounsellor && !isAdmin) {
-      pipeline.push({ label: 'Leads', value: loaded.leads.length });
-    }
-
-    if (loaded.payments !== null) {
-      const activePayments = loaded.payments.filter((row) => !isDeleted(row));
-      activePayments.forEach((row) => {
-        const mode = String(row.paymentMode || 'Other').trim() || 'Other';
-        paymentTotals.set(mode, (paymentTotals.get(mode) || 0) + numberValue(row.paymentAmount));
-      });
-      recentPayments = activePayments
-        .slice()
-        .sort((a, b) => {
-          const first = new Date(String(a.paymentDate || '')).getTime() || 0;
-          const second = new Date(String(b.paymentDate || '')).getTime() || 0;
-          return second - first;
-        })
-        .slice(0, 5)
-        .map((row) => ({
-          id: row.paymentId,
-          student: [row.studentName, row.lastName].filter(Boolean).join(' ') || 'Student',
-          course: row.courseName || '—',
-          mode: row.paymentMode || '—',
-          date: formatDate(row.paymentDate),
-          amount: numberValue(row.paymentAmount),
-        }));
-    }
-
-    paymentTotals.forEach((value, label) => {
-      if (!Number.isFinite(value)) paymentTotals.set(label, 0);
-    });
-
-    const paymentModes = [...paymentTotals.entries()]
-      .map(([label, value]) => ({ label, value, displayValue: formatMoney(value) }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 5);
-
-    if (pipeline.length > 1 && loaded.leads !== null && pipeline.every((item) => item.label !== 'Converted leads')) {
-      const converted = loaded.leads.filter((row) => /convert/i.test(row.status || '')).length;
-      pipeline.push({ label: 'Converted leads', value: converted });
-    }
-
-    setSnapshot({
-      metrics,
-      pipeline,
-      paymentModes,
-      batches: batchCards,
-      recentPayments,
-      failedSources,
-      updatedAt: new Date(),
-    });
-    setLoading(false);
-  }, [isAdmin, isCounsellor, isAccountant, isGroupLeader, isTrainer, isDeveloper]);
+    const completedAt = new Date();
+    update((current) => ({ ...current, loading: false, updatedAt: completedAt }));
+  }, [dashboardRole, scope]);
 
   useEffect(() => {
     void loadDashboard();
+    return () => { requestId.current += 1; };
   }, [loadDashboard]);
-
 
   const roleLabel = session.roleName || session.roles.join(' · ') || 'User';
   const hasLiveData = snapshot.metrics.length > 0;
@@ -369,7 +400,7 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="dashboard-welcome-actions">
-          <span className="dashboard-updated">{snapshot.updatedAt ? `Updated ${snapshot.updatedAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}` : 'Overview'}</span>
+          <span className="dashboard-updated">{updatedAt ? `Updated ${updatedAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}` : 'Overview'}</span>
           <button type="button" className="dashboard-refresh" onClick={() => void loadDashboard()} disabled={loading}>
             <i className={loading ? 'bi bi-arrow-repeat' : 'bi bi-arrow-clockwise'} aria-hidden="true" />
             {loading ? 'Refreshing' : 'Refresh data'}
@@ -379,10 +410,10 @@ export default function Dashboard() {
         <span className="dashboard-hero-orb dashboard-hero-orb-two" aria-hidden="true" />
       </section>
 
-      {snapshot.failedSources.length > 0 && (
+      {failedSources.length > 0 && (
         <div className="dashboard-data-warning" role="status">
           <i className="bi bi-exclamation-triangle" aria-hidden="true" />
-          <span>Some dashboard data could not be loaded: {snapshot.failedSources.join(', ')}. Available metrics are still shown.</span>
+          <span>Some dashboard data could not be loaded: {failedSources.join(', ')}. Available metrics are still shown.</span>
           <button type="button" onClick={() => void loadDashboard()} disabled={loading}>Retry</button>
         </div>
       )}

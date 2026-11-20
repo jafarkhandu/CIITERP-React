@@ -4,8 +4,9 @@ import { authApi } from '@/api/authApi';
 import { findCurrentUser, getAllUsers, getCachedUsers } from '@/api/userApi';
 import { authService } from '@/core/auth/authService';
 import { userSession } from '@/core/auth/session';
-import { isStudentOnlyAccount, readTokenIdentity } from '@/core/auth/tokenIdentity';
+import { isStaffRole, isStudentOnlyAccount, readTokenIdentity } from '@/core/auth/tokenIdentity';
 import { apiErrorMessage, httpStatus } from '@/core/http/errors';
+import { preloadStaffHome } from '@/routes/staffHome';
 import './Login.css';
 
 const REMEMBERED_USERNAME_KEY = 'rememberedUsername';
@@ -38,11 +39,15 @@ export default function Login() {
       ? loginResponse as Record<string, unknown> : {};
     const responseUser = loginData.user && typeof loginData.user === 'object'
       ? loginData.user as Record<string, unknown> : {};
+    function userField(key: string): string {
+      const value = responseUser[key];
+      return typeof value === 'string' ? value : '';
+    }
     const responseRoles = [
-      loginData.role,
-      loginData.roleName,
-      responseUser.role,
       responseUser.roleName,
+      responseUser.role,
+      loginData.roleName,
+      loginData.role,
       ...(Array.isArray(loginData.roles) ? loginData.roles : []),
       ...(Array.isArray(responseUser.roles) ? responseUser.roles : []),
     ].filter((role): role is string => typeof role === 'string');
@@ -72,11 +77,8 @@ export default function Login() {
         studentId,
         userName: identity.username || loginUsername,
         employeeName: identity.displayName ||
-          (typeof responseUser.studentName === 'string' ? responseUser.studentName : '') ||
-          (typeof responseUser.employeeName === 'string' ? responseUser.employeeName : '') ||
-          loginUsername,
-        emailAddress: identity.email ||
-          (typeof responseUser.emailAddress === 'string' ? responseUser.emailAddress : ''),
+          userField('studentName') || userField('employeeName') || loginUsername,
+        emailAddress: identity.email || userField('emailAddress'),
         roleName: 'Student',
         roles: ['Student'],
       });
@@ -84,10 +86,31 @@ export default function Login() {
       return;
     }
 
+    preloadStaffHome(postLoginPath);
+
+    const staffRoles = [...responseRoles, ...identity.roles].filter(isStaffRole);
+    const primaryRole = staffRoles[0];
+    if (primaryRole) {
+      // The successful Auth response supplies the initial identity and roles.
+      // MainLayout fills in the directory profile after the workspace opens.
+      userSession.setUser({
+        userName: userField('userName') || identity.username || loginUsername,
+        employeeName: userField('employeeName') || identity.displayName || loginUsername,
+        employeeCode: userField('employeeCode'),
+        emailAddress: userField('emailAddress') || identity.email,
+        mobileNumber: userField('mobileNumber'),
+        branchName: userField('branchName'),
+        roleName: primaryRole,
+        roles: staffRoles,
+      }, loginUsername);
+      navigate(postLoginPath, { replace: true });
+      return;
+    }
+
     try {
-      // Preserve the existing staff login flow and its cached user lookup.
-      const users = getCachedUsers() ?? (await getAllUsers());
-      const currentUser = findCurrentUser(users, loginUsername);
+      // Older Auth responses need the directory to resolve route permissions.
+      const currentUser = findCurrentUser(getCachedUsers() ?? [], loginUsername)
+        ?? findCurrentUser(await getAllUsers(), loginUsername);
       if (currentUser) {
         userSession.setUser(currentUser);
         if (isStudentOnlyAccount(userSession.roles)) {

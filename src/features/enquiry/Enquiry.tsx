@@ -1,7 +1,6 @@
 import RowActionsMenu from '@/components/RowActionsMenu';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import * as XLSX from 'xlsx';
 import { enquiryApi, type EnquiryRecord } from '@/api/enquiryApi';
 import { directoryApi } from '@/api/directoryApi';
 import './Enquiry.css';
@@ -40,6 +39,7 @@ export default function Enquiry() {
   const [enquiries, setEnquiries] = useState<EnquiryRecord[]>([]);
   const [branches, setBranches] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const loadVersion = useRef(0);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [branch, setBranch] = useState('');
@@ -47,29 +47,51 @@ export default function Enquiry() {
   const [toDate, setToDate] = useState('');
   const [tab, setTab] = useState<'active' | 'deleted'>('active');
   const [savingId, setSavingId] = useState(0);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
 
-  async function load() {
-    setLoading(true); setError('');
-    const [enquiryResult, branchResult] = await Promise.allSettled([
-      enquiryApi.getAll(), directoryApi.getBranches(),
-    ]);
-    if (enquiryResult.status === 'fulfilled') setEnquiries(enquiryResult.value.map(normalizeEnquiry));
-    else { setEnquiries([]); setError('Unable to load enquiries. Please retry.'); }
-    if (branchResult.status === 'fulfilled') setBranches(branchResult.value.map((item) => item.name));
-    else setBranches([]);
-    setLoading(false);
-  }
-  useEffect(() => { void load(); }, []);
+  const load = useCallback(async () => {
+    const version = ++loadVersion.current;
+    setLoading(true);
+    setError('');
 
-  const filtered = useMemo(() => enquiries.filter((item) => {
+    void directoryApi.getBranches().then((data) => {
+      if (version === loadVersion.current) setBranches(data.map((item) => item.name));
+    }).catch(() => {
+      if (version === loadVersion.current) setBranches([]);
+    });
+
+    try {
+      const data = await enquiryApi.getAll();
+      if (version === loadVersion.current) setEnquiries(data.map(normalizeEnquiry));
+    } catch {
+      if (version === loadVersion.current) {
+        setEnquiries([]);
+        setError('Unable to load enquiries. Please retry.');
+      }
+    } finally {
+      if (version === loadVersion.current) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+    return () => { loadVersion.current += 1; };
+  }, [load]);
+
+  const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const matchesSearch = !term || JSON.stringify(item).toLowerCase().includes(term);
-    const date = item.enquiryDate ? new Date(item.enquiryDate) : null;
     const from = fromDate ? new Date(`${fromDate}T00:00:00`) : null;
     const to = toDate ? new Date(`${toDate}T23:59:59`) : null;
-    return matchesSearch && (!branch || item.branchName === branch) &&
-      (!from || Boolean(date && date >= from)) && (!to || Boolean(date && date <= to));
-  }), [enquiries, search, branch, fromDate, toDate]);
+    return enquiries.filter((item) => {
+      if (branch && item.branchName !== branch) return false;
+      if (term && !JSON.stringify(item).toLowerCase().includes(term)) return false;
+      if (!from && !to) return true;
+      const date = new Date(item.enquiryDate);
+      return (!from || date >= from) && (!to || date <= to);
+    });
+  }, [enquiries, search, branch, fromDate, toDate]);
+  const visibleEnquiries = useMemo(() => filtered.filter((item) => Boolean(item.deletedAt) === (tab === 'deleted')), [filtered, tab]);
 
   async function removeEnquiry(item: EnquiryRecord) {
     if (!window.confirm(`Delete enquiry for ${item.candidateName}?`)) return;
@@ -86,25 +108,33 @@ export default function Enquiry() {
     finally { setSavingId(0); }
   }
 
-  function exportExcel() {
-    const rows = filtered.map((item) => ({
-      'Enquiry ID': item.enquiryId, 'Enquiry Date': formatDate(item.enquiryDate),
-      'Candidate Name': item.candidateName, Gender: item.gender, Email: item.emailAddress,
-      Mobile: item.mobileNumber, Branch: item.branchName, Qualification: item.qualification,
-      'Lead Sources': item.leadSources, 'Enquiry For': item.enquiryFors,
-      'Interested Topics': item.interestedTopics, Status: item.status,
-    }));
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), 'Enquiries');
-    XLSX.writeFile(workbook, 'Enquiries.xlsx');
+  async function exportExcel() {
+    setExporting(true);
+    setExportError('');
+    try {
+      const { writeExcelFile } = await import('@/core/exportExcel');
+      const rows = filtered.map((item) => ({
+        'Enquiry ID': item.enquiryId, 'Enquiry Date': formatDate(item.enquiryDate),
+        'Candidate Name': item.candidateName, Gender: item.gender, Email: item.emailAddress,
+        Mobile: item.mobileNumber, Branch: item.branchName, Qualification: item.qualification,
+        'Lead Sources': item.leadSources, 'Enquiry For': item.enquiryFors,
+        'Interested Topics': item.interestedTopics, Status: item.status,
+      }));
+      writeExcelFile(rows, 'Enquiries', 'Enquiries.xlsx');
+    } catch {
+      setExportError('Unable to export enquiries. Please try again.');
+    } finally {
+      setExporting(false);
+    }
   }
 
   return <section className="enquiry-page">
     <header className="enquiry-header"><div><h1>Enquiries</h1><p>Manage candidate enquiries and follow-ups</p></div>
-      <div><button className="enquiry-secondary-btn" type="button" onClick={exportExcel}>Export Excel</button>
+      <div><button className="enquiry-secondary-btn" type="button" disabled={loading || exporting} onClick={() => void exportExcel()}>{exporting ? 'Exporting…' : 'Export Excel'}</button>
         <button className="enquiry-primary-btn" type="button" onClick={() => navigate('/main/enquiry/add')}>+ Add Enquiry</button></div>
     </header>
     {error && <div className="enquiry-alert" role="alert">{error}<button type="button" onClick={() => void load()}>Retry</button></div>}
+    {exportError && <div className="enquiry-alert" role="alert">{exportError}</div>}
     <div className="enquiry-tabs"><button type="button" className={tab === 'active' ? 'active' : ''} onClick={() => setTab('active')}>Active Enquiries</button><button type="button" className={tab === 'deleted' ? 'active' : ''} onClick={() => setTab('deleted')}>Deleted Enquiries</button></div>
     <div className="enquiry-filters">
       <input aria-label="Search enquiries" placeholder="Search candidate, email, mobile..." value={search} onChange={(event) => setSearch(event.target.value)} />
@@ -116,7 +146,7 @@ export default function Enquiry() {
     <div className="enquiry-table-card"><div className="enquiry-table-scroll"><table className="enquiry-table">
       <thead><tr><th>ID</th><th>Date</th><th>Candidate</th><th>Email</th><th>Mobile</th><th>Branch</th><th>Qualification</th><th>Enquiry For</th><th>Status</th><th>Action</th></tr></thead>
       <tbody>{loading ? <tr><td colSpan={10} className="enquiry-empty">Loading enquiries...</td></tr> :
-        filtered.filter((item) => tab === 'deleted' ? Boolean(item.deletedAt) : !item.deletedAt).map((item) => <tr key={item.enquiryId}>
+        visibleEnquiries.map((item) => <tr key={item.enquiryId}>
           <td>{item.enquiryId}</td><td>{formatDate(item.enquiryDate)}</td><td className="enquiry-candidate">{item.candidateName}</td>
           <td>{item.emailAddress}</td><td>{item.mobileNumber}</td><td>{item.branchName || '-'}</td><td>{item.qualification || '-'}</td>
           <td>{item.enquiryFors || '-'}</td><td><span className="enquiry-status">{item.status || 'New'}</span></td>
@@ -128,9 +158,9 @@ export default function Enquiry() {
               { label: 'Delete', danger: true, onSelect: () => void removeEnquiry(item) },
             ]} /></td>
         </tr>)}
-        {!loading && filtered.filter((item) => tab === 'deleted' ? Boolean(item.deletedAt) : !item.deletedAt).length === 0 && <tr><td colSpan={10} className="enquiry-empty">No enquiries found.</td></tr>}
+        {!loading && visibleEnquiries.length === 0 && <tr><td colSpan={10} className="enquiry-empty">No enquiries found.</td></tr>}
       </tbody>
     </table></div></div>
-    <p className="enquiry-count">Showing {filtered.filter((item) => tab === 'deleted' ? Boolean(item.deletedAt) : !item.deletedAt).length} enquiries</p>
+    <p className="enquiry-count">Showing {visibleEnquiries.length} enquiries</p>
   </section>;
 }

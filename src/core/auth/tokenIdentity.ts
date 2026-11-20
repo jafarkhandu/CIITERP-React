@@ -19,6 +19,11 @@ const ROLE_CLAIMS = [
   'http://schemas.microsoft.com/ws/2008/06/identity/claims/role',
 ];
 
+const STAFF_ROLES = new Set([
+  'admin', 'superuser', 'accountant', 'trainer',
+  'developer', 'counsellor', 'groupleader',
+]);
+
 function textClaim(claims: Record<string, unknown>, ...names: string[]): string {
   for (const name of names) {
     const value = claims[name];
@@ -35,7 +40,8 @@ export function readTokenIdentity(token: string): TokenIdentity {
     if (!payload) return empty;
 
     const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const claims = JSON.parse(atob(base64)) as Record<string, unknown>;
+    const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+    const claims = JSON.parse(new TextDecoder().decode(bytes)) as Record<string, unknown>;
     if (!claims || typeof claims !== 'object' || Array.isArray(claims)) return empty;
 
     const roles = ROLE_CLAIMS.flatMap((key) => {
@@ -66,12 +72,11 @@ export function hasStudentRole(roles: string[]): boolean {
   return roles.some((role) => role.trim().toLowerCase() === 'student');
 }
 
+export function isStaffRole(role: string): boolean {
+  return STAFF_ROLES.has(role.trim().toLowerCase().replace(/[\s_-]+/g, ''));
+}
+
 /** A mixed staff/student role assignment must preserve the existing staff login flow. */
 export function isStudentOnlyAccount(roles: string[]): boolean {
-  const staffRoles = new Set([
-    'admin', 'superuser', 'accountant', 'trainer',
-    'developer', 'counsellor', 'groupleader',
-  ]);
-  const normalized = roles.map((role) => role.trim().toLowerCase().replace(/[\s_-]+/g, ''));
-  return hasStudentRole(roles) && !normalized.some((role) => staffRoles.has(role));
+  return hasStudentRole(roles) && !roles.some(isStaffRole);
 }

@@ -160,24 +160,24 @@ export default function MainLayout() {
     };
   }, []);
 
-  // Refresh the current user's roles and permissions without changing the auth flow.
+  // Complete the staff profile once the workspace has mounted.
   useEffect(() => {
-    const username = (userSession.username || localStorage.getItem('username') || '').trim();
+    const { currentUser, pendingStaffProfileUsername } = session;
+    if (currentUser && !pendingStaffProfileUsername) return;
 
-    if (!userSession.currentUser && !username) {
+    const storedUsername = localStorage.getItem('username');
+    const username = (pendingStaffProfileUsername || session.username || storedUsername || '').trim();
+    if (!username) {
       navigate('/login');
       return;
     }
 
-    // Login already resolves and persists the current user. Avoid downloading the
-    // complete users list again on every workspace mount when that session exists.
-    if (userSession.currentUser) return;
-
     let cancelled = false;
     getAllUsers()
       .then((users) => {
-        if (cancelled) return;
-        const current = username ? findCurrentUser(users, username) : undefined;
+        if (cancelled || userSession.getSnapshot() !== session || !authService.isLoggedIn()
+          || localStorage.getItem('username') !== storedUsername) return;
+        const current = findCurrentUser(users, username);
         if (current) userSession.setUser(current);
       })
       .catch((error) => console.warn('User information API error:', error));
@@ -185,7 +185,7 @@ export default function MainLayout() {
     return () => {
       cancelled = true;
     };
-  }, [navigate]);
+  }, [navigate, session]);
 
   const roleNames = [...new Set(session.roles.filter((role) => !!role?.trim()).map((role) => role.trim()))];
   const visibleMenus = MENUS.filter((menu) => {

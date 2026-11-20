@@ -5,7 +5,9 @@ import { PERMISSIONS, permissionService, type Permission } from '@/core/services
 const SESSION_KEY = 'erp-current-user';
 
 export interface SessionState {
+  generation: number;
   currentUser: User | null;
+  pendingStaffProfileUsername: string;
   employeeName: string;
   employeeCode: string;
   username: string;
@@ -17,13 +19,16 @@ export interface SessionState {
 }
 
 const EMPTY: SessionState = {
-  currentUser: null, employeeName: '', employeeCode: '', username: '', email: '',
+  generation: 0, currentUser: null, pendingStaffProfileUsername: '',
+  employeeName: '', employeeCode: '', username: '', email: '',
   mobile: '', branch: '', roleName: '', roles: [],
 };
 
+type StoredUser = User & { pendingStaffProfileUsername?: string };
+
 const normalize = (v: string) => v.trim().toLowerCase().replace(/[\s_-]+/g, '');
 
-function buildState(user: User): SessionState {
+function buildState(user: User, generation: number, pendingStaffProfileUsername: string): SessionState {
   const roleName = user.roleName || user.role || '';
   const userRoles = Array.isArray(user.roles) ? user.roles : [];
   const primary = roleName ? [roleName] : [];
@@ -34,7 +39,9 @@ function buildState(user: User): SessionState {
       .filter(Boolean),
   )];
   return {
+    generation,
     currentUser: user,
+    pendingStaffProfileUsername,
     employeeName: user.employeeName || '',
     employeeCode: user.employeeCode || '',
     username: user.userName || '',
@@ -99,11 +106,12 @@ class UserSession {
   get username() { return this.state.username; }
   get roles() { return this.state.roles; }
 
-  setUser(user: User): void {
-    this.state = buildState(user);
+  setUser(user: User, pendingStaffProfileUsername = ''): void {
+    this.state = buildState(user, this.state.generation, pendingStaffProfileUsername);
     this.applyRolePermissions();
     try {
-      localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+      const storedUser: StoredUser = pendingStaffProfileUsername ? { ...user, pendingStaffProfileUsername } : user;
+      localStorage.setItem(SESSION_KEY, JSON.stringify(storedUser));
     } catch (error) {
       console.warn('Could not persist user session:', error);
     }
@@ -114,9 +122,11 @@ class UserSession {
     try {
       const raw = localStorage.getItem(SESSION_KEY);
       if (!raw) return;
-      const user = JSON.parse(raw) as User;
-      if (user && typeof user === 'object') {
-        this.state = buildState(user);
+      const storedUser = JSON.parse(raw) as StoredUser;
+      if (storedUser && typeof storedUser === 'object') {
+        const { pendingStaffProfileUsername, ...user } = storedUser;
+        this.state = buildState(user, this.state.generation,
+          typeof pendingStaffProfileUsername === 'string' ? pendingStaffProfileUsername : '');
         this.applyRolePermissions();
       }
     } catch (error) {
@@ -145,7 +155,7 @@ class UserSession {
   isAdmin() { return this.hasRole('Admin'); }
 
   clear(): void {
-    this.state = EMPTY;
+    this.state = { ...EMPTY, generation: this.state.generation + 1 };
     permissionService.clearPermissions();
     localStorage.removeItem(SESSION_KEY);
     this.emit();

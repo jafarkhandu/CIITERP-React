@@ -1,10 +1,7 @@
 import RowActionsMenu from '@/components/RowActionsMenu';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { leadApi, type LeadRecord, type LeadSourceRecord } from '@/api/leadApi';
 import { PERMISSIONS, permissionService } from '@/core/services/permissionService';
 import { userSession } from '@/core/auth/session';
@@ -49,6 +46,8 @@ export default function Lead() {
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [sources, setSources] = useState<LeadSourceRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingSources, setLoadingSources] = useState(true);
+  const loadVersion = useRef(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [formError, setFormError] = useState('');
@@ -61,6 +60,8 @@ export default function Lead() {
   const [editingLeadId, setEditingLeadId] = useState(0);
   const [tab, setTab] = useState<'active' | 'deleted'>('active');
   const [showExport, setShowExport] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
   const [form, setForm] = useState({
     candidateName: '', emailAddress: '', mobileNumber: '', trainingType: 'Online',
     description: '', status: 'New', leadDate: localDateValue(), sourceId: 0, sourceName: '',
@@ -74,34 +75,56 @@ export default function Lead() {
     permissionService.isAdminFunctionEnabled(PERMISSIONS.LEAD_FOLLOWUP);
   const canExport = permissionService.hasPermission(PERMISSIONS.LEAD_EXPORT);
 
-  async function loadData() {
-    setLoading(true); setError('');
-    const [leadResult, sourceResult] = await Promise.allSettled([leadApi.getAll(), leadApi.getSources()]);
-    if (leadResult.status === 'fulfilled') setLeads(leadResult.value.map(normalizeLead));
-    else { setLeads([]); setError('Unable to load leads. Please retry.'); }
-    if (sourceResult.status === 'fulfilled') {
-      setSources(sourceResult.value.filter((source) => source.flag === 1 && source.deletedAt == null)
-        .sort((a, b) => a.sourceName.localeCompare(b.sourceName)));
-    } else setSources([]);
-    setLoading(false);
-  }
+  const loadData = useCallback(async () => {
+    const version = ++loadVersion.current;
+    setLoading(true);
+    setLoadingSources(true);
+    setError('');
 
-  useEffect(() => { void loadData(); }, []);
+    void leadApi.getSources().then((data) => {
+      if (version === loadVersion.current) {
+        setSources(data.filter((source) => source.flag === 1 && source.deletedAt == null)
+          .sort((a, b) => a.sourceName.localeCompare(b.sourceName)));
+      }
+    }).catch(() => {
+      if (version === loadVersion.current) setSources([]);
+    }).finally(() => {
+      if (version === loadVersion.current) setLoadingSources(false);
+    });
+
+    try {
+      const data = await leadApi.getAll();
+      if (version === loadVersion.current) setLeads(data.map(normalizeLead));
+    } catch {
+      if (version === loadVersion.current) {
+        setLeads([]);
+        setError('Unable to load leads. Please retry.');
+      }
+    } finally {
+      if (version === loadVersion.current) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadData();
+    return () => { loadVersion.current += 1; };
+  }, [loadData]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
+    const from = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null;
+    const to = dateTo ? new Date(`${dateTo}T23:59:59`) : null;
     return leads.filter((lead) => {
       const matchesText = !term || [lead.candidateName, lead.emailAddress, lead.mobileNumber]
         .some((value) => value.toLowerCase().includes(term));
       const date = new Date(lead.leadDate);
-      const from = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null;
-      const to = dateTo ? new Date(`${dateTo}T23:59:59`) : null;
       return matchesText && (!status || lead.status === status) &&
         (!trainingType || lead.trainingType === trainingType) &&
         (!from || (date >= from && !Number.isNaN(date.getTime()))) &&
         (!to || (date <= to && !Number.isNaN(date.getTime())));
     });
   }, [leads, search, status, trainingType, dateFrom, dateTo]);
+  const visibleLeads = useMemo(() => filtered.filter((lead) => Boolean(lead.deletedAt) === (tab === 'deleted')), [filtered, tab]);
 
   function clearFilters() {
     setSearch(''); setStatus(''); setTrainingType(''); setDateFrom(''); setDateTo('');
@@ -146,7 +169,9 @@ export default function Lead() {
   }
 
   async function createLead(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setFormError('');
+    event.preventDefault();
+    if (loadingSources) return;
+    setFormError('');
     const source = sources.find((item) => Number(item.sourceId) === Number(form.sourceId));
     if (!source) { setFormError('Select a valid lead source.'); return; }
     if (!/^\d{10}$/.test(form.mobileNumber)) { setFormError('Enter a valid 10-digit mobile number.'); return; }
@@ -166,7 +191,8 @@ export default function Lead() {
     } finally { setSaving(false); }
   }
 
-  function exportExcel() {
+  async function exportExcel() {
+    const { writeExcelFile } = await import('@/core/exportExcel');
     const rows = filtered.map((lead, index) => ({
       'Sr. No.': index + 1, ID: lead.leadId, 'Candidate Name': lead.candidateName,
       Email: lead.emailAddress, Mobile: lead.mobileNumber, 'Training Type': lead.trainingType,
@@ -174,13 +200,11 @@ export default function Lead() {
       'Lead Source': lead.sourceName || sources.find((source) => source.sourceId === lead.sourceId)?.sourceName || '',
       Description: lead.description,
     }));
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), 'Leads');
-    XLSX.writeFile(workbook, `Leads_${localDateValue()}.xlsx`);
-    setShowExport(false);
+    writeExcelFile(rows, 'Leads', `Leads_${localDateValue()}.xlsx`);
   }
 
-  function exportPdf() {
+  async function exportPdf() {
+    const [{ jsPDF }, { autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
     const document = new jsPDF('l', 'mm', 'a4');
     document.setFontSize(16); document.text('Lead Report', 14, 15);
     document.setFontSize(9); document.text(`Total Leads: ${filtered.length}`, 14, 22);
@@ -194,18 +218,36 @@ export default function Lead() {
       styles: { fontSize: 8, cellPadding: 3 },
     });
     document.save(`Leads_${localDateValue()}.pdf`);
-    setShowExport(false);
+  }
+
+  async function runExport(format: 'excel' | 'pdf') {
+    setExporting(true);
+    setExportError('');
+    try {
+      await (format === 'excel' ? exportExcel() : exportPdf());
+      setShowExport(false);
+    } catch {
+      setExportError('Unable to export leads. Please try again.');
+    } finally {
+      setExporting(false);
+    }
   }
 
   return <section className="lead-page">
     <header className="lead-page-header"><div><h1>Leads</h1><p>Manage and track your leads</p></div>
       <div className="lead-header-actions">
-        {canExport && <div className="lead-export-wrap"><button className="lead-secondary-btn" type="button" onClick={() => setShowExport((value) => !value)}>Export ▾</button>
-          {showExport && <div className="lead-export-menu"><button type="button" onClick={exportExcel}>Export Excel</button><button type="button" onClick={exportPdf}>Export PDF</button></div>}</div>}
+        {canExport && <div className="lead-export-wrap">
+          <button className="lead-secondary-btn" type="button" disabled={loading || exporting} onClick={() => setShowExport((value) => !value)}>{exporting ? 'Exporting…' : 'Export ▾'}</button>
+          {showExport && <div className="lead-export-menu">
+            <button type="button" disabled={loading || loadingSources || exporting} onClick={() => void runExport('excel')}>Export Excel</button>
+            <button type="button" disabled={loading || exporting} onClick={() => void runExport('pdf')}>Export PDF</button>
+          </div>}
+        </div>}
         {canCreate && <button className="lead-primary-btn" type="button" onClick={openCreate}>+ Add Lead</button>}
       </div>
     </header>
     {error && <div className="lead-alert" role="alert">{error}<button type="button" onClick={() => void loadData()}>Retry</button></div>}
+    {exportError && <div className="lead-alert" role="alert">{exportError}</div>}
     <div className="lead-tabs"><button type="button" className={tab === 'active' ? 'active' : ''} onClick={() => setTab('active')}>Active Leads</button><button type="button" className={tab === 'deleted' ? 'active' : ''} onClick={() => setTab('deleted')}>Deleted Leads</button></div>
     <div className="lead-filters">
       <input aria-label="Search leads" placeholder="Search name, email or mobile" value={search} onChange={(event) => setSearch(event.target.value)} />
@@ -217,12 +259,12 @@ export default function Lead() {
     <div className="lead-table-card"><div className="lead-table-scroll"><table className="lead-table">
       <thead><tr><th>#</th><th>ID</th><th>Candidate Name</th><th>Email</th><th>Mobile</th><th>Training</th><th>Status</th><th>Lead Date</th><th>Action</th></tr></thead>
       <tbody>{loading ? <tr><td colSpan={9} className="lead-empty">Loading leads...</td></tr> :
-        filtered.filter((lead) => tab === 'deleted' ? Boolean((lead as any).deletedAt) : !(lead as any).deletedAt).map((lead, index) => <tr key={lead.leadId}><td>{index + 1}</td><td>{lead.leadId}</td><td className="lead-candidate">{lead.candidateName}</td><td>{lead.emailAddress}</td><td>{lead.mobileNumber}</td><td>{lead.trainingType}</td><td><span className={`lead-status ${lead.status.toLowerCase().replace(/\s+/g, '-')}`}>{lead.status}</span></td><td>{formatDate(lead.leadDate)}</td><td><RowActionsMenu label={`Actions for lead ${lead.leadId}`} disabled={saving} actions={tab === 'deleted' ? (canRestore ? [{ label: 'Restore', onSelect: () => void restoreLead(lead) }] : []) : [
+        visibleLeads.map((lead, index) => <tr key={lead.leadId}><td>{index + 1}</td><td>{lead.leadId}</td><td className="lead-candidate">{lead.candidateName}</td><td>{lead.emailAddress}</td><td>{lead.mobileNumber}</td><td>{lead.trainingType}</td><td><span className={`lead-status ${lead.status.toLowerCase().replace(/\s+/g, '-')}`}>{lead.status}</span></td><td>{formatDate(lead.leadDate)}</td><td><RowActionsMenu label={`Actions for lead ${lead.leadId}`} disabled={saving} actions={tab === 'deleted' ? (canRestore ? [{ label: 'Restore', onSelect: () => void restoreLead(lead) }] : []) : [
             ...(canFollowup ? [{ label: 'Follow-up', onSelect: () => navigate(`/main/lead/followup/${lead.leadId}`) }] : []),
             ...(canUpdate ? [{ label: 'Edit', onSelect: () => void openEdit(lead) }] : []),
             ...(canDelete ? [{ label: 'Delete', danger: true, onSelect: () => void removeLead(lead) }] : []),
           ]} /></td></tr>)}
-        {!loading && filtered.filter((lead) => tab === 'deleted' ? Boolean((lead as any).deletedAt) : !(lead as any).deletedAt).length === 0 && <tr><td colSpan={9} className="lead-empty">No leads found.</td></tr>}
+        {!loading && visibleLeads.length === 0 && <tr><td colSpan={9} className="lead-empty">No leads found.</td></tr>}
       </tbody>
     </table></div></div>
 
@@ -236,11 +278,11 @@ export default function Lead() {
           <label>Training Type *<select value={form.trainingType} onChange={(event) => setForm({ ...form, trainingType: event.target.value })}><option>Online</option><option>Offline</option></select></label>
           <label>Lead Date<input type="date" value={form.leadDate} disabled /></label>
           <label>Status *<select required value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>{STATUS_OPTIONS.map((item) => <option key={item}>{item}</option>)}</select></label>
-          <label>Lead Source *<select required value={form.sourceId} onChange={(event) => setForm({ ...form, sourceId: Number(event.target.value) })}><option value={0}>Select Lead Source</option>{sources.map((source) => <option value={source.sourceId} key={source.sourceId}>{source.sourceName}</option>)}</select></label>
+          <label>Lead Source *<select required disabled={loadingSources} value={form.sourceId} onChange={(event) => setForm({ ...form, sourceId: Number(event.target.value) })}><option value={0}>{loadingSources ? 'Loading lead sources…' : 'Select Lead Source'}</option>{sources.map((source) => <option value={source.sourceId} key={source.sourceId}>{source.sourceName}</option>)}</select></label>
           <label className="lead-full-field">Description<textarea rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
         </div>
         {formError && <div className="lead-alert" role="alert">{formError}</div>}
-        <footer><button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => setShowForm(false)}>Cancel</button><button className="lead-primary-btn" type="submit" disabled={saving}>{saving ? 'Saving...' : editingLeadId ? 'Update Lead' : 'Save Lead'}</button></footer></form>
+        <footer><button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => setShowForm(false)}>Cancel</button><button className="lead-primary-btn" type="submit" disabled={saving || loadingSources}>{saving ? 'Saving...' : editingLeadId ? 'Update Lead' : 'Save Lead'}</button></footer></form>
       </section>
     </div>, document.body)}
   </section>;
