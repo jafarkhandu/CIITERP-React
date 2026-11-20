@@ -924,24 +924,57 @@ html:not([data-theme="dark"]) .ciit-student-public-shell .ciit-student-public-co
 }
 
 
-/* Staff student view: keep long payment histories inside their own glass card. */
-.ciit-student-portal .sp-staff-payment-list {
-  max-height: 340px;
+/* Staff Student Portal: compact identity and scrollable payment history. */
+main.ciit-student-portal {
+  padding-top: 8px;
+}
+
+main.ciit-student-portal .sp-hero {
+  padding: 14px 18px;
+  gap: 14px;
+}
+
+main.ciit-student-portal .sp-hero .sp-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  font-size: 18px;
+}
+
+main.ciit-student-portal .sp-hero h2 {
+  margin: 2px 0;
+  font-size: 21px;
+}
+
+main.ciit-student-portal .sp-hero p {
+  margin: 2px 0;
+  font-size: 12px;
+}
+
+main.ciit-student-portal .sp-staff-payment-list {
+  max-height: 260px;
+  min-height: 0;
+  grid-auto-rows: max-content;
+  align-content: start;
   overflow-y: auto;
   overflow-x: hidden;
-  overscroll-behavior: contain;
+  overscroll-behavior-y: contain;
   scrollbar-gutter: stable;
   padding-right: 5px;
 }
 
-.ciit-student-portal .sp-staff-payment-list:focus-visible {
+main.ciit-student-portal .sp-staff-payment-list:focus-visible {
   outline: 3px solid var(--ciit-primary, #1769d2);
   outline-offset: 3px;
   border-radius: 8px;
 }
 
 @media (max-width: 600px) {
-  .ciit-student-portal .sp-staff-payment-list {
-    max-height: 300px;
+  main.ciit-student-portal .sp-staff-payment-list {
+    max-height: 230px;
+  }
+
+  main.ciit-student-portal .sp-hero {
+    padding: 12px 14px;
   }
 }
