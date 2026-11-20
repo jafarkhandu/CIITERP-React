@@ -978,3 +978,46 @@ main.ciit-student-portal .sp-staff-payment-list:focus-visible {
     padding: 12px 14px;
   }
 }
+
+
+/* Staff Student Portal: show two batches or three payments before scrolling.
+   Both cards have independent, matching heights regardless of record count. */
+main.ciit-student-portal .sp-columns > .sp-staff-record-panel {
+  display: flex;
+  flex-direction: column;
+  align-self: start;
+  height: 370px;
+  min-height: 0;
+}
+
+main.ciit-student-portal .sp-staff-record-panel > .sp-stack {
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-auto-rows: max-content;
+  align-content: start;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  padding-right: 5px;
+}
+
+main.ciit-student-portal .sp-staff-record-panel > .sp-staff-batch-list {
+  max-height: none;
+}
+
+main.ciit-student-portal .sp-staff-record-panel > .sp-staff-payment-list {
+  max-height: none;
+}
+
+main.ciit-student-portal .sp-staff-record-panel > .sp-stack:focus-visible {
+  outline: 3px solid var(--ciit-primary, #1769d2);
+  outline-offset: -3px;
+  border-radius: 8px;
+}
+
+@media (max-width: 600px) {
+  main.ciit-student-portal .sp-columns > .sp-staff-record-panel {
+    height: 350px;
+  }
+}
