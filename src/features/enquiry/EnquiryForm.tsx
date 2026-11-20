@@ -24,6 +24,10 @@ const initialForm: FormState = {
   branchName: '',
 };
 
+function isValidIndianMobile(number: string): boolean {
+  return /^[6-9]\d{9}$/.test(number) && !/^(\d)\1{9}$/.test(number);
+}
+
 function rows(value: any): any[] {
   let current = value;
   for (let i = 0; i < 4 && current && !Array.isArray(current); i += 1) {
@@ -44,6 +48,10 @@ export default function EnquiryForm() {
   const [loading, setLoading] = useState(editMode);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [mobileTouched, setMobileTouched] = useState(false);
+  const mobileError = form.mobileNumber && !isValidIndianMobile(form.mobileNumber)
+    ? 'Enter a valid 10-digit Indian mobile number starting with 6, 7, 8 or 9. Repeated digits are not allowed.'
+    : '';
   const enquiryForOptions = ['Job Placement', 'College Project', 'Upgrade Skill', 'Other', 'Real Time Project', 'AI', 'Certification'];
   const leadSourceOptions = ['Website', 'Facebook', 'Instagram', 'Google Ads', 'Walk-in', 'Phone Call', 'Online', 'String', 'CIIT Student', 'Banar'];
   const topicOptions = ['@$','1','2','Advanced Java','AI','AI ML','Ak','ALML','angular','asdf','C#','Data Analytics','DataScience','devops','Dot Net + AI with Azure','Dot Net with AI','Dotnet','DS','Excel','Excel & power bi','FrontEnd Developer','Full stack developer','Full Stack Java + DevOps + AI','full stack Python'];
@@ -111,8 +119,9 @@ export default function EnquiryForm() {
       setError('Please select a branch and qualification.');
       return;
     }
-    if (!/^\d{10}$/.test(form.mobileNumber)) {
-      setError('Enter a valid 10-digit mobile number.');
+    if (!isValidIndianMobile(form.mobileNumber)) {
+      setMobileTouched(true);
+      setError('Enter a valid 10-digit Indian mobile number.');
       return;
     }
     const selectedSourceNames = form.leadSources.split(',').map((name) => name.trim()).filter(Boolean);
@@ -164,7 +173,23 @@ export default function EnquiryForm() {
             <fieldset className="enquiry-gender"><legend>Gender:</legend>{['Male','Female','Other'].map((gender) => <label key={gender}><input type="radio" name="gender" required checked={form.gender === gender} onChange={() => change('gender', gender)} />{gender}</label>)}</fieldset>
             <label>Local Address:<textarea rows={2} value={form.localAddress} onChange={(e) => change('localAddress', e.target.value)} /></label>
             <label>Email Address:<input type="email" required value={form.emailAddress} onChange={(e) => change('emailAddress', e.target.value)} /></label>
-            <label>Mobile Number:<input required inputMode="numeric" pattern="[0-9]{10}" maxLength={10} value={form.mobileNumber} onChange={(e) => change('mobileNumber', e.target.value)} /></label>
+            <label>
+              Mobile Number:
+              <input
+                required
+                inputMode="numeric"
+                pattern="[6-9][0-9]{9}"
+                maxLength={10}
+                value={form.mobileNumber}
+                onChange={(event) => change('mobileNumber', event.target.value.replace(/\D/g, '').slice(0, 10))}
+                onBlur={() => setMobileTouched(true)}
+                aria-invalid={mobileTouched && !!mobileError}
+                aria-describedby={mobileTouched && mobileError ? 'enquiry-mobile-error' : undefined}
+              />
+              {mobileTouched && mobileError && (
+                <small id="enquiry-mobile-error" className="enquiry-field-error" role="alert">{mobileError}</small>
+              )}
+            </label>
             <label>Birth Date:<input type="date" value={form.birthDate} onChange={(e) => change('birthDate', e.target.value)} /></label>
             <label>Qualification:<select required value={form.qualificationId} onChange={(e) => {
               const selected = qualifications.find((item) => Number(item.qualificationId ?? item.qualification_Id ?? item.qualification_id ?? item.QualificationId ?? item.id) === Number(e.target.value));
