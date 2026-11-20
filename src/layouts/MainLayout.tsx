@@ -180,7 +180,9 @@ export default function MainLayout() {
         const current = findCurrentUser(users, username);
         if (current) userSession.setUser(current);
       })
-      .catch((error) => console.warn('User information API error:', error));
+      .catch((error) => {
+        if (!cancelled && userSession.getSnapshot() === session) console.warn('User information API error:', error);
+      });
 
     return () => {
       cancelled = true;

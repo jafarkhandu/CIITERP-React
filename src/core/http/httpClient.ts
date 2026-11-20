@@ -127,15 +127,15 @@ function getSessionScope(): SessionScope {
 }
 
 function isCurrentSession(session: SessionScope): boolean {
-  const current = getSessionScope();
-  return current.generation === session.generation && current.username === session.username;
+  return userSession.getSnapshot().generation === session.generation
+    && localStorage.getItem('username') === session.username;
 }
 
 function requireCurrentSession(session: SessionScope): void {
   if (!isCurrentSession(session)) throw new CanceledError('Authentication session changed');
 }
 
-let refreshRequest: { generation: number; refreshToken: string; promise: Promise<string> } | null = null;
+let refreshRequest: { session: SessionScope; refreshToken: string; promise: Promise<string> } | null = null;
 
 function refreshAccessToken(session: SessionScope): Promise<string> {
   requireCurrentSession(session);
@@ -145,7 +145,7 @@ function refreshAccessToken(session: SessionScope): Promise<string> {
     return Promise.reject(new Error('Refresh token not available'));
   }
 
-  if (refreshRequest?.generation === session.generation && refreshRequest.refreshToken === refreshToken) {
+  if (refreshRequest?.refreshToken === refreshToken && isCurrentSession(refreshRequest.session)) {
     return refreshRequest.promise;
   }
 
@@ -168,7 +168,7 @@ function refreshAccessToken(session: SessionScope): Promise<string> {
       if (refreshRequest?.promise === promise) refreshRequest = null;
     });
 
-  refreshRequest = { generation: session.generation, refreshToken, promise };
+  refreshRequest = { session, refreshToken, promise };
   return promise;
 }
 
