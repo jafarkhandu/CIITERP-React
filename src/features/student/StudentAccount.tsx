@@ -116,43 +116,40 @@ export default function StudentAccount() {
     return () => { active = false; };
   }, [studentId]);
 
-  function selectPhoto(event: ChangeEvent<HTMLInputElement>) {
+  async function selectPhoto(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
+    event.target.value = '';
     if (!studentId) {
-      setPhotoMessage('Your account could not be identified. Please sign in again before choosing a photo.');
-      event.target.value = '';
+      setPhotoMessage('Please sign in again to upload a photo.');
       return;
     }
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
       setPhotoMessage('Choose a JPG, PNG or WebP image no larger than 2 MB.');
-      event.target.value = '';
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') return;
-
-      const photo = reader.result;
-      const revision = ++photoRevision.current;
+    const revision = ++photoRevision.current;
+    setPhotoMessage('Uploading photo to the server…');
+    try {
+      await studentApi.uploadMyProfilePhoto(file);
+      const photo = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Invalid image'));
+        reader.onerror = () => reject(new Error('Image read failed'));
+        reader.readAsDataURL(file);
+      });
+      if (revision !== photoRevision.current) return;
       setProfilePhoto(photo);
-      setPhotoMessage('Saving photo in this browser…');
-
-      saveStudentPhoto(studentId, photo)
-        .then(() => {
-          if (revision === photoRevision.current) {
-            setPhotoMessage('Photo saved in this browser and displayed in the sidebar. It is not uploaded to the server.');
-          }
-        })
-        .catch(() => {
-          if (revision === photoRevision.current) {
-            setPhotoMessage('Photo preview is visible, but this browser could not save it. It may disappear after refresh.');
-          }
-        });
-    };
-    reader.onerror = () => setPhotoMessage('Unable to read the selected image. Please try another file.');
-    reader.readAsDataURL(file);
+      try {
+        await saveStudentPhoto(studentId, photo);
+        setPhotoMessage('Photo uploaded successfully and cached in this browser.');
+      } catch {
+        setPhotoMessage('Photo uploaded successfully, but the local preview could not be saved.');
+      }
+    } catch {
+      if (revision === photoRevision.current) setPhotoMessage('Photo upload failed. Your previous photo is unchanged.');
+    }
   }
   async function handleRemovePhoto() {
     if (!studentId || !profilePhoto) return;
@@ -162,7 +159,7 @@ export default function StudentAccount() {
       await removeStudentPhoto(studentId);
       if (revision !== photoRevision.current) return;
       setProfilePhoto(null);
-      setPhotoMessage('Profile photo removed from this browser.');
+      setPhotoMessage('Local photo preview removed. Your server photo is unchanged.');
       if (photoInputRef.current) photoInputRef.current.value = '';
     } catch {
       if (revision === photoRevision.current) {
@@ -406,7 +403,7 @@ export default function StudentAccount() {
                         Remove photo
                       </button>
                     )}
-                    <p className="sp-muted">JPG, PNG or WebP · Max 2 MB · Saved on this browser only</p>
+                    <p className="sp-muted">JPG, PNG or WebP · Max 2 MB · Uploads to your student profile</p>
                     {photoMessage && <p role="status" className="sp-muted">{photoMessage}</p>}
                   </div>
                 </div>
