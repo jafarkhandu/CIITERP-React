@@ -923,6 +923,43 @@ html:not([data-theme="dark"]) .ciit-student-public-shell .ciit-student-public-co
   border-top: 1px solid rgba(116, 152, 196, .2);
 }
 
+.ciit-student-public-shell .sp-student-invoice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px 20px;
+}
+
+.ciit-student-public-shell .sp-student-invoice-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--ciit-primary, #1769d2);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ciit-student-public-shell .sp-student-invoice-button:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+
+.ciit-student-public-shell .sp-student-invoice-button:focus-visible {
+  outline: 3px solid #80b7ff;
+  outline-offset: 2px;
+}
+
+.ciit-student-public-shell .sp-student-invoice-error {
+  margin: 0;
+  color: #b42318;
+}
+
 
 /* Staff Student Portal: compact identity and scrollable payment history. */
 main.ciit-student-portal {
