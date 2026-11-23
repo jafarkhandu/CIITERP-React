@@ -5,6 +5,8 @@ import { useSession } from '@/core/auth/hooks';
 import { readTokenIdentity } from '@/core/auth/tokenIdentity';
 import { tokenService } from '@/core/services/tokenService';
 import { studentApi } from '@/api/studentApi';
+import { API_ORIGINS } from '@/core/config/api-services';
+import StudentProfileEditor from './StudentProfileEditor';
 import { studentBatchApi } from '@/api/batchApi';
 import { loadStudentPhoto, removeStudentPhoto, saveStudentPhoto } from './studentPhotoStorage';
 import StudentDashboard from './StudentDashboard';
@@ -48,6 +50,17 @@ function ownedRegistrationResponse(response: unknown, studentId: number): Studen
   return ownerId === studentId ? data : null;
 }
 
+function profilePhotoSource(row: StudentRecord | null): string | null {
+  const value = readField(row, 'profilePhotoUrl', 'profilePhotoURL', 'photoUrl', 'photoURL', 'profilePhoto', 'photoPath', 'ProfilePhoto');
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const url = value.trim();
+  if (/^https:\/\//i.test(url) || /^data:image\/(?:jpeg|png|webp);base64,/i.test(url)) return url;
+  if ((url.startsWith('/') || /^[a-z0-9_-]+\//i.test(url)) && !url.includes('..') && !url.includes('\\')) {
+    return API_ORIGINS.student + '/' + url.replace(/^\//, '');
+  }
+  return null;
+}
+
 function formatStudentDate(value: unknown): string {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(value)) return display(value);
   const [year, month, day] = value.slice(0, 10).split('-');
@@ -68,6 +81,9 @@ export default function StudentAccount() {
   // StudentLogin returns studentId in its response body, not necessarily in JWT claims.
   const studentId = identity.studentId ?? session.currentUser?.studentId ?? null;
   const [studentRecord, setStudentRecord] = useState<StudentRecord | null>(null);
+  const [studentDetails, setStudentDetails] = useState<StudentRecord | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(Boolean(studentId));
+  const [detailsError, setDetailsError] = useState('');
   const [recordLoading, setRecordLoading] = useState(Boolean(studentId));
   const [recordError, setRecordError] = useState('');
   const [myBatchResult, setMyBatchResult] = useState<{ studentId: number; rows: StudentRecord[] } | null>(null);
@@ -102,72 +118,96 @@ export default function StudentAccount() {
     const revision = ++photoRevision.current;
     setProfilePhoto(null);
     setPhotoMessage('');
+    setStudentDetails(null);
+    setDetailsError('');
+    setDetailsLoading(Boolean(studentId));
 
     if (studentId) {
-      loadStudentPhoto(studentId)
-        .then((photo) => {
-          if (active && revision === photoRevision.current) setProfilePhoto(photo);
+      Promise.allSettled([studentApi.getStudentDetailsById(studentId), loadStudentPhoto(studentId)])
+        .then(([detailsResult, cachedPhotoResult]) => {
+          if (!active || revision !== photoRevision.current) return;
+          const localPhoto = cachedPhotoResult.status === 'fulfilled' ? cachedPhotoResult.value : null;
+          if (detailsResult.status === 'fulfilled') {
+            const details = ownedRegistrationResponse(detailsResult.value, studentId);
+            if (details) {
+              setStudentDetails(details);
+              setProfilePhoto(profilePhotoSource(details) ?? localPhoto);
+            } else {
+              setDetailsError('Student details could not be matched to your signed-in account.');
+              setProfilePhoto(localPhoto);
+            }
+          } else {
+            setDetailsError('Editable student details are currently unavailable.');
+            setProfilePhoto(localPhoto);
+          }
         })
-        .catch(() => {
-          // Photo storage may be blocked by the browser. Keep initials as fallback.
+        .finally(() => {
+          if (active && revision === photoRevision.current) setDetailsLoading(false);
         });
     }
 
     return () => { active = false; };
   }, [studentId]);
 
-  function selectPhoto(event: ChangeEvent<HTMLInputElement>) {
+  async function selectPhoto(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
+    event.target.value = '';
     if (!studentId) {
-      setPhotoMessage('Your account could not be identified. Please sign in again before choosing a photo.');
-      event.target.value = '';
+      setPhotoMessage('Your student account could not be identified. Please sign in again.');
       return;
     }
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
-      setPhotoMessage('Choose a JPG, PNG or WebP image no larger than 2 MB.');
-      event.target.value = '';
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size === 0 || file.size > 2 * 1024 * 1024) {
+      setPhotoMessage('Choose a JPG, PNG or WebP image between 1 byte and 2 MB.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') return;
-
-      const photo = reader.result;
-      const revision = ++photoRevision.current;
+    const revision = ++photoRevision.current;
+    setPhotoMessage('Uploading profile photo…');
+    try {
+      await studentApi.uploadMyProfilePhoto(file);
+      if (revision !== photoRevision.current) return;
+      const photo = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => typeof reader.result === 'string'
+          ? resolve(reader.result) : reject(new Error('Image preview unavailable'));
+        reader.onerror = () => reject(new Error('Image preview unavailable'));
+        reader.readAsDataURL(file);
+      });
+      if (revision !== photoRevision.current) return;
       setProfilePhoto(photo);
-      setPhotoMessage('Saving photo in this browser…');
-
-      saveStudentPhoto(studentId, photo)
-        .then(() => {
-          if (revision === photoRevision.current) {
-            setPhotoMessage('Photo saved in this browser and displayed in the sidebar. It is not uploaded to the server.');
-          }
+      await saveStudentPhoto(studentId, photo).catch(() => {
+        // The backend upload succeeded; browser cache is only a fallback.
+      });
+      if (revision === photoRevision.current) {
+        setPhotoMessage('Photo uploaded to your student account successfully.');
+      }
+      // Re-read the server-backed profile so its photo URL is available on later visits.
+      studentApi.getStudentDetailsById(studentId)
+        .then(response => {
+          if (revision !== photoRevision.current) return;
+          const details = ownedRegistrationResponse(response, studentId);
+          if (details) setStudentDetails(details);
         })
-        .catch(() => {
-          if (revision === photoRevision.current) {
-            setPhotoMessage('Photo preview is visible, but this browser could not save it. It may disappear after refresh.');
-          }
-        });
-    };
-    reader.onerror = () => setPhotoMessage('Unable to read the selected image. Please try another file.');
-    reader.readAsDataURL(file);
+        .catch(() => { /* Upload already succeeded; the local preview remains visible. */ });
+    } catch {
+      if (revision === photoRevision.current) {
+        setPhotoMessage('Photo upload failed. No new photo was saved.');
+      }
+    }
   }
+
   async function handleRemovePhoto() {
     if (!studentId || !profilePhoto) return;
-
     const revision = ++photoRevision.current;
     try {
       await removeStudentPhoto(studentId);
       if (revision !== photoRevision.current) return;
-      setProfilePhoto(null);
-      setPhotoMessage('Profile photo removed from this browser.');
+      setProfilePhoto(profilePhotoSource(studentDetails));
+      setPhotoMessage('Local photo cache cleared. Server-uploaded photos are not deleted.');
       if (photoInputRef.current) photoInputRef.current.value = '';
     } catch {
-      if (revision === photoRevision.current) {
-        setPhotoMessage('Could not remove the photo. Please try again.');
-      }
+      if (revision === photoRevision.current) setPhotoMessage('Could not clear the local photo cache.');
     }
   }
 
