@@ -66,8 +66,10 @@ export default function TrainerBatchDetails() {
         .filter((student) => !student.isPresent)
         .map((student) => {
           const registrationId = number(student, 'registrationId');
-          return emailAddressFrom(student) || emailAddressFrom(
-            students.find((item) => number(item, 'registrationId') === registrationId),
+          return emailAddressFrom(student) || (
+            registrationId > 0
+              ? emailAddressFrom(students.find((item) => number(item, 'registrationId') === registrationId))
+              : ''
           );
         });
       sendUniqueAutomaticEmails(
