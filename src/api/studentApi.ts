@@ -76,6 +76,26 @@ export interface RegistrationRequest {
   paymentDescription: string;
 }
 
+/** Swagger model for PUT /StudentDetails/my-profile. */
+export interface StudentMyProfilePayload {
+  studentId: number;
+  studentName: string;
+  gender: string;
+  mobileNumber: string;
+  emailAddress: string;
+  birthDate: string;
+  qualification: string;
+  parentName: string;
+  parentNumber: string;
+  lastName: string;
+  whatsappNumber: string;
+  localAddress: string;
+  permanentAddress: string;
+  aadharCardNumber: string;
+  aadharCardPhoto: string;
+  branchId: number;
+}
+
 export interface PaymentRequest {
   paymentDate: string;
   paymentAmount: number;
@@ -88,6 +108,25 @@ const registrationBase = API_ENDPOINTS.studentRegistration;
 const paymentBase = API_ENDPOINTS.studentPayment;
 
 export const studentApi = {
+  async getStudentDetailsById(studentId: number): Promise<unknown> {
+    if (!Number.isSafeInteger(studentId) || studentId <= 0) throw new Error('Valid student ID required.');
+    const { data } = await http.get(`${API_ENDPOINTS.studentDetails}/get-by-id/${studentId}`);
+    return data;
+  },
+
+  async updateMyProfile(payload: StudentMyProfilePayload): Promise<unknown> {
+    if (!Number.isSafeInteger(payload.studentId) || payload.studentId <= 0) throw new Error('Valid student ID required.');
+    const { data } = await http.put(`${API_ENDPOINTS.studentDetails}/my-profile`, payload);
+    return data;
+  },
+
+  async uploadMyProfilePhoto(file: File): Promise<unknown> {
+    const form = new FormData();
+    form.append('profilePhoto', file, file.name);
+    const { data } = await http.put(`${API_ENDPOINTS.studentDetails}/my-profile/photo`, form);
+    return data;
+  },
+
   async getStudents(): Promise<StudentRow[]> {
     const { data } = await http.get(`${API_ENDPOINTS.studentDetails}/get-all`);
     return extractRows(data).map((row) => ({
