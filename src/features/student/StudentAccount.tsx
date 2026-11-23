@@ -110,6 +110,8 @@ export default function StudentAccount() {
   useEffect(() => { window.scrollTo(0, 0); }, [page, hash]);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [photoMessage, setPhotoMessage] = useState('');
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const photoUploadLock = useRef(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const photoRevision = useRef(0);
 
@@ -153,6 +155,7 @@ export default function StudentAccount() {
     const file = event.target.files?.[0];
     if (!file) return;
     event.target.value = '';
+    if (photoUploadLock.current) return;
     if (!studentId) {
       setPhotoMessage('Your student account could not be identified. Please sign in again.');
       return;
@@ -162,6 +165,8 @@ export default function StudentAccount() {
       return;
     }
 
+    photoUploadLock.current = true;
+    setPhotoUploading(true);
     const revision = ++photoRevision.current;
     setPhotoMessage('Uploading profile photo…');
     try {
@@ -194,6 +199,9 @@ export default function StudentAccount() {
       if (revision === photoRevision.current) {
         setPhotoMessage('Photo upload failed. No new photo was saved.');
       }
+    } finally {
+      photoUploadLock.current = false;
+      setPhotoUploading(false);
     }
   }
 
@@ -442,9 +450,9 @@ export default function StudentAccount() {
                       className="sp-profile-file-input"
                       id="sp-profile-photo-input"
                       onChange={selectPhoto}
-                      disabled={!studentId}
+                      disabled={!studentId || photoUploading}
                     />
-                    <label htmlFor="sp-profile-photo-input" className="sp-profile-upload-button">Upload profile photo</label>
+                    <label htmlFor="sp-profile-photo-input" className="sp-profile-upload-button">{photoUploading ? 'Uploading…' : 'Upload profile photo'}</label>
                     {profilePhoto && (
                       <button type="button" className="btn btn-outline-danger btn-sm ms-2" onClick={() => void handleRemovePhoto()}>
                         Clear local photo
