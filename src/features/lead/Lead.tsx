@@ -2,6 +2,7 @@ import RowActionsMenu from '@/components/RowActionsMenu';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { sendAutomaticEmail } from '@/core/notifications/automaticEmail';
 import { leadApi, type LeadRecord, type LeadSourceRecord } from '@/api/leadApi';
 import { PERMISSIONS, permissionService } from '@/core/services/permissionService';
 import { userSession } from '@/core/auth/session';
@@ -182,8 +183,16 @@ export default function Lead() {
         status: editingLeadId ? form.status : 'New',
         sourceName: source.sourceName,
       };
-      if (editingLeadId) await leadApi.update(editingLeadId, { leadId: editingLeadId, ...payload } as LeadRecord);
-      else await leadApi.create(payload);
+      if (editingLeadId) {
+        await leadApi.update(editingLeadId, { leadId: editingLeadId, ...payload } as LeadRecord);
+      } else {
+        await leadApi.create(payload);
+        sendAutomaticEmail(
+          payload.emailAddress,
+          'Your enquiry with CIIT has been received',
+          `Hello ${payload.candidateName},\n\nThank you for your interest in CIIT Training Institute. We have received your training lead and our team will contact you.\n\nCIIT Training Institute`,
+        );
+      }
       setShowForm(false);
       await loadData();
     } catch (requestError: any) {
