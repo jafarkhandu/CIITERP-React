@@ -5,6 +5,7 @@ import { useSession } from '@/core/auth/hooks';
 import { readTokenIdentity } from '@/core/auth/tokenIdentity';
 import { tokenService } from '@/core/services/tokenService';
 import { studentApi } from '@/api/studentApi';
+import { studentBatchApi } from '@/api/batchApi';
 import { loadStudentPhoto, removeStudentPhoto, saveStudentPhoto } from './studentPhotoStorage';
 import StudentDashboard from './StudentDashboard';
 import '@/layouts/MainLayout.css';
@@ -69,6 +70,9 @@ export default function StudentAccount() {
   const [studentRecord, setStudentRecord] = useState<StudentRecord | null>(null);
   const [recordLoading, setRecordLoading] = useState(Boolean(studentId));
   const [recordError, setRecordError] = useState('');
+  const [myBatchResult, setMyBatchResult] = useState<{ studentId: number; rows: StudentRecord[] } | null>(null);
+  const [batchesLoading, setBatchesLoading] = useState(false);
+  const [batchesError, setBatchesError] = useState('');
   const [coursePaymentDetails, setCoursePaymentDetails] = useState<{
     registration: StudentRecord;
     rows: StudentRecord[];
@@ -83,6 +87,7 @@ export default function StudentAccount() {
   const legacyPage = sections.find(section => '#' + section.id === hash)?.slug;
   const activeSection = sections.find(section => section.slug === (page ?? legacyPage ?? 'dashboard'))?.id;
   const showingCourses = activeSection === 'student-course';
+  const showingBatches = activeSection === 'student-batch' || activeSection === 'student-overview';
   const paymentDetails = coursePaymentDetails?.registration === studentRecord ? coursePaymentDetails.rows : null;
 
   // Start each routed page at the top, even when navigating from a scrolled view.
@@ -199,6 +204,50 @@ export default function StudentAccount() {
   }, [studentId]);
 
   useEffect(() => {
+    if (!showingBatches || !studentId || !studentRecord ||
+        Number(readField(studentRecord, 'studentId', 'student_Id', 'student_id', 'StudentId')) !== studentId ||
+        myBatchResult?.studentId === studentId) return;
+
+    let active = true;
+    setBatchesLoading(true);
+    setBatchesError('');
+
+    studentBatchApi.getMyBatches()
+      .then((rows) => {
+        if (!active) return;
+
+        const ownedRegistrations = nestedRows(studentRecord, 'registrations', 'Registrations');
+        const registrationIds = new Set(
+          [...ownedRegistrations, studentRecord]
+            .filter((row) => {
+              const ownerId = readField(row, 'studentId', 'student_Id', 'student_id', 'StudentId');
+              return ownerId === null || Number(ownerId) === studentId;
+            })
+            .map((row) => Number(readField(row, 'registrationId', 'registration_Id', 'registration_id', 'RegistrationId')))
+            .filter((id) => Number.isInteger(id) && id > 0),
+        );
+
+        const ownBatches = rows.filter((row) => {
+          const ownerId = readField(row, 'studentId', 'student_Id', 'student_id', 'StudentId');
+          if (ownerId !== null && Number(ownerId) !== studentId) return false;
+          const registrationId = readField(row, 'registrationId', 'registration_Id', 'registration_id', 'RegistrationId');
+          return registrationId === null || registrationIds.has(Number(registrationId));
+        });
+        setMyBatchResult({ studentId, rows: ownBatches });
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        console.error('Student batch lookup failed:', error);
+        setBatchesError('Your assigned batches could not be loaded. Please try again.');
+      })
+      .finally(() => {
+        if (active) setBatchesLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [showingBatches, studentId, studentRecord, myBatchResult?.studentId]);
+
+  useEffect(() => {
     if (!showingCourses || !studentId || !studentRecord || paymentDetails) return;
 
     const owned = nestedRows(studentRecord, 'registrations', 'Registrations').filter(row => {
@@ -257,10 +306,12 @@ export default function StudentAccount() {
     ...nestedRows(studentRecord, 'payments', 'Payments'),
     ...courseRows.flatMap((row) => nestedRows(row, 'payments', 'Payments')),
   ].filter(belongsToStudent);
-  const batchRows = [
-    ...nestedRows(studentRecord, 'batches', 'Batches'),
-    ...courseRows.flatMap((row) => nestedRows(row, 'batches', 'Batches')),
-  ].filter(belongsToStudent);
+  const batchRows = myBatchResult?.studentId === studentId
+    ? myBatchResult.rows
+    : [
+        ...nestedRows(studentRecord, 'batches', 'Batches'),
+        ...courseRows.flatMap((row) => nestedRows(row, 'batches', 'Batches')),
+      ].filter(belongsToStudent);
   const totalPaid = paymentRows.reduce((sum, row) =>
     sum + (Number(readField(row, 'paymentAmount', 'payment_Amount')) || 0), 0);
 
@@ -379,6 +430,8 @@ export default function StudentAccount() {
               loading={recordLoading}
               courseRows={courseRows}
               batchRows={batchRows}
+              batchesLoading={batchesLoading}
+              batchesError={batchesError}
               paymentRows={paymentRows}
               totalPaid={totalPaid}
             />
@@ -436,12 +489,29 @@ export default function StudentAccount() {
               
               <section id="student-batch" className="sp-panel">
               <h2>Batches</h2>
-              {batchRows.length ? <div className="sp-stack">{batchRows.map((row, index) =>
-                <article className="sp-entry" key={String(readField(row, 'batchId', 'batch_Id') ?? index)}>
-                  <h3>{display(readField(row, 'batchName', 'batch_Name'))}</h3>
-                  <p>Time: {display(readField(row, 'batchTime', 'batch_Time'))}</p>
-                </article>,
-              )}</div> : <p className="sp-muted">Batch information is not available from the student-scoped registration response.</p>}
+              {batchesLoading && <p className="sp-muted" role="status">Loading your assigned batches…</p>}
+              {batchesError && <div className="sp-alert" role="alert">{batchesError}</div>}
+              {!batchesLoading && !batchesError && (batchRows.length
+                ? <div className="sp-stack">{batchRows.map((row, index) => {
+                    const batch = asRecord(readField(row, 'batch', 'Batch'));
+                    const details = batch ? { ...row, ...batch } : row;
+                    const course = readField(details, 'courseName', 'course_Name', 'course_name');
+                    const topic = readField(details, 'topicName', 'topic_Name', 'topic_name');
+                    const start = readField(details, 'startDate', 'start_date', 'start_Date');
+                    const end = readField(details, 'endDate', 'end_date', 'end_Date');
+                    const status = readField(details, 'status', 'batchStatus', 'batch_status');
+                    return <article className="sp-entry" key={String(readField(details, 'batchId', 'batch_Id', 'batch_id') ?? index) + '-' + index}>
+                      <h3>{display(readField(details, 'batchName', 'batch_Name', 'batch_name', 'BatchName'))}</h3>
+                      <p>Time: {display(readField(details, 'batchTime', 'batch_Time', 'batch_time'))}</p>
+                      {course !== null && <p>Course: {display(course)}</p>}
+                      {topic !== null && <p>Topic: {display(topic)}</p>}
+                      {start !== null && <p>Start date: {formatStudentDate(start)}</p>}
+                      {end !== null && <p>End date: {formatStudentDate(end)}</p>}
+                      {status !== null && <p>Status: {display(status)}</p>}
+                    </article>;
+                  })}</div>
+                : <p className="sp-muted">No batches have been assigned to your student account yet.</p>
+              )}
             </section>
             </div>
           )}
