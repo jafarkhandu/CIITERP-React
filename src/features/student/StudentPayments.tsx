@@ -4,10 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { FormEvent } from 'react';
 import { studentApi, type PaymentRequest, type PaymentRow } from '@/api/studentApi';
-import { emailAddressFrom, sendAutomaticEmail } from '@/core/notifications/automaticEmail';
 
 type Row = Record<string, unknown>;
-type Registration = { registrationId: number; studentId: number; courseId: number; registrationCode: string; courseName: string; discount: number; studentName: string; lastName: string; mobileNumber: string; emailAddress?: string };
+type Registration = { registrationId: number; studentId: number; courseId: number; registrationCode: string; courseName: string; discount: number; studentName: string; lastName: string; mobileNumber: string };
 const currencyFormatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 const money = (v: unknown) => currencyFormatter.format(Number(v) || 0);
 const dateKey = (value: unknown): string => {
@@ -48,7 +47,6 @@ function mapRegistrations(rows: Row[]): Registration[] {
       studentName: String(pick(row, 'studentName', 'student_name', 'student_Name') ?? ''),
       lastName: String(pick(row, 'lastName', 'last_name', 'last_Name') ?? ''),
       mobileNumber: String(pick(row, 'mobileNumber', 'mobile_number', 'mobile_Number') ?? ''),
-      emailAddress: emailAddressFrom(row),
     });
   }
   return mapped;
@@ -371,17 +369,6 @@ export default function StudentPayments() {
     setSaving(true);
     try {
       await studentApi.createPayment(payload);
-      const recipient = selectedRegistration.emailAddress || (
-        selectedRegistration.studentId > 0
-          ? emailAddressFrom(payments.find((payment) =>
-              Number(payment.studentId) === selectedRegistration.studentId))
-          : ''
-      );
-      sendAutomaticEmail(
-        recipient,
-        'CIIT payment receipt confirmation',
-        `Hello ${selectedRegistration.studentName || 'Student'},\n\nWe have received your payment of ${money(paymentForm.paymentAmount)} for ${selectedRegistration.courseName || 'your course'}.\nPayment date: ${paymentForm.paymentDate}\nPayment mode: ${paymentForm.paymentMode}\nRegistration: ${selectedRegistration.registrationCode || selectedRegistration.registrationId}\n\nYou can obtain the official payment receipt from CIIT Training Institute.\n\nCIIT Training Institute`,
-      );
       setModal(null);
       await loadPayments();
     }
