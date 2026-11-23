@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { trainerApi } from '@/api/studentApi';
+import { emailAddressFrom, sendUniqueAutomaticEmails } from '@/core/notifications/automaticEmail';
 import './Trainer.css';
 
 type Row = Record<string, unknown>;
@@ -61,6 +62,19 @@ export default function TrainerBatchDetails() {
         attendanceDate,
         students: attendance.map((student) => ({ registrationId: number(student, 'registrationId'), isPresent: Boolean(student.isPresent) })),
       });
+      const absentRecipients = attendance
+        .filter((student) => !student.isPresent)
+        .map((student) => {
+          const registrationId = number(student, 'registrationId');
+          return emailAddressFrom(student) || emailAddressFrom(
+            students.find((item) => number(item, 'registrationId') === registrationId),
+          );
+        });
+      sendUniqueAutomaticEmails(
+        absentRecipients,
+        'CIIT attendance notification',
+        `Your attendance for ${text(selectedSchedule, 'topicName', 'topic_name') || 'your scheduled training'} on ${attendanceDate} was marked absent. Please contact CIIT Training Institute if you believe this is incorrect.`,
+      );
       setSuccess('Attendance submitted successfully.');
       setSelectedSchedule(null);
       await loadBatch();
