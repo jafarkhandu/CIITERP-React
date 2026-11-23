@@ -88,24 +88,6 @@ const registrationBase = API_ENDPOINTS.studentRegistration;
 const paymentBase = API_ENDPOINTS.studentPayment;
 
 export const studentApi = {
-  async getStudentDetailsById(studentId: number): Promise<Record<string, unknown>> {
-    if (!Number.isSafeInteger(studentId) || studentId <= 0) throw new Error('Invalid student ID.');
-    const { data } = await http.get(`${API_ENDPOINTS.studentDetails}/get-by-id/${studentId}`);
-    return (data?.data ?? data?.result ?? data) as Record<string, unknown>;
-  },
-
-  async updateMyProfile(payload: Record<string, unknown>): Promise<unknown> {
-    const { data } = await http.put(`${API_ENDPOINTS.studentDetails}/my-profile`, payload);
-    return data;
-  },
-
-  async uploadMyProfilePhoto(file: File): Promise<unknown> {
-    const body = new FormData();
-    body.append('profilePhoto', file);
-    const { data } = await http.put(`${API_ENDPOINTS.studentDetails}/my-profile/photo`, body);
-    return data;
-  },
-
   async getStudents(): Promise<StudentRow[]> {
     const { data } = await http.get(`${API_ENDPOINTS.studentDetails}/get-all`);
     return extractRows(data).map((row) => ({
