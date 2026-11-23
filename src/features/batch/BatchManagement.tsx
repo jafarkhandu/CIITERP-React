@@ -11,7 +11,9 @@ import {
   type CreateBatchRequest,
 } from '@/api/batchApi';
 import { directoryApi, type BranchOption } from '@/api/directoryApi';
-import { sendAutomaticEmail, sendUniqueAutomaticEmails } from '@/core/notifications/automaticEmail';
+import { emailAddressFrom, sendUniqueAutomaticEmails } from '@/core/notifications/automaticEmail';
+import { emailApi } from '@/api/emailApi';
+import { studentApi } from '@/api/studentApi';
 import './BatchManagement.css';
 
 type Row = Record<string, any>;
@@ -36,6 +38,94 @@ const emptyForm = (): CreateBatchRequest => ({
   batch_name: '', topic_id: 0, employee_id: 0, start_date: '', end_date: '',
   batch_time: '', branch_id: 0, playlist_title: '', playlist_key: '',
 });
+
+interface AssignmentEmailResult {
+  requested: number;
+  missing: number;
+  failed: number;
+}
+
+/**
+ * The batch registration dropdown can omit email addresses. Resolve missing
+ * recipients by exact registration ID, then by exact student ID; never by name.
+ * Email failures must not undo completed batch assignments.
+ */
+async function notifyBatchAssignments(assigned: RegistrationRow[], batchName: string): Promise<AssignmentEmailResult> {
+  const emails = new Map<number, string>();
+  const registrationsById = new Map<number, Row>();
+
+  for (const student of assigned) {
+    const email = emailAddressFrom(student);
+    if (email) emails.set(student.registrationId, email);
+  }
+
+  if (emails.size < assigned.length) {
+    try {
+      const records = await studentApi.getRegistrations();
+      for (const record of records) {
+        const id = Number(read(record, 'registrationId', 'registration_id', 'registration_Id', 'RegistrationId') ?? 0);
+        if (id > 0) registrationsById.set(id, record);
+      }
+
+      for (const student of assigned) {
+        if (emails.has(student.registrationId)) continue;
+        const registration = registrationsById.get(student.registrationId);
+        if (!registration) continue;
+
+        const selectedStudentId = Number(read(student, 'studentId', 'student_id', 'student_Id') ?? 0);
+        const registeredStudentId = Number(read(registration, 'studentId', 'student_id', 'student_Id') ?? 0);
+        if (selectedStudentId > 0 && registeredStudentId > 0 && selectedStudentId !== registeredStudentId) continue;
+
+        const email = emailAddressFrom(registration);
+        if (email) emails.set(student.registrationId, email);
+      }
+    } catch (error: any) {
+      console.warn('Batch assignment registration email lookup failed:', error?.response?.status ?? 'network error');
+    }
+  }
+
+  if (emails.size < assigned.length) {
+    const missingStudentIds = assigned.some((student) => {
+      if (emails.has(student.registrationId)) return false;
+      const registration = registrationsById.get(student.registrationId);
+      return Number(read(student, 'studentId', 'student_id', 'student_Id') ??
+        read(registration ?? {}, 'studentId', 'student_id', 'student_Id') ?? 0) > 0;
+    });
+
+    if (missingStudentIds) {
+      try {
+        const students = await studentApi.getStudents();
+        const emailsByStudentId = new Map(students.map((student) => [student.studentId, emailAddressFrom(student)]));
+
+        for (const student of assigned) {
+          if (emails.has(student.registrationId)) continue;
+          const registration = registrationsById.get(student.registrationId);
+          const studentId = Number(read(student, 'studentId', 'student_id', 'student_Id') ??
+            read(registration ?? {}, 'studentId', 'student_id', 'student_Id') ?? 0);
+          const email = emailsByStudentId.get(studentId);
+          if (studentId > 0 && email) emails.set(student.registrationId, email);
+        }
+      } catch (error: any) {
+        console.warn('Batch assignment student email lookup failed:', error?.response?.status ?? 'network error');
+      }
+    }
+  }
+
+  const requests = assigned
+    .filter((student) => emails.has(student.registrationId))
+    .map((student) => emailApi.send({
+      toEmail: emails.get(student.registrationId)!,
+      subject: 'CIIT batch assignment confirmation',
+      body: `Hello ${student.studentName},\n\nYou have been assigned to ${batchName}. Please check your training timetable for more details.\n\nCIIT Training Institute`,
+      isHtml: false,
+    }));
+
+  const results = await Promise.allSettled(requests);
+  const failed = results.filter((result) => result.status === 'rejected').length;
+  if (failed) console.warn('Batch assignment email API requests failed:', failed);
+
+  return { requested: requests.length, missing: assigned.length - requests.length, failed };
+}
 
 export default function BatchManagement() {
   const [batches, setBatches] = useState<BatchRow[]>([]);
@@ -334,16 +424,8 @@ export default function BatchManagement() {
     setSaving(true); setError('');
     try {
       const outcomes = await Promise.allSettled(selected.map((item) => batchStudentApi.create({ batch_id: studentBatch.batchId, registration_id: item.registrationId })));
-      const successes = outcomes.filter((item) => item.status === 'fulfilled').length;
-      outcomes.forEach((outcome, index) => {
-        if (outcome.status !== 'fulfilled') return;
-        const student = selected[index];
-        sendAutomaticEmail(
-          student,
-          'CIIT batch assignment confirmation',
-          `Hello ${student.studentName},\n\nYou have been assigned to ${studentBatch.batchName}. Please check your training timetable for more details.\n\nCIIT Training Institute`,
-        );
-      });
+      const assigned = selected.filter((_, index) => outcomes[index].status === 'fulfilled');
+      const successes = assigned.length;
       const partialFailure = successes !== selected.length
         ? `${successes} of ${selected.length} students added. Some requests failed; check eligible list and retry.`
         : '';
@@ -351,6 +433,26 @@ export default function BatchManagement() {
       setStudentBatch(null);
       await load();
       if (partialFailure) setError(partialFailure);
+      if (assigned.length) {
+        void notifyBatchAssignments(assigned, studentBatch.batchName)
+          .then(({ requested, missing, failed }) => {
+            if (!missing && !failed) {
+              console.info('Batch assignment email requests accepted:', requested);
+              return;
+            }
+            const warnings = [
+              missing ? `${missing} recipient email address(es) could not be resolved` : '',
+              failed ? `${failed} email API request(s) failed` : '',
+            ].filter(Boolean);
+            setError((previous) => {
+              const notice = `Batch assignment saved, but ${warnings.join(' and ')}.`;
+              return previous ? `${previous} ${notice}` : notice;
+            });
+          })
+          .catch(() => {
+            setError((previous) => [previous, 'Batch assignment saved, but email notifications could not be completed.'].filter(Boolean).join(' '));
+          });
+      }
     } catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to add students.'); }
     finally { setSaving(false); }
   }
