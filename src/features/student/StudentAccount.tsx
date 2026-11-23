@@ -1,5 +1,5 @@
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { authService } from '@/core/auth/authService';
 import { useSession } from '@/core/auth/hooks';
 import { readTokenIdentity } from '@/core/auth/tokenIdentity';
@@ -94,70 +94,6 @@ export default function StudentAccount() {
   useEffect(() => { window.scrollTo(0, 0); }, [page, hash]);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [photoMessage, setPhotoMessage] = useState('');
-  const [editSource, setEditSource] = useState<StudentRecord | null>(null);
-  const [editFields, setEditFields] = useState({ studentName: '', emailAddress: '', mobileNumber: '', qualification: '' });
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [editMessage, setEditMessage] = useState('');
-
-  async function beginProfileEdit() {
-    if (!studentId) return;
-    setEditMessage('');
-    try {
-      const result = await studentApi.getStudentDetailsById(studentId);
-      const row = ownedRegistrationResponse(result, studentId);
-      if (!row) throw new Error('Profile does not match authenticated student.');
-      setEditSource(row);
-      setEditFields({
-        studentName: String(readField(row, 'studentName') ?? ''),
-        emailAddress: String(readField(row, 'emailAddress') ?? ''),
-        mobileNumber: String(readField(row, 'mobileNumber') ?? ''),
-        qualification: String(readField(row, 'qualification') ?? ''),
-      });
-      setIsEditing(true);
-    } catch {
-      setEditMessage('Cannot load verified profile details for editing. Please try again.');
-    }
-  }
-
-  async function saveProfile(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!studentId || !editSource || Number(readField(editSource, 'studentId')) !== studentId) return;
-    const name = editFields.studentName.trim();
-    const email = editFields.emailAddress.trim();
-    const mobile = editFields.mobileNumber.trim();
-    if (!name || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || !/^\\d{10}$/.test(mobile)) {
-      setEditMessage('Enter a name, valid email and 10-digit mobile number.');
-      return;
-    }
-    const required = ['studentId', 'studentName', 'gender', 'mobileNumber', 'emailAddress',
-      'birthDate', 'qualification', 'parentName', 'parentNumber', 'lastName',
-      'whatsappNumber', 'localAddress', 'permanentAddress', 'aadharCardNumber',
-      'aadharCardPhoto', 'branchId'] as const;
-    const payload: Record<string, unknown> = {};
-    for (const key of required) {
-      if (editSource[key] === undefined || editSource[key] === null) {
-        setEditMessage('Update blocked: the API did not return all original fields required for a safe update.');
-        return;
-      }
-      payload[key] = editSource[key];
-    }
-    Object.assign(payload, { studentName: name, emailAddress: email, mobileNumber: mobile, qualification: editFields.qualification });
-    setIsSaving(true);
-    setEditMessage('');
-    try {
-      await studentApi.updateMyProfile(payload);
-      setEditSource({ ...editSource, ...payload });
-      setStudentRecord(current => current ? { ...current, ...payload } : current);
-      setIsEditing(false);
-      setEditMessage('Profile updated successfully.');
-    } catch {
-      setEditMessage('Profile update failed. Existing details were preserved.');
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
   const photoInputRef = useRef<HTMLInputElement>(null);
   const photoRevision = useRef(0);
 
@@ -180,40 +116,43 @@ export default function StudentAccount() {
     return () => { active = false; };
   }, [studentId]);
 
-  async function selectPhoto(event: ChangeEvent<HTMLInputElement>) {
+  function selectPhoto(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    event.target.value = '';
     if (!studentId) {
-      setPhotoMessage('Please sign in again to upload a photo.');
+      setPhotoMessage('Your account could not be identified. Please sign in again before choosing a photo.');
+      event.target.value = '';
       return;
     }
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
       setPhotoMessage('Choose a JPG, PNG or WebP image no larger than 2 MB.');
+      event.target.value = '';
       return;
     }
 
-    const revision = ++photoRevision.current;
-    setPhotoMessage('Uploading photo to the server…');
-    try {
-      await studentApi.uploadMyProfilePhoto(file);
-      const photo = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Invalid image'));
-        reader.onerror = () => reject(new Error('Image read failed'));
-        reader.readAsDataURL(file);
-      });
-      if (revision !== photoRevision.current) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') return;
+
+      const photo = reader.result;
+      const revision = ++photoRevision.current;
       setProfilePhoto(photo);
-      try {
-        await saveStudentPhoto(studentId, photo);
-        setPhotoMessage('Photo uploaded successfully and cached in this browser.');
-      } catch {
-        setPhotoMessage('Photo uploaded successfully, but the local preview could not be saved.');
-      }
-    } catch {
-      if (revision === photoRevision.current) setPhotoMessage('Photo upload failed. Your previous photo is unchanged.');
-    }
+      setPhotoMessage('Saving photo in this browser…');
+
+      saveStudentPhoto(studentId, photo)
+        .then(() => {
+          if (revision === photoRevision.current) {
+            setPhotoMessage('Photo saved in this browser and displayed in the sidebar. It is not uploaded to the server.');
+          }
+        })
+        .catch(() => {
+          if (revision === photoRevision.current) {
+            setPhotoMessage('Photo preview is visible, but this browser could not save it. It may disappear after refresh.');
+          }
+        });
+    };
+    reader.onerror = () => setPhotoMessage('Unable to read the selected image. Please try another file.');
+    reader.readAsDataURL(file);
   }
   async function handleRemovePhoto() {
     if (!studentId || !profilePhoto) return;
@@ -223,7 +162,7 @@ export default function StudentAccount() {
       await removeStudentPhoto(studentId);
       if (revision !== photoRevision.current) return;
       setProfilePhoto(null);
-      setPhotoMessage('Local photo preview removed. Your server photo is unchanged.');
+      setPhotoMessage('Profile photo removed from this browser.');
       if (photoInputRef.current) photoInputRef.current.value = '';
     } catch {
       if (revision === photoRevision.current) {
@@ -467,7 +406,7 @@ export default function StudentAccount() {
                         Remove photo
                       </button>
                     )}
-                    <p className="sp-muted">JPG, PNG or WebP · Max 2 MB · Uploads to your student profile</p>
+                    <p className="sp-muted">JPG, PNG or WebP · Max 2 MB · Saved on this browser only</p>
                     {photoMessage && <p role="status" className="sp-muted">{photoMessage}</p>}
                   </div>
                 </div>
@@ -481,22 +420,6 @@ export default function StudentAccount() {
                   <div><dt>Qualification</dt><dd>{display(qualification)}</dd></div>
                   <div><dt>Branch</dt><dd>{display(readField(studentRecord, 'branchName', 'branch_Name'))}</dd></div>
                 </dl>
-                {!isEditing && <button type="button" className="btn btn-primary mt-3" onClick={() => void beginProfileEdit()} disabled={!studentId}>Edit profile</button>}
-                {isEditing && <form className="sp-stack mt-3" onSubmit={saveProfile}>
-                  {([
-                    ['studentName', 'Full name'],
-                    ['emailAddress', 'Email'],
-                    ['mobileNumber', 'Mobile number'],
-                    ['qualification', 'Qualification'],
-                  ] as const).map(([key, label]) => <label key={key}>{label}
-                    <input className="form-control" value={editFields[key]} onChange={event => setEditFields(current => ({ ...current, [key]: event.target.value }))} disabled={isSaving} />
-                  </label>)}
-                  <div className="d-flex gap-2">
-                    <button type="submit" className="btn btn-primary" disabled={isSaving}>{isSaving ? 'Saving…' : 'Save changes'}</button>
-                    <button type="button" className="btn btn-outline-secondary" disabled={isSaving} onClick={() => setIsEditing(false)}>Cancel</button>
-                  </div>
-                </form>}
-                {editMessage && <p role="status" className="sp-muted mt-2">{editMessage}</p>}
               </section>
               <section className="sp-panel"><h2>Change Password</h2><p className="sp-muted">Student password changes are not yet available. The existing ERP change-password API belongs to staff accounts and cannot safely be used for student credentials.</p></section>
             </div>
