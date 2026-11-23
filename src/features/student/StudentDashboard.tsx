@@ -7,6 +7,8 @@ interface StudentDashboardProps {
   loading: boolean;
   courseRows: StudentRow[];
   batchRows: StudentRow[];
+  batchesLoading: boolean;
+  batchesError: string;
   paymentRows: StudentRow[];
   totalPaid: number;
 }
@@ -55,6 +57,8 @@ export default function StudentDashboard({
   loading,
   courseRows,
   batchRows,
+  batchesLoading,
+  batchesError,
   paymentRows,
   totalPaid,
 }: StudentDashboardProps) {
@@ -72,7 +76,7 @@ export default function StudentDashboard({
     <div className="sp-section-page sp-dashboard">
       <div id="student-overview" className="sp-stats" aria-label="Student account summary">
         <div className="sp-panel"><span>Enrolled courses</span><strong>{studentRecordLoaded ? courseRows.length : '—'}</strong></div>
-        <div className="sp-panel"><span>Assigned batches</span><strong>{studentRecordLoaded ? batchRows.length : '—'}</strong></div>
+        <div className="sp-panel"><span>Assigned batches</span><strong>{studentRecordLoaded && !batchesLoading && !batchesError ? batchRows.length : '—'}</strong></div>
         <div className="sp-panel"><span>Recorded payments</span><strong>{studentRecordLoaded ? paymentRows.length : '—'}</strong></div>
         <div className="sp-panel"><span>Payment total</span><strong>{paymentRows.length ? money(totalPaid) : '—'}</strong></div>
       </div>
@@ -109,11 +113,11 @@ export default function StudentDashboard({
           <div className="sp-dashboard-panel-heading">
             <div>
               <h2 id="sp-dashboard-batches-title">My Batches</h2>
-              <p>Batch information from your registration.</p>
+              <p>Your assigned training batches.</p>
             </div>
             <Link className="sp-dashboard-view-link" to="/student-portal/batches">View all <i className="bi bi-arrow-right" aria-hidden="true" /></Link>
           </div>
-          {batchRows.length ? (
+          {!batchesLoading && !batchesError && batchRows.length ? (
             <ul className="sp-dashboard-record-list">
               {batchRows.slice(0, 2).map((batch, index) => (
                 <li key={String(field(batch, 'batchId', 'batch_Id', 'batch_id') ?? index)}>
@@ -130,7 +134,7 @@ export default function StudentDashboard({
           ) : (
             <div className="sp-dashboard-empty sp-dashboard-empty-illustrated">
               <i className="bi bi-calendar2-week" aria-hidden="true" />
-              <p>{dataUnavailable || 'No batch details are available in your student record yet.'}</p>
+              <p>{batchesLoading ? 'Loading assigned batches…' : batchesError || dataUnavailable || 'No batches have been assigned to your account yet.'}</p>
             </div>
           )}
         </section>
