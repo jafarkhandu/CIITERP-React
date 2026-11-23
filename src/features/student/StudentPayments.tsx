@@ -3,9 +3,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { FormEvent } from 'react';
 import { studentApi, type PaymentRequest, type PaymentRow } from '@/api/studentApi';
+import { emailAddressFrom, sendAutomaticEmail } from '@/core/notifications/automaticEmail';
 
 type Row = Record<string, unknown>;
-type Registration = { registrationId: number; studentId: number; courseId: number; registrationCode: string; courseName: string; discount: number; studentName: string; lastName: string; mobileNumber: string };
+type Registration = { registrationId: number; studentId: number; courseId: number; registrationCode: string; courseName: string; discount: number; studentName: string; lastName: string; mobileNumber: string; emailAddress?: string };
 const money = (v: unknown) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(v) || 0);
 const dateKey = (value: unknown): string => {
   if (!value) return '';
@@ -75,7 +76,7 @@ export default function StudentPayments() {
           const id = Number(pick(r, 'registrationId', 'registration_id', 'registration_Id') ?? 0);
           const courseId = Number(pick(r, 'courseId', 'course_id', 'course_Id') ?? 0);
           if (!id || !courseId) continue;
-          mapped.push({ registrationId: id, studentId: Number(pick(r, 'studentId', 'student_id', 'student_Id') ?? student), courseId, registrationCode: String(pick(r, 'registrationCode', 'registration_code', 'registration_Code') ?? ''), courseName: String(pick(r, 'courseName', 'course_name', 'course_Name') ?? ''), discount: Number(pick(r, 'discount', 'Discount') ?? 0), studentName: String(pick(r, 'studentName', 'student_name', 'student_Name') ?? pick(item, 'studentName', 'student_name', 'student_Name') ?? ''), lastName: String(pick(r, 'lastName', 'last_name', 'last_Name') ?? pick(item, 'lastName', 'last_name', 'last_Name') ?? ''), mobileNumber: String(pick(r, 'mobileNumber', 'mobile_number', 'mobile_Number') ?? pick(item, 'mobileNumber', 'mobile_number', 'mobile_Number') ?? '') });
+          mapped.push({ registrationId: id, studentId: Number(pick(r, 'studentId', 'student_id', 'student_Id') ?? student), courseId, registrationCode: String(pick(r, 'registrationCode', 'registration_code', 'registration_Code') ?? ''), courseName: String(pick(r, 'courseName', 'course_name', 'course_Name') ?? ''), discount: Number(pick(r, 'discount', 'Discount') ?? 0), studentName: String(pick(r, 'studentName', 'student_name', 'student_Name') ?? pick(item, 'studentName', 'student_name', 'student_Name') ?? ''), lastName: String(pick(r, 'lastName', 'last_name', 'last_Name') ?? pick(item, 'lastName', 'last_name', 'last_Name') ?? ''), mobileNumber: String(pick(r, 'mobileNumber', 'mobile_number', 'mobile_Number') ?? pick(item, 'mobileNumber', 'mobile_number', 'mobile_Number') ?? ''), emailAddress: emailAddressFrom(r) || emailAddressFrom(item) });
         }
       }
       setRegistrations(mapped);
@@ -271,7 +272,19 @@ export default function StudentPayments() {
     if (!Number.isFinite(paymentForm.paymentAmount) || paymentForm.paymentAmount <= 0 || paymentForm.paymentAmount > balance) { setError('Enter an amount greater than zero and no more than the remaining balance (' + money(balance) + ').'); return; }
     const payload: PaymentRequest = { ...paymentForm, paymentDate: `${paymentForm.paymentDate}T00:00:00`, registrationId };
     setSaving(true);
-    try { await studentApi.createPayment(payload); setModal(null); await loadPayments(); }
+    try {
+      await studentApi.createPayment(payload);
+      const recipient = selectedRegistration.emailAddress || emailAddressFrom(
+        payments.find((payment) => Number(payment.studentId) === selectedRegistration.studentId),
+      );
+      sendAutomaticEmail(
+        recipient,
+        'CIIT payment receipt confirmation',
+        `Hello ${selectedRegistration.studentName || 'Student'},\n\nWe have received your payment of ${money(paymentForm.paymentAmount)} for ${selectedRegistration.courseName || 'your course'}.\nPayment date: ${paymentForm.paymentDate}\nPayment mode: ${paymentForm.paymentMode}\nRegistration: ${selectedRegistration.registrationCode || selectedRegistration.registrationId}\n\nYou can obtain the official payment receipt from CIIT Training Institute.\n\nCIIT Training Institute`,
+      );
+      setModal(null);
+      await loadPayments();
+    }
     catch (err) { console.error('Payment creation failed:', err); setError('Payment could not be saved. Verify the details and try again.'); }
     finally { setSaving(false); }
   }
