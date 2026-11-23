@@ -11,6 +11,8 @@ const apiProxy: Record<string, ProxyOptions> = {};
 
 for (const service of Object.keys(API_ORIGINS) as ApiService[]) {
   const prefix = devApiPrefix(service);
+  if (!prefix) continue;
+
   apiProxy[`^${prefix}/api/`] = {
     target: API_ORIGINS[service],
     agent: upstreamAgent,

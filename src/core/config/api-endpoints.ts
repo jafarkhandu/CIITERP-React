@@ -1,7 +1,8 @@
 import { API_ORIGINS, devApiPrefix, type ApiService } from './api-services';
 
 function apiRoot(service: ApiService) {
-  const origin = import.meta.env.DEV ? devApiPrefix(service) : API_ORIGINS[service];
+  const prefix = import.meta.env.DEV ? devApiPrefix(service) : null;
+  const origin = prefix ?? API_ORIGINS[service];
   return `${origin}/api`;
 }
 

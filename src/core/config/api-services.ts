@@ -11,5 +11,6 @@ export const API_ORIGINS = {
 export type ApiService = keyof typeof API_ORIGINS;
 
 export function devApiPrefix(service: ApiService) {
-  return `/__ciit_api/${service}`;
+  // Keep the student service on its direct HTTPS path during local development.
+  return service === 'student' ? null : `/__ciit_api/${service}`;
 }
