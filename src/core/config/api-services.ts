@@ -11,6 +11,7 @@ export const API_ORIGINS = {
 export type ApiService = keyof typeof API_ORIGINS;
 
 export function devApiPrefix(service: ApiService) {
-  // Keep the student service on its direct HTTPS path during local development.
-  return service === 'student' ? null : `/__ciit_api/${service}`;
+  // Route student requests through the existing Vite development proxy as well.
+  // Direct browser calls to its HTTPS origin are blocked by CORS on localhost.
+  return `/__ciit_api/${service}`;
 }
