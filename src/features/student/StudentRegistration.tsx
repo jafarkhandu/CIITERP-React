@@ -10,6 +10,7 @@ import { courseApi, type TrainingCourseRecord } from '@/api/courseApi';
 import { directoryApi, type BranchOption } from '@/api/directoryApi';
 import { studentApi, type RegistrationRequest, type StudentRow } from '@/api/studentApi';
 import { enquiryApi, type EnquiryRecord } from '@/api/enquiryApi';
+import { sendAutomaticEmail } from '@/core/notifications/automaticEmail';
 
 type Row = Record<string, unknown>;
 type Qualification = { qualificationId: number; qualification: string };
@@ -191,6 +192,13 @@ export default function StudentRegistration() {
     setSaving(true);
     try {
       await studentApi.registerExistingStudentCourse({ studentId: existingStudentId, courseId: existingCourseId, discount: existingDiscount, paymentAmount: existingPayment.paymentAmount, paymentDate: iso(existingPayment.paymentDate), paymentMode: existingPayment.paymentMode, paymentDescription: existingPayment.paymentDescription, leadId: 0 });
+      const student = students.find((item) => item.studentId === existingStudentId);
+      const course = courses.find((item) => item.courseId === existingCourseId);
+      sendAutomaticEmail(
+        student?.emailAddress,
+        'CIIT new course enrolment',
+        `Hello ${student?.studentName ?? 'Student'},\n\nYou have been enrolled in ${course?.courseName ?? 'your selected course'} at CIIT Training Institute.\n\nCIIT Training Institute`,
+      );
       setSuccess('Existing student enrolled successfully.'); setModal(null); await loadData();
     } catch (err) { console.error('Existing student registration failed:', err); setError('Could not register this student for the selected course.'); }
     finally { setSaving(false); }
