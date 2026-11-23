@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { enquiryApi, type EnquiryRecord } from '@/api/enquiryApi';
 import { directoryApi, type BranchOption } from '@/api/directoryApi';
 import { leadApi, type LeadSourceRecord } from '@/api/leadApi';
+import { sendAutomaticEmail } from '@/core/notifications/automaticEmail';
 import './Enquiry.css';
 
 type FormState = Omit<EnquiryRecord, 'enquiryId'>;
@@ -146,8 +147,16 @@ export default function EnquiryForm() {
     };
     setSaving(true);
     try {
-      if (editMode) await enquiryApi.update(enquiryId, { enquiryId, ...payload } as EnquiryRecord);
-      else await enquiryApi.create(payload);
+      if (editMode) {
+        await enquiryApi.update(enquiryId, { enquiryId, ...payload } as EnquiryRecord);
+      } else {
+        await enquiryApi.create(payload);
+        sendAutomaticEmail(
+          form.emailAddress,
+          'CIIT enquiry confirmation',
+          `Hello ${form.candidateName},\n\nYour enquiry has been recorded successfully. Our team will contact you about your training interests.\n\nCIIT Training Institute`,
+        );
+      }
       navigate('/main/enquiry');
     } catch (requestError: any) {
       setError(requestError?.response?.data?.message || (editMode ? 'Unable to update enquiry.' : 'Unable to create enquiry.'));
