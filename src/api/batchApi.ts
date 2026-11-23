@@ -87,6 +87,17 @@ export const batchStudentApi = {
   },
 };
 
+/**
+ * Student-scoped batch assignments. The backend must derive the current
+ * student from the authenticated JWT; never request a global roster here.
+ */
+export const studentBatchApi = {
+  getMyBatches: async (): Promise<Record<string, unknown>[]> => {
+    const { data } = await http.get(`${studentUrl}/my-batches`);
+    return extractRows(data);
+  },
+};
+
 export const batchScheduleApi = {
   generate: async (batchId: number) => {
     requirePositiveId(batchId, 'batchId');
