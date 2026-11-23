@@ -50,7 +50,7 @@ interface AssignmentEmailResult {
  * recipients by exact registration ID, then by exact student ID; never by name.
  * Email failures must not undo completed batch assignments.
  */
-async function notifyBatchAssignments(assigned: RegistrationRow[], batchName: string): Promise<AssignmentEmailResult> {
+async function notifyBatchAssignments(assigned: RegistrationRow[], batchName: string, batchId: number): Promise<AssignmentEmailResult> {
   const emails = new Map<number, string>();
   const registrationsById = new Map<number, Row>();
 
@@ -61,10 +61,26 @@ async function notifyBatchAssignments(assigned: RegistrationRow[], batchName: st
 
   if (emails.size < assigned.length) {
     try {
+      const roster = await batchStudentApi.getByBatch(batchId);
+      for (const record of roster) {
+        const id = Number(read(record, 'registrationId', 'registration_id', 'registration_Id') ?? 0);
+        if (id <= 0) continue;
+        registrationsById.set(id, record);
+        if (!assigned.some((student) => student.registrationId === id) || emails.has(id)) continue;
+        const email = emailAddressFrom(record);
+        if (email) emails.set(id, email);
+      }
+    } catch (error: any) {
+      console.warn('Batch assignment roster email lookup failed:', error?.response?.status ?? 'network error');
+    }
+  }
+
+  if (emails.size < assigned.length) {
+    try {
       const records = await studentApi.getRegistrations();
       for (const record of records) {
         const id = Number(read(record, 'registrationId', 'registration_id', 'registration_Id', 'RegistrationId') ?? 0);
-        if (id > 0) registrationsById.set(id, record);
+        if (id > 0) registrationsById.set(id, { ...registrationsById.get(id), ...record });
       }
 
       for (const student of assigned) {
@@ -95,7 +111,9 @@ async function notifyBatchAssignments(assigned: RegistrationRow[], batchName: st
     if (missingStudentIds) {
       try {
         const students = await studentApi.getStudents();
-        const emailsByStudentId = new Map(students.map((student) => [student.studentId, emailAddressFrom(student)]));
+        const emailsByStudentId = new Map<number, string>(
+          students.map((student): [number, string] => [student.studentId, emailAddressFrom(student)]),
+        );
 
         for (const student of assigned) {
           if (emails.has(student.registrationId)) continue;
@@ -434,7 +452,7 @@ export default function BatchManagement() {
       await load();
       if (partialFailure) setError(partialFailure);
       if (assigned.length) {
-        void notifyBatchAssignments(assigned, studentBatch.batchName)
+        void notifyBatchAssignments(assigned, studentBatch.batchName, studentBatch.batchId)
           .then(({ requested, missing, failed }) => {
             if (!missing && !failed) {
               console.info('Batch assignment email requests accepted:', requested);
