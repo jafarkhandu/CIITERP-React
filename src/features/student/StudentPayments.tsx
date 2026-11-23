@@ -274,8 +274,11 @@ export default function StudentPayments() {
     setSaving(true);
     try {
       await studentApi.createPayment(payload);
-      const recipient = selectedRegistration.emailAddress || emailAddressFrom(
-        payments.find((payment) => Number(payment.studentId) === selectedRegistration.studentId),
+      const recipient = selectedRegistration.emailAddress || (
+        selectedRegistration.studentId > 0
+          ? emailAddressFrom(payments.find((payment) =>
+              Number(payment.studentId) === selectedRegistration.studentId))
+          : ''
       );
       sendAutomaticEmail(
         recipient,
