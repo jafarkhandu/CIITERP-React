@@ -125,24 +125,24 @@ export default function StudentAccount() {
     if (studentId) {
       Promise.allSettled([studentApi.getStudentDetailsById(studentId), loadStudentPhoto(studentId)])
         .then(([detailsResult, cachedPhotoResult]) => {
-          if (!active || revision !== photoRevision.current) return;
+          if (!active) return;
           const localPhoto = cachedPhotoResult.status === 'fulfilled' ? cachedPhotoResult.value : null;
           if (detailsResult.status === 'fulfilled') {
             const details = ownedRegistrationResponse(detailsResult.value, studentId);
             if (details) {
               setStudentDetails(details);
-              setProfilePhoto(profilePhotoSource(details) ?? localPhoto);
+              if (revision === photoRevision.current) setProfilePhoto(profilePhotoSource(details) ?? localPhoto);
             } else {
               setDetailsError('Student details could not be matched to your signed-in account.');
-              setProfilePhoto(localPhoto);
+              if (revision === photoRevision.current) setProfilePhoto(localPhoto);
             }
           } else {
             setDetailsError('Editable student details are currently unavailable.');
-            setProfilePhoto(localPhoto);
+            if (revision === photoRevision.current) setProfilePhoto(localPhoto);
           }
         })
         .finally(() => {
-          if (active && revision === photoRevision.current) setDetailsLoading(false);
+          if (active) setDetailsLoading(false);
         });
     }
 
@@ -165,8 +165,6 @@ export default function StudentAccount() {
     const revision = ++photoRevision.current;
     setPhotoMessage('Uploading profile photo…');
     try {
-      await studentApi.uploadMyProfilePhoto(file);
-      if (revision !== photoRevision.current) return;
       const photo = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => typeof reader.result === 'string'
@@ -174,6 +172,8 @@ export default function StudentAccount() {
         reader.onerror = () => reject(new Error('Image preview unavailable'));
         reader.readAsDataURL(file);
       });
+      if (revision !== photoRevision.current) return;
+      await studentApi.uploadMyProfilePhoto(file);
       if (revision !== photoRevision.current) return;
       setProfilePhoto(photo);
       await saveStudentPhoto(studentId, photo).catch(() => {
