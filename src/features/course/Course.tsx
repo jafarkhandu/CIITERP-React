@@ -141,9 +141,9 @@ export default function Course() {
         <header><div><h2 id="course-modal-title">{editingId === null ? 'Add Course' : 'Edit Course'}</h2><p>Course details and fee settings</p></div><button type="button" aria-label="Close" disabled={saving} onClick={() => setModalOpen(false)}>×</button></header>
         <form onSubmit={submit}><div className="course-form-grid">
           <label>Course Name *<input required minLength={2} value={form.courseName} onChange={(event) => setForm({ ...form, courseName: event.target.value })} /></label>
-          <label>Fees Amount<input type="number" min="0" step="0.01" value={form.feesAmount} onChange={(event) => setForm({ ...form, feesAmount: event.target.value })} /></label>
+          <label>Fees Amount<input type="number" min="0" step="0.01" value={form.feesAmount} onChange={(event) => setForm({ ...form, feesAmount: event.target.value.replace(/^0+(?=\d)/, '') })} /></label>
           <label>Fees Change Date<input type="date" value={form.feesChangeDate} onChange={(event) => setForm({ ...form, feesChangeDate: event.target.value })} /></label>
-          <label>Installment Percentage<input type="number" min="0" max="100" step="0.01" value={form.installmentPercentage} onChange={(event) => setForm({ ...form, installmentPercentage: event.target.value })} /></label>
+          <label>Installment Percentage<input type="number" min="0" max="100" step="0.01" value={form.installmentPercentage} onChange={(event) => setForm({ ...form, installmentPercentage: event.target.value.replace(/^0+(?=\d)/, '') })} /></label>
         </div>
         {error && <div className="course-alert error" role="alert">{error}</div>}
         <footer><button className="course-secondary-btn" type="button" disabled={saving} onClick={() => setModalOpen(false)}>Cancel</button><button className="course-primary-btn" type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Course'}</button></footer></form>
