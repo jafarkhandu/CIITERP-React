@@ -11,6 +11,7 @@ import {
   type CreateBatchRequest,
 } from '@/api/batchApi';
 import { directoryApi, type BranchOption } from '@/api/directoryApi';
+import { sendAutomaticEmail, sendUniqueAutomaticEmails } from '@/core/notifications/automaticEmail';
 import './BatchManagement.css';
 
 type Row = Record<string, any>;
@@ -193,10 +194,34 @@ export default function BatchManagement() {
       branch_id: Number(form.branch_id), start_date: localMidnightIso(form.start_date), end_date: localMidnightIso(form.end_date),
       batch_time: `${time12(startTime)} - ${time12(endTime)}`, playlist_title: form.playlist_title.trim(), playlist_key: form.playlist_key.trim(),
     };
+    const previousBatch = editingBatchId
+      ? batches.find((batch) => batch.batchId === editingBatchId)
+      : undefined;
+    const previousTiming = previousBatch ? String(read(previousBatch, 'batch_time', 'batchTime') ?? '') : '';
+    const previousStart = previousBatch ? dateInput(read(previousBatch, 'start_date', 'startDate')) : '';
+    const previousEnd = previousBatch ? dateInput(read(previousBatch, 'end_date', 'endDate')) : '';
+    const scheduleChanged = !!previousBatch && (
+      (!!previousTiming && previousTiming !== payload.batch_time) ||
+      (!!previousStart && previousStart !== form.start_date) ||
+      (!!previousEnd && previousEnd !== form.end_date)
+    );
+
     setSaving(true);
     try {
-      if (editingBatchId) await batchApi.update(editingBatchId, payload);
-      else await batchApi.create(payload);
+      if (editingBatchId) {
+        await batchApi.update(editingBatchId, payload);
+        if (scheduleChanged) {
+          void batchStudentApi.getByBatch(editingBatchId)
+            .then((students) => sendUniqueAutomaticEmails(
+              students,
+              'CIIT batch timing updated',
+              `Your batch ${payload.batch_name} has an updated schedule.\nStart date: ${form.start_date}\nEnd date: ${form.end_date}\nTiming: ${payload.batch_time}\n\nCIIT Training Institute`,
+            ))
+            .catch((notificationError: unknown) => console.warn('Batch timing notification lookup failed:', notificationError));
+        }
+      } else {
+        await batchApi.create(payload);
+      }
       setShowCreate(false); setSuccess(editingBatchId ? 'Batch updated successfully.' : 'Batch created successfully.');
       setTab('active'); await load();
     } catch (requestError: any) { setError(requestError?.response?.data?.message || (editingBatchId ? 'Unable to update batch.' : 'Unable to create batch.')); }
@@ -246,7 +271,18 @@ export default function BatchManagement() {
   async function generateSchedule(row: BatchRow) {
     if (!window.confirm(`Generate schedule for ${row.batchName}?`)) return;
     setSaving(true); setError('');
-    try { await batchScheduleApi.generate(row.batchId); setSuccess('Schedule generated successfully.'); await viewSchedule(row); }
+    try {
+      await batchScheduleApi.generate(row.batchId);
+      setSuccess('Schedule generated successfully.');
+      void batchStudentApi.getByBatch(row.batchId)
+        .then((students) => sendUniqueAutomaticEmails(
+          students,
+          'CIIT batch schedule available',
+          `The schedule for your batch ${row.batchName} has been generated. Please check your CIIT training schedule.\n\nCIIT Training Institute`,
+        ))
+        .catch((notificationError: unknown) => console.warn('Generated schedule notification lookup failed:', notificationError));
+      await viewSchedule(row);
+    }
     catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to generate schedule.'); }
     finally { setSaving(false); }
   }
@@ -299,6 +335,15 @@ export default function BatchManagement() {
     try {
       const outcomes = await Promise.allSettled(selected.map((item) => batchStudentApi.create({ batch_id: studentBatch.batchId, registration_id: item.registrationId })));
       const successes = outcomes.filter((item) => item.status === 'fulfilled').length;
+      outcomes.forEach((outcome, index) => {
+        if (outcome.status !== 'fulfilled') return;
+        const student = selected[index];
+        sendAutomaticEmail(
+          student,
+          'CIIT batch assignment confirmation',
+          `Hello ${student.studentName},\n\nYou have been assigned to ${studentBatch.batchName}. Please check your training timetable for more details.\n\nCIIT Training Institute`,
+        );
+      });
       const partialFailure = successes !== selected.length
         ? `${successes} of ${selected.length} students added. Some requests failed; check eligible list and retry.`
         : '';
@@ -348,6 +393,11 @@ export default function BatchManagement() {
       })));
       const failed = outcomes.filter((item) => item.status === 'rejected').length;
       if (failed) throw new Error(`Attendance session saved, but ${failed} student attendance entries failed.`);
+      sendUniqueAutomaticEmails(
+        attendanceStudents.filter((student) => !student.isPresent),
+        'CIIT attendance notification',
+        `Your attendance for ${attendanceBatch?.batchName || 'your batch'} on ${attendanceDate} was marked absent. If this is incorrect, please contact CIIT Training Institute.`,
+      );
       setSuccess(`Attendance saved. Present: ${attendanceStudents.filter((item) => item.isPresent).length}; absent: ${attendanceStudents.filter((item) => !item.isPresent).length}.`);
       setAttendanceBatch(null);
     } catch (requestError: any) { setError(requestError?.response?.data?.message || requestError?.message || 'Unable to save attendance.'); }
@@ -362,7 +412,18 @@ export default function BatchManagement() {
   }
   async function submitScheduleEdit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setSaving(true); setError('');
-    try { await batchScheduleApi.update(editingScheduleId, scheduleEdit); setEditingScheduleId(0); if (scheduleBatch) await viewSchedule(scheduleBatch); }
+    try {
+      await batchScheduleApi.update(editingScheduleId, scheduleEdit);
+      if (scheduleBatch) {
+        sendUniqueAutomaticEmails(
+          roster,
+          'CIIT batch schedule updated',
+          `A training schedule entry for ${scheduleBatch.batchName} has been updated. Please check the latest date and status in your CIIT schedule.\n\nCIIT Training Institute`,
+        );
+      }
+      setEditingScheduleId(0);
+      if (scheduleBatch) await viewSchedule(scheduleBatch);
+    }
     catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to update schedule.'); }
     finally { setSaving(false); }
   }
