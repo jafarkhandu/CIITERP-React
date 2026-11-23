@@ -160,8 +160,8 @@ export default function StudentAccount() {
       setPhotoMessage('Your student account could not be identified. Please sign in again.');
       return;
     }
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size === 0 || file.size > 2 * 1024 * 1024) {
-      setPhotoMessage('Choose a JPG, PNG or WebP image between 1 byte and 2 MB.');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size === 0 || file.size > 4 * 1024 * 1024) {
+      setPhotoMessage('Choose a JPG, PNG or WebP image between 1 byte and 4 MB.');
       return;
     }
 
@@ -463,7 +463,7 @@ export default function StudentAccount() {
                         Clear local photo
                       </button>
                     )}
-                    <p className="sp-muted">JPG, PNG or WebP · Max 2 MB · Uploads to your student account</p>
+                    <p className="sp-muted">JPG, PNG or WebP · Max 4 MB · Uploads to your student account</p>
                     {photoMessage && <p role="status" className="sp-muted">{photoMessage}</p>}
                   </div>
                 </div>
