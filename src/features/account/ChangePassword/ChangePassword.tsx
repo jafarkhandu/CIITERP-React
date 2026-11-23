@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { accountApi } from '@/api/accountApi';
+import { userSession } from '@/core/auth/session';
+import { sendAutomaticEmail } from '@/core/notifications/automaticEmail';
 import { apiErrorMessage } from '@/core/http/errors';
 import './ChangePassword.css';
 
@@ -67,6 +69,11 @@ export default function ChangePassword() {
     setSubmitting(true);
     try {
       await accountApi.changePassword({ currentPassword, newPassword });
+      sendAutomaticEmail(
+        userSession.getSnapshot().email,
+        'CIIT ERP password changed',
+        'Your CIIT ERP account password was changed successfully. If you did not make this change, contact your administrator immediately.\n\nCIIT Training Institute',
+      );
       setSubmitting(false);
       setSuccessmessage('Password changed successfully.');
       setCurrentPassword('');
