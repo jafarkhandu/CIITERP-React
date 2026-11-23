@@ -67,6 +67,17 @@ function formatStudentDate(value: unknown): string {
   return `${day}/${month}/${year}`;
 }
 
+function comparePaymentsNewestFirst(first: StudentRecord, second: StudentRecord): number {
+  const dateKeys = ['paymentDate', 'payment_Date', 'payment_date', 'PaymentDate'];
+  const firstDate = String(readField(first, ...dateKeys) ?? '').trim().replace(' ', 'T');
+  const secondDate = String(readField(second, ...dateKeys) ?? '').trim().replace(' ', 'T');
+  const byDate = secondDate.localeCompare(firstDate);
+  if (byDate !== 0) return byDate;
+
+  const paymentIds = ['paymentId', 'payment_Id', 'payment_id', 'PaymentId'];
+  return Number(readField(second, ...paymentIds) ?? 0) - Number(readField(first, ...paymentIds) ?? 0);
+}
+
 function nestedRows(row: StudentRecord | null, ...keys: string[]): StudentRecord[] {
   const entries = readField(row, ...keys);
   return Array.isArray(entries) ? entries.filter((item): item is StudentRecord => asRecord(item) !== null) : [];
@@ -94,6 +105,39 @@ export default function StudentAccount() {
     rows: StudentRecord[];
   } | null>(null);
   const [expandedDetail, setExpandedDetail] = useState<string | null>(null);
+  const [invoiceDownloadingId, setInvoiceDownloadingId] = useState<number | null>(null);
+  const [invoiceError, setInvoiceError] = useState<{ paymentId: number; message: string } | null>(null);
+
+  async function downloadPaymentInvoice(paymentId: number, registrationId: number): Promise<void> {
+    if (!Number.isSafeInteger(paymentId) || paymentId <= 0 ||
+        !Number.isSafeInteger(registrationId) || registrationId <= 0 ||
+        invoiceDownloadingId !== null) return;
+
+    setInvoiceError(null);
+    setInvoiceDownloadingId(paymentId);
+    try {
+      // Reuse the official PDF produced by the payment service.
+      const invoice = await studentApi.downloadInvoice(registrationId, paymentId);
+      if (!(invoice instanceof Blob) || invoice.size < 5 ||
+          await invoice.slice(0, 5).text() !== '%PDF-') {
+        throw new Error('The invoice API did not return a valid PDF.');
+      }
+
+      const url = URL.createObjectURL(new Blob([invoice], { type: 'application/pdf' }));
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `CIIT-Payment-Invoice-${paymentId}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch (error) {
+      console.error('Student invoice download failed:', error);
+      setInvoiceError({ paymentId, message: 'Invoice download failed. Please try again.' });
+    } finally {
+      setInvoiceDownloadingId(null);
+    }
+  }
 
   function toggleDetail(key: string) {
     setExpandedDetail(current => current === key ? null : key);
@@ -371,6 +415,7 @@ export default function StudentAccount() {
       ].filter(belongsToStudent);
   const totalPaid = paymentRows.reduce((sum, row) =>
     sum + (Number(readField(row, 'paymentAmount', 'payment_Amount')) || 0), 0);
+  const newestPayments = [...paymentRows].sort(comparePaymentsNewestFirst);
 
   function toggleTheme() {
     const next = !isDarkTheme;
@@ -586,9 +631,19 @@ export default function StudentAccount() {
               <section id="student-payments" className="sp-panel">
               <div className="sp-student-payment-summary"><div><span>Total Amount Paid</span><strong>{currency(totalPaid)}</strong></div><div><span>Payment entries</span><strong>{paymentRows.length}</strong></div></div>
               <h2>Payment history</h2>
-              {paymentRows.length ? <div className="sp-stack">{paymentRows.map((row, index) => {
+              {paymentRows.length ? <div className="sp-stack">{newestPayments.map((row, index) => {
                 const id = readField(row, 'paymentId', 'payment_Id');
-                const registration = courseRows.find(course => nestedRows(course, 'payments', 'Payments').some(payment => String(readField(payment, 'paymentId', 'payment_Id')) === String(id)));
+                const paymentRegistrationId = Number(readField(row, 'registrationId', 'registration_Id', 'registration_id', 'RegistrationId') ?? 0);
+                const registration = courseRows.find(course =>
+                  nestedRows(course, 'payments', 'Payments').some(payment =>
+                    String(readField(payment, 'paymentId', 'payment_Id', 'payment_id', 'PaymentId')) === String(id),
+                  ) || (paymentRegistrationId > 0 &&
+                    Number(readField(course, 'registrationId', 'registration_Id', 'registration_id', 'RegistrationId')) === paymentRegistrationId),
+                );
+                const paymentId = Number(id ?? 0);
+                const linkedRegistrationId = Number(readField(registration ?? null, 'registrationId', 'registration_Id', 'registration_id', 'RegistrationId') ?? 0);
+                const canDownloadInvoice = Number.isSafeInteger(paymentId) && paymentId > 0 &&
+                  Number.isSafeInteger(linkedRegistrationId) && linkedRegistrationId > 0;
                 const key = `payment-${String(id ?? index)}`;
                 const expanded = expandedDetail === key;
                 return <article className="sp-entry sp-student-detail-card" key={key}>
@@ -603,6 +658,21 @@ export default function StudentAccount() {
                     <div><dt>Payment mode</dt><dd>{display(readField(row, 'paymentMode', 'payment_Mode'))}</dd></div>
                     <div className="sp-student-detail-wide"><dt>Description</dt><dd>{display(readField(row, 'paymentDescription', 'payment_Description'))}</dd></div>
                   </dl>}
+                  {expanded && (
+                    <div className="sp-student-invoice-actions">
+                      {canDownloadInvoice ? (
+                        <button type="button" className="sp-student-invoice-button"
+                          disabled={invoiceDownloadingId !== null}
+                          onClick={() => void downloadPaymentInvoice(paymentId, linkedRegistrationId)}>
+                          <i className="bi bi-file-earmark-pdf" aria-hidden="true" />
+                          {invoiceDownloadingId === paymentId ? 'Downloading…' : 'Download Invoice (PDF)'}
+                        </button>
+                      ) : <p className="sp-muted">Invoice is unavailable for this payment.</p>}
+                      {invoiceError?.paymentId === paymentId && (
+                        <p className="sp-muted sp-student-invoice-error" role="alert">{invoiceError.message}</p>
+                      )}
+                    </div>
+                  )}
                 </article>;
               })}</div> : <p className="sp-muted">No payment records available from your registration details.</p>}
               <p className="sp-muted">Attendance will appear when a student-scoped attendance API is available.</p>
