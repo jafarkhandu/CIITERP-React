@@ -94,6 +94,70 @@ export default function StudentAccount() {
   useEffect(() => { window.scrollTo(0, 0); }, [page, hash]);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [photoMessage, setPhotoMessage] = useState('');
+  const [editSource, setEditSource] = useState<StudentRecord | null>(null);
+  const [editFields, setEditFields] = useState({ studentName: '', emailAddress: '', mobileNumber: '', qualification: '' });
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editMessage, setEditMessage] = useState('');
+
+  async function beginProfileEdit() {
+    if (!studentId) return;
+    setEditMessage('');
+    try {
+      const result = await studentApi.getStudentDetailsById(studentId);
+      const row = ownedRegistrationResponse(result, studentId);
+      if (!row) throw new Error('Profile does not match authenticated student.');
+      setEditSource(row);
+      setEditFields({
+        studentName: String(readField(row, 'studentName') ?? ''),
+        emailAddress: String(readField(row, 'emailAddress') ?? ''),
+        mobileNumber: String(readField(row, 'mobileNumber') ?? ''),
+        qualification: String(readField(row, 'qualification') ?? ''),
+      });
+      setIsEditing(true);
+    } catch {
+      setEditMessage('Cannot load verified profile details for editing. Please try again.');
+    }
+  }
+
+  async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!studentId || !editSource || Number(readField(editSource, 'studentId')) !== studentId) return;
+    const name = editFields.studentName.trim();
+    const email = editFields.emailAddress.trim();
+    const mobile = editFields.mobileNumber.trim();
+    if (!name || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || !/^\\d{10}$/.test(mobile)) {
+      setEditMessage('Enter a name, valid email and 10-digit mobile number.');
+      return;
+    }
+    const required = ['studentId', 'studentName', 'gender', 'mobileNumber', 'emailAddress',
+      'birthDate', 'qualification', 'parentName', 'parentNumber', 'lastName',
+      'whatsappNumber', 'localAddress', 'permanentAddress', 'aadharCardNumber',
+      'aadharCardPhoto', 'branchId'] as const;
+    const payload: Record<string, unknown> = {};
+    for (const key of required) {
+      if (editSource[key] === undefined || editSource[key] === null) {
+        setEditMessage('Update blocked: the API did not return all original fields required for a safe update.');
+        return;
+      }
+      payload[key] = editSource[key];
+    }
+    Object.assign(payload, { studentName: name, emailAddress: email, mobileNumber: mobile, qualification: editFields.qualification });
+    setIsSaving(true);
+    setEditMessage('');
+    try {
+      await studentApi.updateMyProfile(payload);
+      setEditSource({ ...editSource, ...payload });
+      setStudentRecord(current => current ? { ...current, ...payload } : current);
+      setIsEditing(false);
+      setEditMessage('Profile updated successfully.');
+    } catch {
+      setEditMessage('Profile update failed. Existing details were preserved.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   const photoInputRef = useRef<HTMLInputElement>(null);
   const photoRevision = useRef(0);
 
@@ -417,6 +481,22 @@ export default function StudentAccount() {
                   <div><dt>Qualification</dt><dd>{display(qualification)}</dd></div>
                   <div><dt>Branch</dt><dd>{display(readField(studentRecord, 'branchName', 'branch_Name'))}</dd></div>
                 </dl>
+                {!isEditing && <button type="button" className="btn btn-primary mt-3" onClick={() => void beginProfileEdit()} disabled={!studentId}>Edit profile</button>}
+                {isEditing && <form className="sp-stack mt-3" onSubmit={saveProfile}>
+                  {([
+                    ['studentName', 'Full name'],
+                    ['emailAddress', 'Email'],
+                    ['mobileNumber', 'Mobile number'],
+                    ['qualification', 'Qualification'],
+                  ] as const).map(([key, label]) => <label key={key}>{label}
+                    <input className="form-control" value={editFields[key]} onChange={event => setEditFields(current => ({ ...current, [key]: event.target.value }))} disabled={isSaving} />
+                  </label>)}
+                  <div className="d-flex gap-2">
+                    <button type="submit" className="btn btn-primary" disabled={isSaving}>{isSaving ? 'Saving…' : 'Save changes'}</button>
+                    <button type="button" className="btn btn-outline-secondary" disabled={isSaving} onClick={() => setIsEditing(false)}>Cancel</button>
+                  </div>
+                </form>}
+                {editMessage && <p role="status" className="sp-muted mt-2">{editMessage}</p>}
               </section>
               <section className="sp-panel"><h2>Change Password</h2><p className="sp-muted">Student password changes are not yet available. The existing ERP change-password API belongs to staff accounts and cannot safely be used for student credentials.</p></section>
             </div>
