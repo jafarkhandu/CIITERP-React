@@ -1021,3 +1021,90 @@ main.ciit-student-portal .sp-staff-record-panel > .sp-stack:focus-visible {
     height: 350px;
   }
 }
+
+
+/* Student self-service profile editor; existing ERP glass tokens and panels retained. */
+.ciit-student-public-shell .sp-profile-editor {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ciit-border, rgba(143, 176, 213, .4));
+}
+
+.ciit-student-public-shell .sp-profile-edit-form {
+  display: grid;
+  gap: 15px;
+}
+
+.ciit-student-public-shell .sp-profile-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ciit-student-public-shell .sp-profile-edit-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--ciit-text, #25364d);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.ciit-student-public-shell .sp-profile-edit-field input,
+.ciit-student-public-shell .sp-profile-edit-field textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ciit-border, #c4d4e7);
+  border-radius: 10px;
+  background: var(--ciit-surface, #fff);
+  color: var(--ciit-text, #25364d);
+  font: inherit;
+  font-weight: 500;
+}
+
+.ciit-student-public-shell .sp-profile-edit-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ciit-student-public-shell .sp-profile-edit-button,
+.ciit-student-public-shell .sp-profile-cancel-button {
+  border-radius: 10px;
+  padding: 10px 16px;
+  border: 1px solid var(--ciit-border, #c4d4e7);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ciit-student-public-shell .sp-profile-edit-button {
+  border-color: transparent;
+  background: var(--ciit-primary, #1769d2);
+  color: #fff;
+}
+
+.ciit-student-public-shell .sp-profile-cancel-button {
+  background: var(--ciit-surface, #fff);
+  color: var(--ciit-text, #25364d);
+}
+
+.ciit-student-public-shell .sp-profile-edit-actions button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.ciit-student-public-shell .sp-profile-edit-actions button:focus-visible,
+.ciit-student-public-shell .sp-profile-edit-field :focus-visible {
+  outline: 3px solid #80b7ff;
+  outline-offset: 2px;
+}
+
+@media (max-width: 650px) {
+  .ciit-student-public-shell .sp-profile-edit-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
