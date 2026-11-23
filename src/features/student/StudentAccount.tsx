@@ -205,6 +205,11 @@ export default function StudentAccount() {
     }
   }
 
+  function handlePhotoDisplayError() {
+    setProfilePhoto(null);
+    setPhotoMessage('Profile photo could not be displayed. You can upload a new image.');
+  }
+
   async function handleRemovePhoto() {
     if (!studentId || !profilePhoto) return;
     const revision = ++photoRevision.current;
@@ -407,7 +412,7 @@ export default function StudentAccount() {
         <button type="button" className="ciit-sidebar-backdrop" aria-label="Close navigation" tabIndex={isMobileSidebarOpen ? 0 : -1} onClick={() => setIsMobileSidebarOpen(false)} />
         <aside id="ciit-student-sidebar" className="ciit-shell-sidebar" aria-label="Student navigation">
           <div className="ciit-sidebar-user">
-            <span className="ciit-sidebar-avatar">{profilePhoto ? <img src={profilePhoto} alt="" className="sp-profile-avatar-image" /> : studentName.charAt(0).toUpperCase()}</span>
+            <span className="ciit-sidebar-avatar">{profilePhoto ? <img src={profilePhoto} alt="" className="sp-profile-avatar-image" onError={handlePhotoDisplayError} /> : studentName.charAt(0).toUpperCase()}</span>
             <div className="ciit-sidebar-user-copy"><strong>{studentName}</strong><small>{studentCode || 'Student account'}</small></div>
           </div>
           <div className="ciit-sidebar-section-label">STUDENT MENU</div>
@@ -438,7 +443,7 @@ export default function StudentAccount() {
               <section className="sp-panel sp-profile-glass" aria-labelledby="sp-profile-details-title">
                 <div className="sp-my-profile-photo">
                   <div className="sp-my-profile-avatar">
-                    {profilePhoto ? <img src={profilePhoto} alt="Your selected profile photo" /> : studentName.charAt(0).toUpperCase()}
+                    {profilePhoto ? <img src={profilePhoto} alt="Your selected profile photo" onError={handlePhotoDisplayError} /> : studentName.charAt(0).toUpperCase()}
                   </div>
                   <div className="sp-my-profile-identity">
                     <h2>{studentName}</h2>
