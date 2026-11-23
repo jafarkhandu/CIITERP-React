@@ -2,6 +2,7 @@ import RowActionsMenu from '@/components/RowActionsMenu';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { sendAutomaticEmail } from '@/core/notifications/automaticEmail';
 import { getAllUsers, clearUsersCache } from '@/api/userApi';
 import { employeeApi, type RegisterEmployeeRequest } from '@/api/employeeApi';
 import { directoryApi, type BranchOption, type RoleOption } from '@/api/directoryApi';
@@ -114,6 +115,11 @@ export default function Employee() {
     };
     try {
       const response = await employeeApi.register(request);
+      sendAutomaticEmail(
+        request.emailAddress,
+        'Your CIIT employee account has been created',
+        `Hello ${request.employeeName},\n\nYour CIIT ERP employee account has been created. Please contact your administrator for your account access details.\n\nCIIT Training Institute`,
+      );
       if (selectedRoleId) {
         const data = response?.data?.data ?? response?.data ?? response?.result ?? response;
         let id = data?.id ?? data?.userId ?? data?.employeeId ?? data?.user?.id;
