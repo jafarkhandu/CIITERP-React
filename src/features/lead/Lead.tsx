@@ -1,4 +1,5 @@
 import RowActionsMenu from '@/components/RowActionsMenu';
+import { TablePagination, useTablePage } from '@/components/TablePagination';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -118,14 +119,14 @@ export default function Lead() {
     return leads.filter((lead) => {
       const matchesText = !term || [lead.candidateName, lead.emailAddress, lead.mobileNumber]
         .some((value) => value.toLowerCase().includes(term));
+      if (!matchesText || (status && lead.status !== status) || (trainingType && lead.trainingType !== trainingType)) return false;
+      if (!from && !to) return true;
       const date = new Date(lead.leadDate);
-      return matchesText && (!status || lead.status === status) &&
-        (!trainingType || lead.trainingType === trainingType) &&
-        (!from || (date >= from && !Number.isNaN(date.getTime()))) &&
-        (!to || (date <= to && !Number.isNaN(date.getTime())));
+      return (!from || date >= from) && (!to || date <= to);
     });
   }, [leads, search, status, trainingType, dateFrom, dateTo]);
   const visibleLeads = useMemo(() => filtered.filter((lead) => Boolean(lead.deletedAt) === (tab === 'deleted')), [filtered, tab]);
+  const { pageRows, pagination } = useTablePage(visibleLeads, JSON.stringify([tab, search, status, trainingType, dateFrom, dateTo]));
 
   function clearFilters() {
     setSearch(''); setStatus(''); setTrainingType(''); setDateFrom(''); setDateTo('');
@@ -268,14 +269,16 @@ export default function Lead() {
     <div className="lead-table-card"><div className="lead-table-scroll"><table className="lead-table">
       <thead><tr><th>#</th><th>ID</th><th>Candidate Name</th><th>Email</th><th>Mobile</th><th>Training</th><th>Status</th><th>Lead Date</th><th>Action</th></tr></thead>
       <tbody>{loading ? <tr><td colSpan={9} className="lead-empty">Loading leads...</td></tr> :
-        visibleLeads.map((lead, index) => <tr key={lead.leadId}><td>{index + 1}</td><td>{lead.leadId}</td><td className="lead-candidate">{lead.candidateName}</td><td>{lead.emailAddress}</td><td>{lead.mobileNumber}</td><td>{lead.trainingType}</td><td><span className={`lead-status ${lead.status.toLowerCase().replace(/\s+/g, '-')}`}>{lead.status}</span></td><td>{formatDate(lead.leadDate)}</td><td><RowActionsMenu label={`Actions for lead ${lead.leadId}`} disabled={saving} actions={tab === 'deleted' ? (canRestore ? [{ label: 'Restore', onSelect: () => void restoreLead(lead) }] : []) : [
+        pageRows.map((lead, index) => <tr key={lead.leadId}><td>{pagination.firstRow + index}</td><td>{lead.leadId}</td><td className="lead-candidate">{lead.candidateName}</td><td>{lead.emailAddress}</td><td>{lead.mobileNumber}</td><td>{lead.trainingType}</td><td><span className={`lead-status ${lead.status.toLowerCase().replace(/\s+/g, '-')}`}>{lead.status}</span></td><td>{formatDate(lead.leadDate)}</td><td><RowActionsMenu label={`Actions for lead ${lead.leadId}`} disabled={saving} actions={tab === 'deleted' ? (canRestore ? [{ label: 'Restore', onSelect: () => void restoreLead(lead) }] : []) : [
             ...(canFollowup ? [{ label: 'Follow-up', onSelect: () => navigate(`/main/lead/followup/${lead.leadId}`) }] : []),
             ...(canUpdate ? [{ label: 'Edit', onSelect: () => void openEdit(lead) }] : []),
             ...(canDelete ? [{ label: 'Delete', danger: true, onSelect: () => void removeLead(lead) }] : []),
           ]} /></td></tr>)}
         {!loading && visibleLeads.length === 0 && <tr><td colSpan={9} className="lead-empty">No leads found.</td></tr>}
       </tbody>
-    </table></div></div>
+    </table></div>
+      {!loading && <TablePagination {...pagination} label="leads" />}
+    </div>
 
     {showForm && createPortal(<div className="lead-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setShowForm(false); }}>
       <section className="lead-modal" role="dialog" aria-modal="true" aria-labelledby="lead-modal-title">

@@ -17,6 +17,15 @@ import type { LoginResponse } from '@/types/user';
 export const http = axios.create();
 
 const GET_CACHE_TTL_MS = 12_000;
+const LOOKUP_CACHE_TTL_MS = 60_000;
+const lookupUrls = new Set([
+  `${API_ENDPOINTS.branch}/get-all`,
+  `${API_ENDPOINTS.roles}/get-roles`,
+  `${API_ENDPOINTS.lead}/LeadSource`,
+  `${API_ENDPOINTS.lead}/Qualification`,
+  `${API_ENDPOINTS.batchManagement}/Batch/topics`,
+  `${API_ENDPOINTS.batchManagement}/Employee/get-all-for-dropdown`,
+]);
 const getCache = new Map<string, { expiresAt: number; response?: AxiosResponse; pending?: Promise<AxiosResponse> }>();
 
 function pruneGetCache(now: number): void {
@@ -30,15 +39,12 @@ function pruneGetCache(now: number): void {
   }
 }
 
-function withShortGetCache(config: SessionRequestConfig): InternalAxiosRequestConfig {
+function withShortGetCache(config: SessionRequestConfig, accessToken: string): InternalAxiosRequestConfig {
   if (config.method?.toLowerCase() !== 'get') return config;
 
-  const url = config.url ?? '';
-  const authorization = String(config.headers.get('Authorization') ?? '');
-  if (!authorization || isPublic(url) || isLeadDirect(url)) return config;
-
+  const ttl = lookupUrls.has(config.url ?? '') ? LOOKUP_CACHE_TTL_MS : GET_CACHE_TTL_MS;
   const cacheKey = JSON.stringify([
-    config._session?.generation, config._session?.username, authorization, axios.getUri(config), config.responseType ?? 'json',
+    config._session?.generation, config._session?.username, accessToken, axios.getUri(config), config.responseType ?? 'json',
   ]);
   const originalAdapter = axios.getAdapter(axios.defaults.adapter) as AxiosAdapter;
 
@@ -70,7 +76,7 @@ function withShortGetCache(config: SessionRequestConfig): InternalAxiosRequestCo
           && requestConfig.responseType !== 'blob'
           && requestConfig.responseType !== 'arraybuffer'
           && requestConfig.responseType !== 'stream') {
-          getCache.set(cacheKey, { expiresAt: Date.now() + GET_CACHE_TTL_MS, response });
+          getCache.set(cacheKey, { expiresAt: Date.now() + ttl, response });
         } else {
           getCache.delete(cacheKey);
         }
@@ -101,10 +107,7 @@ const PUBLIC_URLS = [
 ];
 
 const isPublic = (url: string) => PUBLIC_URLS.some((p) => url.includes(p));
-const isLeadDirect = (url: string) =>
-  url.startsWith(`${API_ENDPOINTS.leadDirectHost}/`) ||
-  // The Vite proxy is only used for this development-only enquiry update request.
-  (import.meta.env.DEV && url.startsWith('/lead-api/EnquiryFollowup/Update/'));
+const isLeadDirect = (url: string) => url.startsWith(`${API_ENDPOINTS.lead}/`);
 
 function redirectToLogin() {
   console.log('Session expired. Redirecting to login.');
@@ -178,23 +181,26 @@ function setBearer(config: InternalAxiosRequestConfig, token: string) {
 
 http.interceptors.request.use(async (config: SessionRequestConfig) => {
   const url = config.url ?? '';
-  if (isPublic(url) || isLeadDirect(url)) return config;
+  if (isPublic(url)) return config;
 
   const session = config._session ?? getSessionScope();
   requireCurrentSession(session);
   config._session = session;
   const token = tokenService.getAccessToken();
 
+  // The lead service still receives no bearer. Scope its GET cache to this ERP session.
+  if (isLeadDirect(url)) return token ? withShortGetCache(config, token) : config;
+
   if (token && !tokenService.isAccessTokenExpired()) {
     setBearer(config, token);
-    return withShortGetCache(config);
+    return withShortGetCache(config, token);
   }
 
   if (token || tokenService.getRefreshToken()) {
     const newToken = await refreshAccessToken(session);
     requireCurrentSession(session);
     setBearer(config, newToken);
-    return withShortGetCache(config);
+    return withShortGetCache(config, newToken);
   }
 
   redirectToLogin();
@@ -213,7 +219,7 @@ http.interceptors.response.use(
   async (error: AxiosError) => {
     const config = error.config as SessionRequestConfig | undefined;
     const session = config?._session;
-    if (error.response?.status !== 401 || !session || config._retried) {
+    if (error.response?.status !== 401 || !session || config._retried || isLeadDirect(config.url ?? '')) {
       throw error;
     }
 

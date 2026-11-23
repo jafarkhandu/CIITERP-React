@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { leadApi, type LeadRecord, type LeadFollowupRecord } from '@/api/leadApi';
 import { enquiryApi, type EnquiryRecord } from '@/api/enquiryApi';
 import { enquiryFollowupApi, type EnquiryFollowupRecord } from '@/api/enquiryFollowupApi';
@@ -11,6 +11,11 @@ type FilterOption = 'All' | string;
 type ReportKind = 'lead' | 'enquiry';
 type ExportFormat = 'excel' | 'pdf';
 
+const reportSources = ['leads', 'lead follow-ups', 'enquiries', 'enquiry follow-ups', 'user directory'] as const;
+type ReportSource = typeof reportSources[number];
+type SectionStatus = 'loading' | 'ready' | 'failed';
+const reportDateFormatter = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
 const text = (value: unknown): string => value == null ? '' : String(value);
 const parseDate = (value: unknown): Date | null => {
   if (!value) return null;
@@ -19,7 +24,7 @@ const parseDate = (value: unknown): Date | null => {
 };
 const formatDate = (value: unknown): string => {
   const date = parseDate(value);
-  return date ? date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+  return date ? reportDateFormatter.format(date) : '—';
 };
 const active = (row: unknown): boolean => {
   if (!row || typeof row !== 'object') return true;
@@ -45,57 +50,51 @@ export default function Reports() {
   const [branchFilter, setBranchFilter] = useState<FilterOption>('All');
   const [courseFilter, setCourseFilter] = useState<FilterOption>('All');
   const [counsellorFilter, setCounsellorFilter] = useState<FilterOption>('All');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [failedSources, setFailedSources] = useState<string[]>([]);
+  const [sourceStatus, setSourceStatus] = useState<Partial<Record<ReportSource, 'ready' | 'failed'>>>({});
+  const reportRequest = useRef(0);
   const [exporting, setExporting] = useState<`${ReportKind}-${ExportFormat}` | null>(null);
   const [exportError, setExportError] = useState('');
 
-  const loadReports = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    setFailedSources([]);
-    try {
-      const results = await Promise.allSettled([
-        leadApi.getAll(),
-        leadApi.getAllFollowups(),
-        enquiryApi.getAll(),
-        enquiryFollowupApi.getAll(),
-        getAllUsers(),
-      ]);
+  const loadReports = useCallback(() => {
+    const request = ++reportRequest.current;
+    setSourceStatus({});
 
-      const failedSections: string[] = [];
-      const [leadResult, leadFollowupResult, enquiryResult, enquiryFollowupResult, userResult] = results;
-
-      if (leadResult.status === 'fulfilled') setLeads(leadResult.value.filter(active));
-      else failedSections.push('leads');
-
-      if (leadFollowupResult.status === 'fulfilled') setLeadFollowups(leadFollowupResult.value.filter(active));
-      else failedSections.push('lead follow-ups');
-
-      if (enquiryResult.status === 'fulfilled') setEnquiries(enquiryResult.value.filter(active));
-      else failedSections.push('enquiries');
-
-      if (enquiryFollowupResult.status === 'fulfilled') {
-        setEnquiryFollowups(enquiryFollowupResult.value.filter(active));
-      } else failedSections.push('enquiry follow-ups');
-
-      if (userResult.status === 'fulfilled') setUsers(userResult.value);
-      else failedSections.push('user directory');
-
-      setFailedSources(failedSections);
-      setError(failedSections.length
-        ? `Some report data could not be loaded (${failedSections.join(', ')}). Affected sections are marked unavailable; retry to refresh them.`
-        : '');
-    } catch (cause: unknown) {
-      setFailedSources(['leads', 'lead follow-ups', 'enquiries', 'enquiry follow-ups', 'user directory']);
-      setError(cause instanceof Error ? cause.message : 'Some report data could not be loaded. Please try again.');
-    } finally {
-      setLoading(false);
+    async function loadSource<T>(source: ReportSource, fetch: () => Promise<T>, apply: (data: T) => void) {
+      try {
+        const rows = await fetch();
+        if (request !== reportRequest.current) return;
+        apply(rows);
+        setSourceStatus((status) => ({ ...status, [source]: 'ready' }));
+      } catch {
+        if (request === reportRequest.current) {
+          setSourceStatus((status) => ({ ...status, [source]: 'failed' }));
+        }
+      }
     }
+
+    void loadSource('leads', leadApi.getAll, (rows) => setLeads(rows.filter(active)));
+    void loadSource('lead follow-ups', leadApi.getAllFollowups, (rows) => setLeadFollowups(rows.filter(active)));
+    void loadSource('enquiries', enquiryApi.getAll, (rows) => setEnquiries(rows.filter(active)));
+    void loadSource('enquiry follow-ups', enquiryFollowupApi.getAll, (rows) => setEnquiryFollowups(rows.filter(active)));
+    void loadSource('user directory', getAllUsers, setUsers);
   }, []);
 
-  useEffect(() => { void loadReports(); }, [loadReports]);
+  useEffect(() => {
+    loadReports();
+    return () => { reportRequest.current += 1; };
+  }, [loadReports]);
+
+  function sectionStatus(...sources: ReportSource[]): SectionStatus {
+    if (sources.some((source) => sourceStatus[source] === 'failed')) return 'failed';
+    return sources.every((source) => sourceStatus[source] === 'ready') ? 'ready' : 'loading';
+  }
+
+  const leadFollowupStatus = sectionStatus('lead follow-ups');
+  const enquiryFollowupStatus = sectionStatus('enquiry follow-ups');
+  const executiveStatus = sectionStatus('leads', 'enquiries');
+  const leadSourceStatus = sectionStatus('leads');
+  const counsellorStatus = sectionStatus('lead follow-ups', 'enquiry follow-ups', 'user directory');
+  const failedSources = reportSources.filter((source) => sourceStatus[source] === 'failed');
 
   const branches = useMemo(() => ['All', ...new Set(enquiries.map((row) => row.branchName || '').filter(Boolean))], [enquiries]);
   const courses = useMemo(() => ['All', ...new Set(enquiries.map((row) => row.enquiryFors || '').filter(Boolean))], [enquiries]);
@@ -202,6 +201,7 @@ export default function Reports() {
     });
     return [...stats.values()].sort((a, b) => b.total - a.total);
   }, [filteredLeads]);
+  const highestSourceTotal = leadSourceRows[0]?.total || 1;
 
   const counsellorRows = useMemo(() => {
     const stats = new Map<string, { name: string; total: number; completed: number; lost: number }>();
@@ -256,6 +256,8 @@ export default function Reports() {
   };
 
   const runExport = async (kind: ReportKind, format: ExportFormat) => {
+    const status = kind === 'lead' ? leadFollowupStatus : enquiryFollowupStatus;
+    if (status !== 'ready' || exporting !== null) return;
     setExporting(`${kind}-${format}`);
     setExportError('');
     try {
@@ -302,7 +304,7 @@ export default function Reports() {
     <main className="reports-page">
       <header className="report-header">
         <div><span className="eyebrow">BUSINESS INTELLIGENCE</span><h1>Reports</h1><p>Management view of leads, enquiries and follow-up activity.</p></div>
-        <button className="refresh-btn" type="button" onClick={() => void loadReports()}>↻ Refresh</button>
+        <button className="refresh-btn" type="button" onClick={loadReports}>↻ Refresh</button>
       </header>
       <section className="filters" aria-label="Report filters">
         <label>From<input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} /></label>
@@ -314,44 +316,60 @@ export default function Reports() {
         <button type="button" className="clear-btn" onClick={setCurrentMonth}>Current Month</button>
       </section>
       {exportError && <div className="error" role="alert">{exportError}</div>}
-      {loading ? <div className="state">Loading business reports…</div> : (
-        <>
-          {error && <div className="error" role="alert"><span>{error}</span><button type="button" onClick={() => void loadReports()}>Retry</button></div>}
-          {failedSources.includes('lead follow-ups') ? <section className="section"><div className="state">Lead follow-up data is unavailable. Retry to load this section.</div></section> : (<section className="section">
-            <div className="section-title"><div><h2>1. Lead Follow-up Report</h2><p>Latest follow-up for each lead within the selected period.</p></div>{exportActions('lead')}</div>
-            <div className="kpi-grid follow-kpis">
-              <Kpi label="Total Follow-ups" value={filteredLeadFollowups.length} /><Kpi label="Completed" value={leadFollowupCompleted} /><Kpi label="Pending" value={leadFollowupPending} /><Kpi label="Overdue" value={leadFollowupOverdue} /><Kpi label="Lost / Not Interested" value={leadFollowupLost} />
-            </div>
-            <div className="follow-report-grid">
-              <div className="chart-panel"><h3>Lead Follow-up Status</h3><div className="chart-flex"><div className="donut" style={{ background: pieBackground }} /><div className="legend">{chartRows.map((row) => <div key={row.label}><i className={`dot ${row.label.toLowerCase().replace(/[^a-z]+/g, '-')}`} />{row.label}<b>{row.value}</b></div>)}</div></div></div>
-              <div className="chart-panel"><h3>Lead Follow-up Graph</h3><div className="bar-chart">{chartRows.map((row) => <div className="chart-row" key={row.label}><span>{row.label}</span><div className="chart-track"><b style={{ width: `${row.value * 100 / maxChartValue}%` }} /></div><strong>{row.value}</strong></div>)}</div></div>
-            </div>
-            <ReportTable columns={['SR', 'Lead ID', 'Candidate', 'Counsellor', 'Last Follow-up', 'Status', 'Last Follow-up Comment', 'Next Follow-up']} rows={latestLeadFollowups.map((row, index) => [index + 1, row.leadId, row.candidateName, row.followUpBy, formatDate(row.followUpDate), row.status || '—', row.description || '—', formatDate(row.nextFollowupDate)])} />
-          </section>)}
-          {failedSources.includes('enquiry follow-ups') ? <section className="section"><div className="state">Enquiry follow-up data is unavailable. Retry to load this section.</div></section> : (<section className="section">
-            <div className="section-title"><div><h2>2. Enquiry Follow-up Report</h2><p>Separate enquiry follow-up activity using fields exposed by the API.</p></div>{exportActions('enquiry')}</div>
-            <div className="kpi-grid follow-kpis"><Kpi label="Total Recorded" value={filteredEnquiryFollowups.length} /><Kpi label="Upcoming" value={enquiryFollowupUpcoming} /><Kpi label="Past / Recorded" value={enquiryFollowupPast} /></div>
-            <ReportTable columns={['SR', 'Candidate', 'Counsellor', 'Last Follow-up', 'Last Follow-up Comment']} rows={latestEnquiryFollowups.map((row, index) => [index + 1, row.candidateName || '—', row.followUpBy || '—', formatDate(row.followUpDate ?? row.followupDate), row.description || '—'])} />
-          </section>)}
-          {failedSources.includes('leads') || failedSources.includes('enquiries') ? <section className="section"><div className="state">Executive overview is unavailable because lead or enquiry data could not be loaded.</div></section> : (<section className="section">
-            <div className="section-title"><div><h2>3. Executive Overview</h2><p>Current business pipeline and activity.</p></div></div>
-            <div className="kpi-grid">
-              <Kpi label="Leads" value={filteredLeads.length} detail={`${leadConversionRate}% conversion`} /><Kpi label="Enquiries" value={filteredEnquiries.length} detail={`${enquiryConversionRate}% conversion`} />
-              <Kpi label="Lead Converted" value={leadConverted} /><Kpi label="Lead Lost / Closed" value={leadLost} /><Kpi label="Enquiry Converted" value={enquiryConverted} /><Kpi label="Enquiry Lost / Closed" value={enquiryLost} />
-            </div>
-          </section>)}
-          {failedSources.includes('leads') ? <section className="section"><div className="state">Lead source data is unavailable. Retry to load this section.</div></section> : (<section className="section">
-            <div className="section-title"><div><h2>4. Lead Source Performance</h2><p>Lead count, conversion and loss by source.</p></div></div>
-            <div className="source-list">{leadSourceRows.length ? leadSourceRows.map((row) => <div className="source-row" key={row.name}><div className="source-label"><b>{row.name}</b><span>{row.total} leads · {row.converted} converted · {row.lost} lost</span></div><div className="bar"><span style={{ width: `${row.total * 100 / Math.max(...leadSourceRows.map((item) => item.total), 1)}%` }} /></div></div>) : <div className="empty">No lead source data for selected filters.</div>}</div>
-          </section>)}
-          {failedSources.includes('lead follow-ups') || failedSources.includes('user directory') ? <section className="section"><div className="state">Counsellor performance is unavailable because follow-up or user data could not be loaded.</div></section> : (<section className="section">
-            <div className="section-title"><div><h2>5. Counsellor Performance</h2><p>Follow-up activity by authorized counsellor / super user.</p></div></div>
-            <ReportTable columns={['Counsellor', 'Total Follow-ups', 'Completed (Lead)', 'Lost (Lead)']} rows={counsellorRows.map((row) => [row.name, row.total, row.completed, row.lost])} />
-          </section>)}
-        </>
+      {failedSources.length > 0 &&
+        <div className="error" role="alert">
+          <span>Some report data could not be loaded ({failedSources.join(', ')}).</span>
+          <button type="button" onClick={loadReports}>Retry</button>
+        </div>}
+      {leadFollowupStatus !== 'ready' ? <PendingSection label="lead follow-up report" status={leadFollowupStatus} /> : (
+        <section className="section">
+          <div className="section-title"><div><h2>1. Lead Follow-up Report</h2><p>Latest follow-up for each lead within the selected period.</p></div>{exportActions('lead')}</div>
+          <div className="kpi-grid follow-kpis">
+            <Kpi label="Total Follow-ups" value={filteredLeadFollowups.length} /><Kpi label="Completed" value={leadFollowupCompleted} /><Kpi label="Pending" value={leadFollowupPending} /><Kpi label="Overdue" value={leadFollowupOverdue} /><Kpi label="Lost / Not Interested" value={leadFollowupLost} />
+          </div>
+          <div className="follow-report-grid">
+            <div className="chart-panel"><h3>Lead Follow-up Status</h3><div className="chart-flex"><div className="donut" style={{ background: pieBackground }} /><div className="legend">{chartRows.map((row) => <div key={row.label}><i className={`dot ${row.label.toLowerCase().replace(/[^a-z]+/g, '-')}`} />{row.label}<b>{row.value}</b></div>)}</div></div></div>
+            <div className="chart-panel"><h3>Lead Follow-up Graph</h3><div className="bar-chart">{chartRows.map((row) => <div className="chart-row" key={row.label}><span>{row.label}</span><div className="chart-track"><b style={{ width: `${row.value * 100 / maxChartValue}%` }} /></div><strong>{row.value}</strong></div>)}</div></div>
+          </div>
+          <ReportTable columns={['SR', 'Lead ID', 'Candidate', 'Counsellor', 'Last Follow-up', 'Status', 'Last Follow-up Comment', 'Next Follow-up']} rows={latestLeadFollowups.map((row, index) => [index + 1, row.leadId, row.candidateName, row.followUpBy, formatDate(row.followUpDate), row.status || '—', row.description || '—', formatDate(row.nextFollowupDate)])} />
+        </section>
+      )}
+      {enquiryFollowupStatus !== 'ready' ? <PendingSection label="enquiry follow-up report" status={enquiryFollowupStatus} /> : (
+        <section className="section">
+          <div className="section-title"><div><h2>2. Enquiry Follow-up Report</h2><p>Separate enquiry follow-up activity using fields exposed by the API.</p></div>{exportActions('enquiry')}</div>
+          <div className="kpi-grid follow-kpis"><Kpi label="Total Recorded" value={filteredEnquiryFollowups.length} /><Kpi label="Upcoming" value={enquiryFollowupUpcoming} /><Kpi label="Past / Recorded" value={enquiryFollowupPast} /></div>
+          <ReportTable columns={['SR', 'Candidate', 'Counsellor', 'Last Follow-up', 'Last Follow-up Comment']} rows={latestEnquiryFollowups.map((row, index) => [index + 1, row.candidateName || '—', row.followUpBy || '—', formatDate(row.followUpDate ?? row.followupDate), row.description || '—'])} />
+        </section>
+      )}
+      {executiveStatus !== 'ready' ? <PendingSection label="executive overview" status={executiveStatus} /> : (
+        <section className="section">
+          <div className="section-title"><div><h2>3. Executive Overview</h2><p>Current business pipeline and activity.</p></div></div>
+          <div className="kpi-grid">
+            <Kpi label="Leads" value={filteredLeads.length} detail={`${leadConversionRate}% conversion`} /><Kpi label="Enquiries" value={filteredEnquiries.length} detail={`${enquiryConversionRate}% conversion`} />
+            <Kpi label="Lead Converted" value={leadConverted} /><Kpi label="Lead Lost / Closed" value={leadLost} /><Kpi label="Enquiry Converted" value={enquiryConverted} /><Kpi label="Enquiry Lost / Closed" value={enquiryLost} />
+          </div>
+        </section>
+      )}
+      {leadSourceStatus !== 'ready' ? <PendingSection label="lead source performance" status={leadSourceStatus} /> : (
+        <section className="section">
+          <div className="section-title"><div><h2>4. Lead Source Performance</h2><p>Lead count, conversion and loss by source.</p></div></div>
+          <div className="source-list">{leadSourceRows.length ? leadSourceRows.map((row) => <div className="source-row" key={row.name}><div className="source-label"><b>{row.name}</b><span>{row.total} leads · {row.converted} converted · {row.lost} lost</span></div><div className="bar"><span style={{ width: `${row.total * 100 / highestSourceTotal}%` }} /></div></div>) : <div className="empty">No lead source data for selected filters.</div>}</div>
+        </section>
+      )}
+      {counsellorStatus !== 'ready' ? <PendingSection label="counsellor performance" status={counsellorStatus} /> : (
+        <section className="section">
+          <div className="section-title"><div><h2>5. Counsellor Performance</h2><p>Follow-up activity by authorized counsellor / super user.</p></div></div>
+          <ReportTable columns={['Counsellor', 'Total Follow-ups', 'Completed (Lead)', 'Lost (Lead)']} rows={counsellorRows.map((row) => [row.name, row.total, row.completed, row.lost])} />
+        </section>
       )}
     </main>
   );
+}
+
+function PendingSection({ label, status }: { label: string; status: 'loading' | 'failed' }) {
+  return <section className="section"><div className="state" role="status">
+    {status === 'loading' ? `Loading ${label}…` : `Unable to load ${label}.`}
+  </div></section>;
 }
 
 function Kpi({ label, value, detail }: { label: string; value: string | number; detail?: string }) {

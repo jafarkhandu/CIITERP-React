@@ -4,7 +4,7 @@ import ProtectedRoute from '@/core/auth/ProtectedRoute';
 import { PERMISSIONS, type Permission } from '@/core/services/permissionService';
 import Login from '@/features/account/Login/Login';
 import ComingSoon from '@/features/placeholder/ComingSoon';
-import { loadDashboard, loadMainLayout, loadStudentPortal } from './staffHome';
+import { loadDashboard, loadMainLayout, loadStudentAccount, loadStudentPortal } from './homeLoaders';
 
 const MainLayout = lazy(loadMainLayout);
 const Reports = lazy(() => import('@/features/reports/Reports'));
@@ -27,7 +27,7 @@ const FunctionManagement = lazy(() => import('@/features/function-management/Fun
 const StudentRegistration = lazy(() => import('@/features/student/StudentRegistration'));
 const StudentPayments = lazy(() => import('@/features/student/StudentPayments'));
 const StudentPortal = lazy(loadStudentPortal);
-const StudentAccount = lazy(() => import('@/features/student/StudentAccount'));
+const StudentAccount = lazy(loadStudentAccount);
 const TrainerBatches = lazy(() => import('@/features/trainer/TrainerBatches'));
 const TrainerBatchDetails = lazy(() => import('@/features/trainer/TrainerBatchDetails'));
 const BatchManagement = lazy(() => import('@/features/batch/BatchManagement'));

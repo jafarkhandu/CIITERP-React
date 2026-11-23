@@ -1,25 +1,40 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authApi } from '@/api/authApi';
-import { findCurrentUser, getAllUsers, getCachedUsers } from '@/api/userApi';
+import { resolveCurrentUser } from '@/api/userApi';
 import { authService } from '@/core/auth/authService';
 import { userSession } from '@/core/auth/session';
-import { isStaffRole, isStudentOnlyAccount, readTokenIdentity } from '@/core/auth/tokenIdentity';
+import { isStaffRole, isStudentOnlyAccount, readTokenIdentity, type TokenIdentity } from '@/core/auth/tokenIdentity';
 import { apiErrorMessage, httpStatus } from '@/core/http/errors';
-import { preloadStaffHome } from '@/routes/staffHome';
+import { preloadStaffHome, preloadStudentHome } from '@/routes/homeLoaders';
+import type { LoginResponse } from '@/types/user';
 import './Login.css';
 
 const REMEMBERED_USERNAME_KEY = 'rememberedUsername';
+const REMEMBERED_STUDENT_CODE_KEY = 'rememberedStudentCode';
+const LOGIN_MODE_KEY = 'ciit-login-mode';
+type LoginMode = 'employee' | 'student';
+
+function rememberedLoginKey(mode: LoginMode) {
+  return mode === 'student' ? REMEMBERED_STUDENT_CODE_KEY : REMEMBERED_USERNAME_KEY;
+}
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const requestedPath = (location.state as { from?: unknown } | null)?.from;
   const postLoginPath = requestedPath === '/main/student-portal' ? requestedPath : '/main/dashboard';
+  const isStudentPortal = typeof requestedPath === 'string' && /^\/student-portal(?:\/|\?|$)/.test(requestedPath);
+  const studentLoginPath = isStudentPortal ? requestedPath : '/student-portal';
 
-  const [username, setUsername] = useState(() => localStorage.getItem(REMEMBERED_USERNAME_KEY) ?? '');
+  const [mode, setMode] = useState<LoginMode>(() => {
+    if (isStudentPortal) return 'student';
+    if (typeof requestedPath === 'string' && /^\/main(?:\/|\?|$)/.test(requestedPath)) return 'employee';
+    return localStorage.getItem(LOGIN_MODE_KEY) === 'student' ? 'student' : 'employee';
+  });
+  const [username, setUsername] = useState(() => localStorage.getItem(rememberedLoginKey(mode)) ?? '');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(() => localStorage.getItem(REMEMBERED_USERNAME_KEY) !== null);
+  const [rememberMe, setRememberMe] = useState(() => localStorage.getItem(rememberedLoginKey(mode)) !== null);
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState({ username: false, password: false });
   const [errormessage, setErrormessage] = useState('');
@@ -27,16 +42,67 @@ export default function Login() {
 
   const usernameInvalid = !username && touched.username;
   const passwordInvalid = !password && touched.password;
+  const studentMode = mode === 'student';
+  const loginField = studentMode ? 'student code' : 'username';
+
+  function changeMode(nextMode: LoginMode) {
+    const saved = localStorage.getItem(rememberedLoginKey(nextMode));
+    setMode(nextMode);
+    setUsername(saved ?? '');
+    setPassword('');
+    setRememberMe(saved !== null);
+    setShowPassword(false);
+    setTouched({ username: false, password: false });
+    setErrormessage('');
+  }
+
+  async function signInStudent(
+    loginUsername: string,
+    loginPassword: string,
+    fallbackIdentity?: Pick<TokenIdentity, 'username' | 'displayName' | 'email'>,
+  ) {
+    const request = authApi.studentLogin({ studentCode: loginUsername, password: loginPassword });
+    preloadStudentHome();
+    const studentLogin = await request;
+    const studentId = Number(studentLogin.data?.studentId);
+    const studentToken = studentLogin.data?.token;
+
+    if (!Number.isSafeInteger(studentId) || studentId <= 0 || typeof studentToken !== 'string' || !studentToken.trim()) {
+      throw new Error('Student login response did not include a valid student ID and token.');
+    }
+
+    const identity = readTokenIdentity(studentToken);
+    userSession.clear();
+    authService.saveLoginData(studentToken, '');
+    localStorage.setItem('username', loginUsername);
+    localStorage.setItem(LOGIN_MODE_KEY, 'student');
+    if (mode === 'employee') {
+      localStorage.removeItem(REMEMBERED_USERNAME_KEY);
+      if (rememberMe) localStorage.setItem(REMEMBERED_STUDENT_CODE_KEY, loginUsername);
+      else localStorage.removeItem(REMEMBERED_STUDENT_CODE_KEY);
+    }
+    userSession.setUser({
+      studentId,
+      userName: identity.username || fallbackIdentity?.username || loginUsername,
+      employeeName: identity.displayName || fallbackIdentity?.displayName || loginUsername,
+      emailAddress: identity.email || fallbackIdentity?.email || '',
+      roleName: 'Student',
+      roles: ['Student'],
+    });
+    navigate(studentLoginPath, { replace: true });
+  }
 
   async function loadUserAndNavigate(
     loginUsername: string,
     loginPassword: string,
-    accessToken: string,
-    loginResponse: unknown,
+    response: LoginResponse,
   ) {
-    const identity = readTokenIdentity(accessToken);
-    const loginData = loginResponse && typeof loginResponse === 'object'
-      ? loginResponse as Record<string, unknown> : {};
+    if (typeof response?.token !== 'string' || !response.token.trim()) {
+      throw new Error('Login response did not include a valid token.');
+    }
+
+    const identity = readTokenIdentity(response.token);
+    const loginData = response as unknown as Record<string, unknown>;
     const responseUser = loginData.user && typeof loginData.user === 'object'
       ? loginData.user as Record<string, unknown> : {};
     function userField(key: string): string {
@@ -54,45 +120,23 @@ export default function Login() {
     const roles = [...identity.roles, ...responseRoles];
 
     if (isStudentOnlyAccount(roles)) {
-      // Staff authentication identifies the role; the StudentLogin service
-      // authenticates this student and returns the numeric student identity.
-      const studentLogin = await authApi.studentLogin({
-        studentCode: loginUsername,
-        password: loginPassword,
+      await signInStudent(loginUsername, loginPassword, {
+        username: identity.username,
+        displayName: identity.displayName || userField('studentName') || userField('employeeName'),
+        email: identity.email || userField('emailAddress'),
       });
-      const studentId = Number(studentLogin.data?.studentId);
-      const studentToken = studentLogin.data?.token;
-
-      if (!Number.isSafeInteger(studentId) || studentId <= 0 || !studentToken) {
-        throw new Error('Student login response did not include a valid student ID and token.');
-      }
-
-      // StudentLogin issues its own token with no refresh token.
-      // Never reuse the staff Auth refresh token for a student token.
-      authService.saveLoginData(studentToken, '');
-
-      // The successful Auth login identifies this account as a student.
-      // Do not request the staff user directory or expose staff routes.
-      userSession.setUser({
-        studentId,
-        userName: identity.username || loginUsername,
-        employeeName: identity.displayName ||
-          userField('studentName') || userField('employeeName') || loginUsername,
-        emailAddress: identity.email || userField('emailAddress'),
-        roleName: 'Student',
-        roles: ['Student'],
-      });
-      navigate('/student-portal', { replace: true });
       return;
     }
 
-    preloadStaffHome(postLoginPath);
+    userSession.clear();
+    authService.saveLoginData(response.token, response.refreshToken);
+    localStorage.setItem('username', loginUsername);
 
     const staffRoles = [...responseRoles, ...identity.roles].filter(isStaffRole);
     const primaryRole = staffRoles[0];
     if (primaryRole) {
       // The successful Auth response supplies the initial identity and roles.
-      // MainLayout fills in the directory profile after the workspace opens.
+      // MainLayout fills in the profile after the workspace opens.
       userSession.setUser({
         userName: userField('userName') || identity.username || loginUsername,
         employeeName: userField('employeeName') || identity.displayName || loginUsername,
@@ -107,23 +151,34 @@ export default function Login() {
       return;
     }
 
-    try {
-      // Older Auth responses need the directory to resolve route permissions.
-      const currentUser = findCurrentUser(getCachedUsers() ?? [], loginUsername)
-        ?? findCurrentUser(await getAllUsers(), loginUsername);
-      if (currentUser) {
-        userSession.setUser(currentUser);
-        if (isStudentOnlyAccount(userSession.roles)) {
-          navigate('/student-portal', { replace: true });
-          return;
-        }
-      }
-    } catch (error) {
-      // A user-details failure is NOT a login failure for existing staff.
-      console.error('User information API error:', error);
+    const currentUser = await resolveCurrentUser(loginUsername);
+    if (!currentUser) throw new Error('Login could not resolve the user profile.');
+    const currentRoles = [
+      ...(Array.isArray(currentUser.roles) ? currentUser.roles : []),
+      currentUser.roleName || currentUser.role || '',
+    ].filter((role): role is string => typeof role === 'string');
+    if (isStudentOnlyAccount(currentRoles)) {
+      authService.clearSession();
+      await signInStudent(loginUsername, loginPassword, {
+        username: currentUser.userName || identity.username,
+        displayName: currentUser.employeeName || identity.displayName,
+        email: currentUser.emailAddress || identity.email,
+      });
+      return;
     }
 
+    if (!currentRoles.some(isStaffRole)) throw new Error('Login profile did not include a supported role.');
+
+    userSession.setUser(currentUser);
     navigate(postLoginPath, { replace: true });
+  }
+
+  function showLoginError(error: unknown) {
+    const status = httpStatus(error);
+    if (status === 401) setErrormessage(`Invalid ${loginField} or password. Please check your credentials.`);
+    else if (status === 0) setErrormessage('Unable to connect to the server. Please try again.');
+    else setErrormessage(apiErrorMessage(error, 'Login failed. Please try again.'));
+    setIsLoading(false);
   }
 
   async function submit(e: FormEvent) {
@@ -137,33 +192,37 @@ export default function Login() {
       return;
     }
 
-    if (rememberMe) localStorage.setItem(REMEMBERED_USERNAME_KEY, username);
-    else localStorage.removeItem(REMEMBERED_USERNAME_KEY);
+    const rememberKey = rememberedLoginKey(mode);
+    if (rememberMe) localStorage.setItem(rememberKey, username);
+    else localStorage.removeItem(rememberKey);
+    localStorage.setItem(LOGIN_MODE_KEY, mode);
 
     setIsLoading(true);
 
+    if (studentMode) {
+      try {
+        await signInStudent(username, password);
+      } catch (error) {
+        showLoginError(error);
+      }
+      return;
+    }
+
     let response;
     try {
-      response = await authApi.login({ username, password });
+      const request = authApi.login({ username, password });
+      preloadStaffHome(postLoginPath);
+      response = await request;
     } catch (error) {
-      console.error('Login API failed:', error);
-      const status = httpStatus(error);
-      if (status === 401) setErrormessage('Invalid username or password. Please check your credentials.');
-      else if (status === 0) setErrormessage('Unable to connect to the server. Please try again.');
-      else setErrormessage(apiErrorMessage(error, 'Login failed. Please try again.'));
-      setIsLoading(false);
+      showLoginError(error);
       return;
     }
 
     try {
-      // Avoid retaining roles from a previous account when users switch logins.
-      userSession.clear();
-      authService.saveLoginData(response.token, response.refreshToken);
-      localStorage.setItem('username', username);
-      await loadUserAndNavigate(username, password, response.token, response);
+      await loadUserAndNavigate(username, password, response);
     } catch (error) {
       authService.clearSession();
-      console.error('Login processing error:', error);
+      console.error('Login processing error.', error instanceof Error ? error.message : '');
       setErrormessage('Login could not be completed. Please try again.');
       setIsLoading(false);
     }
@@ -244,9 +303,20 @@ export default function Login() {
               </div>
 
               <form onSubmit={submit} noValidate>
-                {/* Username */}
+                <fieldset className="login-account-type" disabled={isLoading}>
+                  <legend className="visually-hidden">Account type</legend>
+                  <label>
+                    <input type="radio" name="login-mode" checked={!studentMode} onChange={() => changeMode('employee')} />
+                    Employee
+                  </label>
+                  <label>
+                    <input type="radio" name="login-mode" checked={studentMode} onChange={() => changeMode('student')} />
+                    Student
+                  </label>
+                </fieldset>
+
                 <div className="form-group">
-                  <label htmlFor="username">Username</label>
+                  <label htmlFor="username">{studentMode ? 'Student code' : 'Username'}</label>
                   <div className={`input-wrapper${usernameInvalid ? ' input-invalid' : ''}`}>
                     <svg className="field-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                       <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.7" />
@@ -259,14 +329,14 @@ export default function Login() {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       onBlur={() => setTouched((t) => ({ ...t, username: true }))}
-                      placeholder="Enter your username"
+                      placeholder={`Enter your ${loginField}`}
                       autoComplete="username"
                       aria-invalid={usernameInvalid}
                       aria-describedby="username-error"
                     />
                   </div>
                   {usernameInvalid && (
-                    <small id="username-error" className="field-error">Please enter your username.</small>
+                    <small id="username-error" className="field-error">Please enter your {loginField}.</small>
                   )}
                 </div>
 
@@ -328,7 +398,7 @@ export default function Login() {
                       onChange={(e) => setRememberMe(e.target.checked)}
                     />
                     <span className="custom-checkbox" aria-hidden="true"></span>
-                    <span>Remember username</span>
+                    <span>Remember {loginField}</span>
                   </label>
                 </div>
 

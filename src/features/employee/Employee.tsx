@@ -1,5 +1,5 @@
 import RowActionsMenu from '@/components/RowActionsMenu';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { sendAutomaticEmail } from '@/core/notifications/automaticEmail';
@@ -8,6 +8,8 @@ import { employeeApi, type RegisterEmployeeRequest } from '@/api/employeeApi';
 import { directoryApi, type BranchOption, type RoleOption } from '@/api/directoryApi';
 import type { User } from '@/types/user';
 import './Employee.css';
+
+type Lookup<T> = { status: 'loading' | 'error' } | { status: 'ready'; items: T[] };
 
 function normalizeUsers(value: any): User[] {
   let data = value;
@@ -34,8 +36,10 @@ function normalizeUsers(value: any): User[] {
 export default function Employee() {
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
-  const [branches, setBranches] = useState<BranchOption[]>([]);
-  const [roles, setRoles] = useState<RoleOption[]>([]);
+  const [branchLookup, setBranchLookup] = useState<Lookup<BranchOption>>({ status: 'loading' });
+  const [roleLookup, setRoleLookup] = useState<Lookup<RoleOption>>({ status: 'loading' });
+  const [lookupAttempt, setLookupAttempt] = useState(0);
+  const listRequest = useRef(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -53,20 +57,51 @@ export default function Employee() {
   });
   const [selectedRoleId, setSelectedRoleId] = useState('');
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
+    const request = ++listRequest.current;
     setLoading(true);
     setError('');
-    const [userResult, branchResult, roleResult] = await Promise.allSettled([
-      getAllUsers(), directoryApi.getBranches(), directoryApi.getRoles(),
-    ]);
-    if (userResult.status === 'fulfilled') setUsers(normalizeUsers(userResult.value));
-    else { setUsers([]); setError('Unable to load employee records. Please retry.'); }
-    setBranches(branchResult.status === 'fulfilled' ? branchResult.value : []);
-    setRoles(roleResult.status === 'fulfilled' ? roleResult.value : []);
-    setLoading(false);
-  }
+    try {
+      const records = await getAllUsers();
+      if (request === listRequest.current) setUsers(normalizeUsers(records));
+    } catch {
+      if (request === listRequest.current) {
+        setUsers([]);
+        setError('Unable to load employee records. Please retry.');
+      }
+    } finally {
+      if (request === listRequest.current) setLoading(false);
+    }
+  }, []);
 
-  useEffect(() => { void loadData(); }, []);
+  useEffect(() => {
+    void loadData();
+    return () => { listRequest.current += 1; };
+  }, [loadData]);
+
+  useEffect(() => {
+    if (!showCreate) return;
+
+    let active = true;
+    setBranchLookup({ status: 'loading' });
+    setRoleLookup({ status: 'loading' });
+    void directoryApi.getBranches().then((items) => {
+      if (active) setBranchLookup({ status: 'ready', items });
+    }).catch(() => {
+      if (active) setBranchLookup({ status: 'error' });
+    });
+    void directoryApi.getRoles().then((items) => {
+      if (active) {
+        setRoleLookup({ status: 'ready', items });
+        setSelectedRoleId((roleId) => items.some((role) => role.roleId === roleId) ? roleId : '');
+      }
+    }).catch(() => {
+      if (active) setRoleLookup({ status: 'error' });
+    });
+    return () => { active = false; };
+  }, [showCreate, lookupAttempt]);
+
+  const canSubmit = branchLookup.status === 'ready' && (!selectedRoleId || roleLookup.status === 'ready');
 
   const branchOptions = useMemo(() => [...new Set(
     users.map((user) => user.branchName).filter((name): name is string => Boolean(name)),
@@ -98,11 +133,12 @@ export default function Employee() {
 
   async function submitEmployee(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canSubmit || saving) return;
     setFormError('');
     setSuccess('');
     if (form.employeeName.trim().length < 2 ||
-        !/^\\S+@\\S+\\.\\S+$/.test(form.emailAddress.trim()) ||
-        !/^\\d{10}$/.test(form.mobileNumber) || form.branchId <= 0) {
+        !/^\S+@\S+\.\S+$/.test(form.emailAddress.trim()) ||
+        !/^\d{10}$/.test(form.mobileNumber) || form.branchId <= 0) {
       setFormError('Enter a valid name, email, 10-digit mobile number, and branch.');
       return;
     }
@@ -223,18 +259,24 @@ export default function Employee() {
             onChange={(event) => setForm({ ...form, employeeName: event.target.value })} /></label>
           <label>Email Address *<input type="email" autoComplete="email" required value={form.emailAddress}
             onChange={(event) => setForm({ ...form, emailAddress: event.target.value })} /></label>
-          <label>Mobile Number *<input type="tel" inputMode="numeric" maxLength={10} pattern="\\d{10}" required value={form.mobileNumber}
-            onChange={(event) => setForm({ ...form, mobileNumber: event.target.value.replace(/\\D/g, '').slice(0, 10) })} /></label>
-          <label>Branch *<select required value={form.branchId} onChange={(event) => setForm({ ...form, branchId: Number(event.target.value) })}>
-            <option value={0}>Select Branch</option>{branches.map((branch) => <option value={branch.id} key={branch.id}>{branch.name}</option>)}
+          <label>Mobile Number *<input type="tel" inputMode="numeric" maxLength={10} pattern="[0-9]{10}" required value={form.mobileNumber}
+            onChange={(event) => setForm({ ...form, mobileNumber: event.target.value.replace(/\D/g, '').slice(0, 10) })} /></label>
+          <label>Branch *<select required disabled={branchLookup.status !== 'ready'} value={form.branchId} onChange={(event) => setForm({ ...form, branchId: Number(event.target.value) })}>
+            <option value={0}>{branchLookup.status === 'loading' ? 'Loading branches…' : 'Select Branch'}</option>
+            {branchLookup.status === 'ready' && branchLookup.items.map((branch) => <option value={branch.id} key={branch.id}>{branch.name}</option>)}
           </select></label>
-          <label className="employee-full-field">Role (optional)<select value={selectedRoleId} onChange={(event) => setSelectedRoleId(event.target.value)}>
-            <option value="">Select Role (Optional)</option>{roles.map((role) => <option value={role.roleId} key={role.roleId}>{role.roleName}</option>)}
+          <label className="employee-full-field">Role (optional)<select disabled={roleLookup.status !== 'ready'} value={selectedRoleId} onChange={(event) => setSelectedRoleId(event.target.value)}>
+            <option value="">{roleLookup.status === 'loading' ? 'Loading roles…' : 'Select Role (Optional)'}</option>
+            {roleLookup.status === 'ready' && roleLookup.items.map((role) => <option value={role.roleId} key={role.roleId}>{role.roleName}</option>)}
           </select></label>
         </div>
+        {(branchLookup.status === 'error' || roleLookup.status === 'error') &&
+          <div className="employee-alert error" role="alert">Some registration options could not be loaded.
+            <button type="button" onClick={() => setLookupAttempt((attempt) => attempt + 1)}>Retry</button>
+          </div>}
         {formError && <div className="employee-alert error" role="alert">{formError}</div>}
         <footer><button type="button" className="employee-secondary-btn" disabled={saving} onClick={() => setShowCreate(false)}>Cancel</button>
-          <button className="employee-primary-btn" type="submit" disabled={saving}>{saving ? 'Registering...' : 'Register Employee'}</button></footer>
+          <button className="employee-primary-btn" type="submit" disabled={saving || !canSubmit}>{saving ? 'Registering...' : 'Register Employee'}</button></footer>
         </form>
       </section></div>, document.body)}
 

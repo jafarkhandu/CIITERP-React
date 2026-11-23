@@ -1,4 +1,5 @@
 import RowActionsMenu from '@/components/RowActionsMenu';
+import { TablePagination, useTablePage } from '@/components/TablePagination';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -20,6 +21,7 @@ type Row = Record<string, any>;
 type BatchRow = Row & { batchId: number; batchName: string };
 type RegistrationRow = Row & { registrationId: number; studentName: string; selected: boolean };
 type StudentRow = Row & { batchStudentId: number; registrationId: number; studentName: string; isPresent: boolean };
+type ScheduleTab = 'schedule' | 'students' | 'sessions' | 'records';
 const read = (row: Row, ...keys: string[]) => keys.map((key) => row?.[key]).find((value) => value !== undefined && value !== null && value !== '');
 const idOf = (row: Row) => Number(read(row, 'batch_id', 'batchId', 'BatchId', 'id') ?? 0);
 const deleted = (row: Row) => Boolean(read(row, 'is_deleted', 'isDeleted', 'deleted', 'deletedAt', 'deleted_at')) || read(row, 'is_active', 'isActive') === false;
@@ -151,6 +153,9 @@ export default function BatchManagement() {
   const [topics, setTopics] = useState<Row[]>([]);
   const [employees, setEmployees] = useState<Row[]>([]);
   const [branches, setBranches] = useState<BranchOption[]>([]);
+  const [loadingOptions, setLoadingOptions] = useState(false);
+  const [optionError, setOptionError] = useState('');
+  const optionsRequested = useRef(false);
   const [loading, setLoading] = useState(true);
   const [loadingCounts, setLoadingCounts] = useState(true);
   const loadVersion = useRef(0);
@@ -159,7 +164,11 @@ export default function BatchManagement() {
   const [success, setSuccess] = useState('');
   const [tab, setTab] = useState<'active' | 'deleted'>('active');
   const [scheduleBatch, setScheduleBatch] = useState<BatchRow | null>(null);
-  const [scheduleViewTab, setScheduleViewTab] = useState<'schedule' | 'students' | 'sessions' | 'records'>('schedule');
+  const [scheduleViewTab, setScheduleViewTab] = useState<ScheduleTab>('schedule');
+  const [loadingSchedule, setLoadingSchedule] = useState(false);
+  const [scheduleError, setScheduleError] = useState('');
+  const [scheduleCounts, setScheduleCounts] = useState<Partial<Record<ScheduleTab, number>>>({});
+  const scheduleVersion = useRef(0);
   const [schedules, setSchedules] = useState<Row[]>([]);
   const [roster, setRoster] = useState<StudentRow[]>([]);
   const [attendanceSessions, setAttendanceSessions] = useState<Row[]>([]);
@@ -177,6 +186,7 @@ export default function BatchManagement() {
   const [registrationSearch, setRegistrationSearch] = useState('');
   const [attendanceBatch, setAttendanceBatch] = useState<BatchRow | null>(null);
   const [attendanceScheduleId, setAttendanceScheduleId] = useState(0);
+  const [attendanceSchedules, setAttendanceSchedules] = useState<Row[]>([]);
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().slice(0, 10));
   const [attendanceStudents, setAttendanceStudents] = useState<StudentRow[]>([]);
   const [editingScheduleId, setEditingScheduleId] = useState(0);
@@ -232,29 +242,50 @@ export default function BatchManagement() {
 
   useEffect(() => {
     void load();
-    Promise.allSettled([batchDirectoryApi.getTopics(), batchDirectoryApi.getEmployees(), directoryApi.getBranches()])
-      .then(([topicResult, employeeResult, branchResult]) => {
-        if (topicResult.status === 'fulfilled') setTopics(topicResult.value);
-        if (employeeResult.status === 'fulfilled') setEmployees(employeeResult.value);
-        if (branchResult.status === 'fulfilled') setBranches(branchResult.value);
-      });
-    return () => { loadVersion.current += 1; };
+    return () => { loadVersion.current += 1; scheduleVersion.current += 1; };
   }, []);
 
   const active = useMemo(() => batches.filter((row) => !deleted(row)), [batches]);
   const removed = useMemo(() => batches.filter(deleted), [batches]);
   const displayed = tab === 'active' ? active : removed;
-  const filteredRegistrations = registrations.filter((item) =>
-    `${item.studentName} ${read(item, 'lastName', 'last_name') ?? ''} ${read(item, 'registrationCode', 'registration_code') ?? ''} ${read(item, 'emailAddress', 'email_address') ?? ''} ${read(item, 'mobileNumber', 'mobile_number') ?? ''}`
-      .toLowerCase().includes(registrationSearch.trim().toLowerCase()));
+  const { pageRows, pagination } = useTablePage(displayed, tab);
+  const filteredRegistrations = useMemo(() => {
+    const search = registrationSearch.trim().toLowerCase();
+    if (!search) return registrations;
+    return registrations.filter((item) =>
+      `${item.studentName} ${read(item, 'lastName', 'last_name') ?? ''} ${read(item, 'registrationCode', 'registration_code') ?? ''} ${read(item, 'emailAddress', 'email_address') ?? ''} ${read(item, 'mobileNumber', 'mobile_number') ?? ''}`
+        .toLowerCase().includes(search));
+  }, [registrations, registrationSearch]);
+  const visibleRegistrationIds = useMemo(() => new Set(filteredRegistrations.map(item => item.registrationId)), [filteredRegistrations]);
+  const registrationPage = useTablePage(filteredRegistrations, `${studentBatch?.batchId ?? ''}:${registrationSearch}`);
+
+  function loadBatchOptions() {
+    if (optionsRequested.current) return;
+    optionsRequested.current = true;
+    setLoadingOptions(true);
+    setOptionError('');
+    Promise.allSettled([batchDirectoryApi.getTopics(), batchDirectoryApi.getEmployees(), directoryApi.getBranches()])
+      .then(([topicResult, employeeResult, branchResult]) => {
+        if (topicResult.status === 'fulfilled') setTopics(topicResult.value);
+        if (employeeResult.status === 'fulfilled') setEmployees(employeeResult.value);
+        if (branchResult.status === 'fulfilled') setBranches(branchResult.value);
+        if ([topicResult, employeeResult, branchResult].some(result => result.status === 'rejected')) {
+          optionsRequested.current = false;
+          setOptionError('Some batch form options could not be loaded.');
+        }
+        setLoadingOptions(false);
+      });
+  }
 
   function openCreate() {
     setEditingBatchId(0); setForm(emptyForm()); setStartTime('09:00'); setEndTime('11:00');
     setError(''); setShowCreate(true);
+    loadBatchOptions();
   }
 
   async function openEdit(row: BatchRow) {
     setError(''); setSaving(true);
+    loadBatchOptions();
     try {
       const raw = await batchApi.getById(row.batchId) as Row;
       const record = raw?.data ?? raw?.result ?? raw;
@@ -350,30 +381,64 @@ export default function BatchManagement() {
     finally { setSaving(false); }
   }
 
-  async function viewSchedule(row: BatchRow) {
-    if (scheduleBatch?.batchId !== row.batchId) {
-      setScheduleViewTab('schedule');
-    }
-    setScheduleBatch(row); setEditingScheduleId(0); setError('');
+  async function viewSchedule(row: BatchRow, requestedTab?: ScheduleTab) {
+    const sameBatch = scheduleBatch?.batchId === row.batchId;
+    const tab = requestedTab ?? (sameBatch ? scheduleViewTab : 'schedule');
+    const version = ++scheduleVersion.current;
+    if (!requestedTab || !sameBatch) setScheduleCounts({});
+    setScheduleBatch(row); setScheduleViewTab(tab);
+    setEditingScheduleId(0); setEditingSessionId(0); setError(''); setScheduleError('');
+    setLoadingSchedule(true);
     try {
-      const [scheduleRows, studentRows, allSessions, allAttendance] = await Promise.all([
-        batchScheduleApi.getByBatch(row.batchId), batchStudentApi.getByBatch(row.batchId),
-        batchScheduleAttendanceApi.getAll(), scheduleAttendanceApi.getAll(),
-      ]);
-      setSchedules(scheduleRows);
-      const scheduleIds = new Set(scheduleRows.map((item) => Number(read(item, 'batch_schedule_id', 'batchScheduleId', 'id') ?? 0)));
-      const batchSessions = allSessions.filter((item) => scheduleIds.has(Number(read(item, 'batch_schedule_id', 'batchScheduleId') ?? 0)));
-      setAttendanceSessions(batchSessions);
-      const sessionIds = new Set(batchSessions.map((item) => Number(read(item, 'schedule_attendance_id', 'scheduleAttendanceId', 'batch_schedule_attendance_id', 'id') ?? 0)));
-      setStudentAttendanceRecords(allAttendance.filter((item) => sessionIds.has(Number(read(item, 'schedule_attendance_id', 'scheduleAttendanceId') ?? 0))));
-      setRoster(studentRows.map((item) => ({
-        ...item,
-        batchStudentId: Number(read(item, 'batch_student_id', 'batchStudentId', 'id') ?? 0),
-        registrationId: Number(read(item, 'registration_id', 'registrationId') ?? 0),
-        studentName: String(read(item, 'student_name', 'studentName', 'candidateName', 'name') ?? 'Student'),
-        isPresent: true,
-      })));
-    } catch (requestError: any) { setSchedules([]); setRoster([]); setError(requestError?.response?.data?.message || 'Unable to load batch details.'); }
+      let count: number;
+      if (tab === 'schedule') {
+        const scheduleRows = await batchScheduleApi.getByBatch(row.batchId);
+        if (version !== scheduleVersion.current) return;
+        setSchedules(scheduleRows);
+        count = scheduleRows.length;
+      } else if (tab === 'students') {
+        const studentRows = await batchStudentApi.getByBatch(row.batchId);
+        if (version !== scheduleVersion.current) return;
+        setRoster(studentRows.map((item) => ({
+          ...item,
+          batchStudentId: Number(read(item, 'batch_student_id', 'batchStudentId', 'id') ?? 0),
+          registrationId: Number(read(item, 'registration_id', 'registrationId') ?? 0),
+          studentName: String(read(item, 'student_name', 'studentName', 'candidateName', 'name') ?? 'Student'),
+          isPresent: true,
+        })));
+        count = studentRows.length;
+      } else {
+        const [scheduleRows, allSessions, allAttendance] = await Promise.all([
+          batchScheduleApi.getByBatch(row.batchId),
+          batchScheduleAttendanceApi.getAll(),
+          tab === 'records' ? scheduleAttendanceApi.getAll() : [],
+        ]);
+        if (version !== scheduleVersion.current) return;
+        const scheduleIds = new Set(scheduleRows.map((item) => Number(read(item, 'batch_schedule_id', 'batchScheduleId', 'id') ?? 0)));
+        const batchSessions = allSessions.filter((item) => scheduleIds.has(Number(read(item, 'batch_schedule_id', 'batchScheduleId') ?? 0)));
+        if (tab === 'sessions') {
+          setAttendanceSessions(batchSessions);
+          count = batchSessions.length;
+        } else {
+          const sessionIds = new Set(batchSessions.map((item) => Number(read(item, 'schedule_attendance_id', 'scheduleAttendanceId', 'batch_schedule_attendance_id', 'id') ?? 0)));
+          const records = allAttendance.filter((item) => sessionIds.has(Number(read(item, 'schedule_attendance_id', 'scheduleAttendanceId') ?? 0)));
+          setStudentAttendanceRecords(records);
+          count = records.length;
+        }
+      }
+      setScheduleCounts(previous => ({ ...previous, [tab]: count }));
+    } catch (requestError: any) {
+      if (version !== scheduleVersion.current) return;
+      setScheduleCounts(previous => ({ ...previous, [tab]: undefined }));
+      setScheduleError(requestError?.response?.data?.message || 'Unable to load this batch section.');
+    } finally {
+      if (version === scheduleVersion.current) setLoadingSchedule(false);
+    }
+  }
+
+  function closeSchedule() {
+    scheduleVersion.current += 1;
+    setScheduleBatch(null);
   }
 
   async function generateSchedule(row: BatchRow) {
@@ -401,6 +466,7 @@ export default function BatchManagement() {
     try {
       await batchStudentApi.remove(student.batchStudentId);
       setRoster((previous) => previous.filter((item) => item.batchStudentId !== student.batchStudentId));
+      setScheduleCounts((previous) => ({ ...previous, students: Math.max(0, (previous.students ?? 1) - 1) }));
       if (loadingCounts) {
         await load();
       } else if (scheduleBatch) {
@@ -477,10 +543,11 @@ export default function BatchManagement() {
 
   async function openAttendance(row: BatchRow) {
     setAttendanceBatch(row); setAttendanceDate(new Date().toISOString().slice(0, 10)); setAttendanceScheduleId(0); setAttendanceStudents([]);
+    setAttendanceSchedules([]);
     setError(''); setSaving(true);
     try {
       const [scheduleRows, students] = await Promise.all([batchScheduleApi.getByBatch(row.batchId), batchStudentApi.getByBatch(row.batchId)]);
-      setSchedules(scheduleRows);
+      setAttendanceSchedules(scheduleRows);
       const firstActiveSchedule = scheduleRows.find((item) => !deleted(item));
       setAttendanceScheduleId(Number(read(firstActiveSchedule ?? {}, 'batch_schedule_id', 'batchScheduleId', 'id') ?? 0));
       setAttendanceStudents(students.map((item) => ({
@@ -535,11 +602,13 @@ export default function BatchManagement() {
     try {
       await batchScheduleApi.update(editingScheduleId, scheduleEdit);
       if (scheduleBatch) {
-        sendUniqueAutomaticEmails(
-          roster,
-          'CIIT batch schedule updated',
-          `A training schedule entry for ${scheduleBatch.batchName} has been updated. Please check the latest date and status in your CIIT schedule.\n\nCIIT Training Institute`,
-        );
+        void batchStudentApi.getByBatch(scheduleBatch.batchId)
+          .then((students) => sendUniqueAutomaticEmails(
+            students,
+            'CIIT batch schedule updated',
+            `A training schedule entry for ${scheduleBatch.batchName} has been updated. Please check the latest date and status in your CIIT schedule.\n\nCIIT Training Institute`,
+          ))
+          .catch((notificationError: unknown) => console.warn('Updated schedule notification lookup failed:', notificationError));
       }
       setEditingScheduleId(0);
       if (scheduleBatch) await viewSchedule(scheduleBatch);
@@ -620,33 +689,29 @@ export default function BatchManagement() {
 
   return <section className="batch-page">
     <header className="batch-header"><div><div className="batch-eyebrow">GROUP LEADER / BATCH MANAGEMENT</div><h1>Batch Management</h1><p>Manage active batches, students and class schedules.</p></div>
-      <div className="batch-header-actions"><button className="batch-secondary" type="button" onClick={() => void load()} disabled={loading || loadingCounts || saving}>↻ Refresh</button><button className="batch-primary" type="button" onClick={openCreate}>＋ New Batch</button></div>
+      <div className="batch-header-actions"><button className="batch-secondary" type="button" onClick={() => void (scheduleBatch ? viewSchedule(scheduleBatch) : load())} disabled={saving || (scheduleBatch ? loadingSchedule : loading || loadingCounts)}>↻ Refresh</button><button className="batch-primary" type="button" onClick={openCreate} disabled={saving}>＋ New Batch</button></div>
     </header>
     {error && <div className="batch-error" role="alert">{error}<button type="button" onClick={() => void load()}>Retry</button></div>}
     {success && <div className="batch-success" role="status">{success}</div>}
     {scheduleBatch ? <section className="batch-table-card batch-schedule-view">
       <div className="batch-table-heading batch-schedule-heading">
         <div>
-          <button className="batch-secondary" type="button" onClick={() => setScheduleBatch(null)}>← Back to Batches</button>
+          <button className="batch-secondary" type="button" onClick={closeSchedule} disabled={saving}>← Back to Batches</button>
           <h2>Schedule — {scheduleBatch.batchName}</h2>
         </div>
         <button className="batch-primary" type="button" disabled={saving} onClick={() => void generateSchedule(scheduleBatch)}>Generate Schedule</button>
       </div>
       <div className="batch-schedule-tabs" role="group" aria-label="Batch schedule sections">
-        <button type="button" className={scheduleViewTab === 'schedule' ? 'is-active' : ''} aria-pressed={scheduleViewTab === 'schedule'} onClick={() => setScheduleViewTab('schedule')}>
-          Schedule <span className="batch-count">{schedules.length}</span>
-        </button>
-        <button type="button" className={scheduleViewTab === 'students' ? 'is-active' : ''} aria-pressed={scheduleViewTab === 'students'} onClick={() => setScheduleViewTab('students')}>
-          Students <span className="batch-count">{roster.length}</span>
-        </button>
-        <button type="button" className={scheduleViewTab === 'sessions' ? 'is-active' : ''} aria-pressed={scheduleViewTab === 'sessions'} onClick={() => setScheduleViewTab('sessions')}>
-          Attendance Sessions <span className="batch-count">{attendanceSessions.length}</span>
-        </button>
-        <button type="button" className={scheduleViewTab === 'records' ? 'is-active' : ''} aria-pressed={scheduleViewTab === 'records'} onClick={() => setScheduleViewTab('records')}>
-          Attendance Records <span className="batch-count">{studentAttendanceRecords.length}</span>
-        </button>
+        {([['schedule', 'Schedule'], ['students', 'Students'], ['sessions', 'Attendance Sessions'], ['records', 'Attendance Records']] as const).map(([tab, label]) => (
+          <button key={tab} type="button" className={scheduleViewTab === tab ? 'is-active' : ''} aria-pressed={scheduleViewTab === tab} disabled={saving}
+            onClick={() => { if (scheduleViewTab !== tab) void viewSchedule(scheduleBatch, tab); }}>
+            {label} {scheduleCounts[tab] !== undefined && <span className="batch-count">{scheduleCounts[tab]}</span>}
+          </button>
+        ))}
       </div>
-      {scheduleViewTab === 'schedule' && <div className="batch-table-scroll batch-schedule-table-scroll"><table className="batch-table batch-schedule-table"><thead><tr><th>#</th><th>Content / Topic</th><th>Expected Date</th><th>Expected Day</th><th>Actual Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+      {loadingSchedule && <p className="batch-empty" role="status">Loading batch section…</p>}
+      {scheduleError && <div className="batch-error" role="alert">{scheduleError}<button type="button" onClick={() => void viewSchedule(scheduleBatch, scheduleViewTab)}>Retry</button></div>}
+      {!loadingSchedule && !scheduleError && scheduleViewTab === 'schedule' && <div className="batch-table-scroll batch-schedule-table-scroll"><table className="batch-table batch-schedule-table"><thead><tr><th>#</th><th>Content / Topic</th><th>Expected Date</th><th>Expected Day</th><th>Actual Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>
         {schedules.map((row, index) => <tr key={String(read(row, 'batch_schedule_id', 'batchScheduleId', 'id') ?? index)}><td>{index + 1}</td><td>{String(read(row, 'content_name', 'contentName', 'topic_name') ?? '—')}</td><td>{formatDate(read(row, 'expected_date', 'expectedDate'))}</td><td>{String(read(row, 'expected_day', 'expectedDay') ?? '—')}</td><td>{formatDate(read(row, 'actual_date', 'actualDate'))}</td><td>{String(read(row, 'status') ?? '—')}</td><td><RowActionsMenu label="Schedule actions" disabled={saving} actions={deleted(row) ? [
           { label: 'Restore schedule', onSelect: () => void restoreSchedule(row) },
         ] : [
@@ -656,13 +721,13 @@ export default function BatchManagement() {
         {!schedules.length && <tr><td colSpan={7} className="batch-empty">No schedule entries found.</td></tr>}
       </tbody></table></div>}
       {editingScheduleId > 0 && createPortal(<div className="batch-modal-backdrop" onMouseDown={() => setEditingScheduleId(0)}><form onSubmit={submitScheduleEdit} className="batch-modal batch-modal-small" role="dialog" aria-modal="true" aria-labelledby="schedule-edit-title" onMouseDown={(event) => event.stopPropagation()}><header><h2 id="schedule-edit-title">Update Schedule</h2><button type="button" aria-label="Close schedule editor" onClick={() => setEditingScheduleId(0)}>×</button></header><div className="batch-form-grid"><label>Actual Date<input type="date" value={String(scheduleEdit.actual_date ?? '')} onChange={(e) => setScheduleEdit({ ...scheduleEdit, actual_date: e.target.value ? localMidnightIso(e.target.value) : null })}/></label><label>Status<input value={String(scheduleEdit.status ?? '')} onChange={(e) => setScheduleEdit({ ...scheduleEdit, status: e.target.value })}/></label></div><footer><button type="button" className="batch-secondary" onClick={() => setEditingScheduleId(0)}>Cancel</button><button type="submit" className="batch-primary" disabled={saving}>Update</button></footer></form></div>, document.body)}
-      {scheduleViewTab === 'students' && <>
+      {!loadingSchedule && !scheduleError && scheduleViewTab === 'students' && <>
       <div className="batch-table-heading batch-schedule-section-heading"><div><h2>Assigned Students</h2><p>Students currently assigned to this batch</p></div><span className="batch-count">{roster.length} students</span></div>
       <div className="batch-table-scroll batch-schedule-table-scroll"><table className="batch-table batch-schedule-table batch-schedule-table-short"><thead><tr><th>#</th><th>Student</th><th>Registration ID</th><th>Action</th></tr></thead><tbody>{roster.map((student, index) => <tr key={student.batchStudentId}><td>{index + 1}</td><td>{student.studentName}</td><td>{student.registrationId}</td><td><RowActionsMenu label={`Actions for ${student.studentName}`} disabled={saving} actions={[
           { label: 'Remove from batch', danger: true, onSelect: () => void removeStudent(student) },
         ]} /></td></tr>)}{!roster.length && <tr><td colSpan={4} className="batch-empty">No students assigned.</td></tr>}</tbody></table></div>
       </>}
-      {scheduleViewTab === 'sessions' && <>
+      {!loadingSchedule && !scheduleError && scheduleViewTab === 'sessions' && <>
       <div className="batch-table-heading batch-schedule-section-heading"><div><h2>Attendance Sessions</h2><p>Attendance session records for this batch</p></div><span className="batch-count">{attendanceSessions.length} sessions</span></div>
       <div className="batch-table-scroll batch-schedule-table-scroll"><table className="batch-table batch-schedule-table batch-schedule-table-short"><thead><tr><th>Session ID</th><th>Schedule ID</th><th>Attendance Date</th><th>Actions</th></tr></thead><tbody>{attendanceSessions.map((item, index) => { const sessionId = Number(read(item, 'schedule_attendance_id', 'scheduleAttendanceId', 'batch_schedule_attendance_id', 'id') ?? 0); const isDeleted = deleted(item); return <tr key={sessionId || index}><td>{sessionId}</td><td>{Number(read(item, 'batch_schedule_id', 'batchScheduleId') ?? 0)}</td><td>{formatDate(read(item, 'attendance_date', 'attendanceDate'))}</td><td><RowActionsMenu label={`Actions for attendance session ${sessionId}`} disabled={saving} actions={isDeleted ? [
           { label: 'Restore session', onSelect: () => void restoreSession(item) },
@@ -672,7 +737,7 @@ export default function BatchManagement() {
         ]} /></td></tr>; })}{!attendanceSessions.length && <tr><td colSpan={4} className="batch-empty">No attendance sessions found.</td></tr>}</tbody></table></div>
       </>}
       {editingSessionId > 0 && createPortal(<div className="batch-modal-backdrop" onMouseDown={() => setEditingSessionId(0)}><form onSubmit={submitSessionEdit} className="batch-modal batch-modal-small" role="dialog" aria-modal="true" aria-labelledby="attendance-edit-title" onMouseDown={(event) => event.stopPropagation()}><header><h2 id="attendance-edit-title">Edit Attendance Session</h2><button type="button" aria-label="Close attendance editor" onClick={() => setEditingSessionId(0)}>×</button></header><div className="batch-form-grid"><label>Attendance Date<input type="date" required value={sessionEditDate} onChange={(e) => setSessionEditDate(e.target.value)}/></label></div><footer><button type="button" className="batch-secondary" onClick={() => setEditingSessionId(0)}>Cancel</button><button type="submit" className="batch-primary" disabled={saving}>Update Session</button></footer></form></div>, document.body)}
-      {scheduleViewTab === 'records' && <>
+      {!loadingSchedule && !scheduleError && scheduleViewTab === 'records' && <>
       <div className="batch-table-heading batch-schedule-section-heading"><div><h2>Student Attendance Records</h2><p>Toggle present/absent or manage individual records</p></div><span className="batch-count">{studentAttendanceRecords.length} records</span></div>
       <div className="batch-table-scroll batch-schedule-table-scroll"><table className="batch-table batch-schedule-table batch-schedule-table-short"><thead><tr><th>Record ID</th><th>Session ID</th><th>Registration ID</th><th>Present</th><th>Actions</th></tr></thead><tbody>{studentAttendanceRecords.map((item, index) => { const recordId = Number(read(item, 'attendance_id', 'attendanceId', 'id') ?? 0); const isDeleted = deleted(item); const isPresent = Number(read(item, 'is_present', 'isPresent') ?? 0) === 1 || read(item, 'is_present', 'isPresent') === true; return <tr key={recordId || index}><td>{recordId}</td><td>{Number(read(item, 'schedule_attendance_id', 'scheduleAttendanceId') ?? 0)}</td><td>{Number(read(item, 'registration_id', 'registrationId') ?? 0)}</td><td>{isPresent ? 'Present' : 'Absent'}</td><td><RowActionsMenu label={`Actions for attendance record ${recordId}`} disabled={saving} actions={isDeleted ? [
           { label: 'Restore attendance', onSelect: () => void restoreStudentAttendance(item) },
@@ -685,7 +750,7 @@ export default function BatchManagement() {
       <div className="batch-tabs"><button type="button" className={tab === 'active' ? 'active' : ''} onClick={() => setTab('active')}>Active Batches <span>{active.length}</span></button><button type="button" className={tab === 'deleted' ? 'active' : ''} onClick={() => setTab('deleted')}>Deleted Batches <span>{removed.length}</span></button></div>
       <section className="batch-table-card"><div className="batch-table-heading"><div><h2>{tab === 'active' ? 'Active Batches' : 'Deleted Batches'}</h2><p>Batch overview and quick actions</p></div><span className="batch-count">{displayed.length} records</span></div>
         <div className="batch-table-scroll"><table className="batch-table"><thead><tr><th>#</th><th>Batch Name</th><th>Topic Name</th><th>Trainer Name</th><th>Start Date</th><th>End Date</th><th>Batch Time</th><th># Students</th><th>Action</th></tr></thead><tbody>
-          {loading ? <tr><td colSpan={9} className="batch-empty">Loading batches...</td></tr> : displayed.map((row, i) => <tr key={row.batchId}><td>{i + 1}</td><td><strong>{row.batchName}</strong><small>ID: {row.batchId}</small></td><td>{String(read(row, 'topic_name', 'topicName') ?? `Topic #${read(row, 'topic_id', 'topicId') ?? '—'}`)}</td><td>{String(read(row, 'employee_name', 'employeeName') ?? `Employee #${read(row, 'employee_id', 'employeeId') ?? '—'}`)}</td><td>{formatDate(read(row, 'start_date', 'startDate'))}</td><td>{formatDate(read(row, 'end_date', 'endDate'))}</td><td>{String(read(row, 'batch_time', 'batchTime') ?? '—')}</td><td><span className="batch-student-count" aria-label={loadingCounts ? 'Loading student count' : undefined}>{loadingCounts ? '…' : counts[row.batchId] ?? '—'}</span></td><td><RowActionsMenu label={`Actions for batch ${row.batchName}`} disabled={saving} actions={tab === 'active' ? [
+          {loading ? <tr><td colSpan={9} className="batch-empty">Loading batches...</td></tr> : pageRows.map((row, i) => <tr key={row.batchId}><td>{pagination.firstRow + i}</td><td><strong>{row.batchName}</strong><small>ID: {row.batchId}</small></td><td>{String(read(row, 'topic_name', 'topicName') ?? `Topic #${read(row, 'topic_id', 'topicId') ?? '—'}`)}</td><td>{String(read(row, 'employee_name', 'employeeName') ?? `Employee #${read(row, 'employee_id', 'employeeId') ?? '—'}`)}</td><td>{formatDate(read(row, 'start_date', 'startDate'))}</td><td>{formatDate(read(row, 'end_date', 'endDate'))}</td><td>{String(read(row, 'batch_time', 'batchTime') ?? '—')}</td><td><span className="batch-student-count" aria-label={loadingCounts ? 'Loading student count' : undefined}>{loadingCounts ? '…' : counts[row.batchId] ?? '—'}</span></td><td><RowActionsMenu label={`Actions for batch ${row.batchName}`} disabled={saving} actions={tab === 'active' ? [
               { label: 'View schedule', onSelect: () => void viewSchedule(row) },
               { label: 'Add students', onSelect: () => void openAddStudents(row) },
               { label: 'Attendance', onSelect: () => void openAttendance(row) },
@@ -698,6 +763,7 @@ export default function BatchManagement() {
             ]} /></td></tr>)}
           {!loading && !displayed.length && <tr><td colSpan={9} className="batch-empty">{tab === 'active' ? 'No active batches found.' : 'No deleted batches found.'}</td></tr>}
         </tbody></table></div>
+        {!loading && <TablePagination {...pagination} label="batches" />}
       </section>
     </>}
     {detailsBatch && createPortal(<div className="batch-modal-backdrop" onMouseDown={() => setDetailsBatch(null)}>
@@ -720,16 +786,19 @@ export default function BatchManagement() {
         <footer><button className="batch-secondary" type="button" onClick={() => setDetailsBatch(null)}>Close</button></footer>
       </section>
     </div>, document.body)}
-    {showCreate && createPortal(<div className="batch-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setShowCreate(false); }}><section className="batch-modal" role="dialog" aria-modal="true" aria-labelledby="batch-form-title"><header><h2 id="batch-form-title">{editingBatchId ? 'Edit Batch' : 'New Batch'}</h2><button type="button" aria-label="Close batch form" disabled={saving} onClick={() => setShowCreate(false)}>×</button></header><form onSubmit={submitBatch}><div className="batch-form-grid">
+    {showCreate && createPortal(<div className="batch-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setShowCreate(false); }}><section className="batch-modal" role="dialog" aria-modal="true" aria-labelledby="batch-form-title"><header><h2 id="batch-form-title">{editingBatchId ? 'Edit Batch' : 'New Batch'}</h2><button type="button" aria-label="Close batch form" disabled={saving} onClick={() => setShowCreate(false)}>×</button></header><form onSubmit={submitBatch}>
+      {loadingOptions && <p role="status">Loading topics, trainers and branches…</p>}
+      {optionError && <div className="batch-error" role="alert">{optionError}<button type="button" onClick={loadBatchOptions}>Retry</button></div>}
+      <div className="batch-form-grid">
       <label>Batch Name *<input required value={form.batch_name} onChange={(e) => setForm({ ...form, batch_name: e.target.value })}/></label>
-      <label>Topic *<select required value={form.topic_id} onChange={(e) => setForm({ ...form, topic_id: Number(e.target.value) })}><option value={0}>Select Topic</option>{topics.map((item) => { const topicId = Number(read(item, 'topic_id', 'topicId', 'id') ?? 0); return <option key={topicId} value={topicId}>{String(read(item, 'topic_name', 'topicName', 'name') ?? 'Topic')}</option>; })}</select></label>
-      <label>Trainer *<select required value={form.employee_id} onChange={(e) => setForm({ ...form, employee_id: Number(e.target.value) })}><option value={0}>Select Trainer</option>{employees.map((item) => { const employeeId = Number(read(item, 'employee_id', 'employeeId', 'id') ?? 0); return <option key={employeeId} value={employeeId}>{String(read(item, 'employee_name', 'employeeName', 'name') ?? 'Employee')}</option>; })}</select></label>
-      <label>Branch *<select required value={form.branch_id} onChange={(e) => setForm({ ...form, branch_id: Number(e.target.value) })}><option value={0}>Select Branch</option>{branches.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      <label>Topic *<select required disabled={loadingOptions} value={form.topic_id} onChange={(e) => setForm({ ...form, topic_id: Number(e.target.value) })}><option value={0}>Select Topic</option>{topics.map((item) => { const topicId = Number(read(item, 'topic_id', 'topicId', 'id') ?? 0); return <option key={topicId} value={topicId}>{String(read(item, 'topic_name', 'topicName', 'name') ?? 'Topic')}</option>; })}</select></label>
+      <label>Trainer *<select required disabled={loadingOptions} value={form.employee_id} onChange={(e) => setForm({ ...form, employee_id: Number(e.target.value) })}><option value={0}>Select Trainer</option>{employees.map((item) => { const employeeId = Number(read(item, 'employee_id', 'employeeId', 'id') ?? 0); return <option key={employeeId} value={employeeId}>{String(read(item, 'employee_name', 'employeeName', 'name') ?? 'Employee')}</option>; })}</select></label>
+      <label>Branch *<select required disabled={loadingOptions} value={form.branch_id} onChange={(e) => setForm({ ...form, branch_id: Number(e.target.value) })}><option value={0}>Select Branch</option>{branches.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       <label>Start Date *<input type="date" required value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })}/></label><label>End Date *<input type="date" min={form.start_date || undefined} required value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })}/></label>
       <label>Start Time *<input type="time" required value={startTime} onChange={(e) => setStartTime(e.target.value)}/></label><label>End Time *<input type="time" required value={endTime} onChange={(e) => setEndTime(e.target.value)}/></label>
       <label>Playlist Title<input value={form.playlist_title} onChange={(e) => setForm({ ...form, playlist_title: e.target.value })}/></label><label>Playlist Key<input value={form.playlist_key} onChange={(e) => setForm({ ...form, playlist_key: e.target.value })}/></label>
-    </div><footer><button className="batch-secondary" type="button" disabled={saving} onClick={() => setShowCreate(false)}>Cancel</button><button className="batch-primary" type="submit" disabled={saving}>{saving ? 'Saving...' : editingBatchId ? 'Update Batch' : 'Create Batch'}</button></footer></form></section></div>, document.body)}
-    {studentBatch && createPortal(<div className="batch-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setStudentBatch(null); }}><section className="batch-modal batch-modal-small" role="dialog" aria-modal="true" aria-labelledby="batch-students-title"><header><h2 id="batch-students-title">Add Students — {studentBatch.batchName}</h2><button type="button" aria-label="Close add students" disabled={saving} onClick={() => setStudentBatch(null)}>×</button></header><form onSubmit={addSelectedStudents}><input aria-label="Search eligible students" placeholder="Search name, registration, email or mobile" value={registrationSearch} onChange={(e) => setRegistrationSearch(e.target.value)}/><div className="batch-student-selection" style={{ maxHeight: 360, overflow: 'auto', margin: '12px 0' }}><label><input type="checkbox" checked={filteredRegistrations.length > 0 && filteredRegistrations.every((item) => item.selected)} onChange={(e) => setRegistrations((previous) => previous.map((item) => filteredRegistrations.some((filtered) => filtered.registrationId === item.registrationId) ? { ...item, selected: e.target.checked } : item))}/> Select all visible ({filteredRegistrations.length})</label>{filteredRegistrations.map((item) => <label key={item.registrationId} style={{ display: 'block', padding: 8 }}><input type="checkbox" checked={item.selected} onChange={(e) => setRegistrations((previous) => previous.map((entry) => entry.registrationId === item.registrationId ? { ...entry, selected: e.target.checked } : entry))}/> {item.studentName} — Reg #{item.registrationId} {String(read(item, 'courseName', 'course_name') ?? '')}</label>)}{!filteredRegistrations.length && <p>No eligible registrations found.</p>}</div><footer><button className="batch-secondary" type="button" disabled={saving} onClick={() => setStudentBatch(null)}>Cancel</button><button className="batch-primary" type="submit" disabled={saving}>{saving ? 'Adding...' : `Add Selected (${registrations.filter((item) => item.selected).length})`}</button></footer></form></section></div>, document.body)}
-    {attendanceBatch && createPortal(<div className="batch-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setAttendanceBatch(null); }}><section className="batch-modal" role="dialog" aria-modal="true" aria-labelledby="batch-attendance-title"><header><h2 id="batch-attendance-title">Attendance — {attendanceBatch.batchName}</h2><button type="button" aria-label="Close attendance form" disabled={saving} onClick={() => setAttendanceBatch(null)}>×</button></header><form onSubmit={saveAttendance}><label>Schedule *<select required value={attendanceScheduleId} onChange={(e) => setAttendanceScheduleId(Number(e.target.value))}><option value={0}>Select Schedule</option>{schedules.filter((item) => !deleted(item)).map((item) => { const sid = Number(read(item, 'batch_schedule_id', 'batchScheduleId', 'id') ?? 0); return <option key={sid} value={sid}>{String(read(item, 'content_name', 'contentName', 'topic_name') ?? 'Content')} — {formatDate(read(item, 'expected_date', 'expectedDate'))}</option>; })}</select></label><label>Attendance Date *<input type="date" required value={attendanceDate} onChange={(e) => setAttendanceDate(e.target.value)}/></label><div style={{ maxHeight: 320, overflow: 'auto', margin: '12px 0' }}>{attendanceStudents.map((student) => <label key={student.registrationId} style={{ display: 'block', padding: 8 }}><input type="checkbox" checked={student.isPresent} onChange={(e) => setAttendanceStudents((previous) => previous.map((item) => item.registrationId === student.registrationId ? { ...item, isPresent: e.target.checked } : item))}/> {student.studentName} (Registration #{student.registrationId})</label>)}</div><footer><button className="batch-secondary" type="button" disabled={saving} onClick={() => setAttendanceBatch(null)}>Cancel</button><button className="batch-primary" type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Attendance'}</button></footer></form></section></div>, document.body)}
+    </div><footer><button className="batch-secondary" type="button" disabled={saving} onClick={() => setShowCreate(false)}>Cancel</button><button className="batch-primary" type="submit" disabled={saving || loadingOptions}>{saving ? 'Saving...' : editingBatchId ? 'Update Batch' : 'Create Batch'}</button></footer></form></section></div>, document.body)}
+    {studentBatch && createPortal(<div className="batch-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setStudentBatch(null); }}><section className="batch-modal batch-modal-small" role="dialog" aria-modal="true" aria-labelledby="batch-students-title"><header><h2 id="batch-students-title">Add Students — {studentBatch.batchName}</h2><button type="button" aria-label="Close add students" disabled={saving} onClick={() => setStudentBatch(null)}>×</button></header><form onSubmit={addSelectedStudents}><input aria-label="Search eligible students" placeholder="Search name, registration, email or mobile" value={registrationSearch} onChange={(e) => setRegistrationSearch(e.target.value)}/><div className="batch-student-selection" style={{ maxHeight: 360, overflow: 'auto', margin: '12px 0' }}><label><input type="checkbox" checked={filteredRegistrations.length > 0 && filteredRegistrations.every((item) => item.selected)} onChange={(e) => setRegistrations((previous) => previous.map((item) => visibleRegistrationIds.has(item.registrationId) ? { ...item, selected: e.target.checked } : item))}/> Select all matching ({filteredRegistrations.length})</label>{registrationPage.pageRows.map((item) => <label key={item.registrationId} style={{ display: 'block', padding: 8 }}><input type="checkbox" checked={item.selected} onChange={(e) => setRegistrations((previous) => previous.map((entry) => entry.registrationId === item.registrationId ? { ...entry, selected: e.target.checked } : entry))}/> {item.studentName} — Reg #{item.registrationId} {String(read(item, 'courseName', 'course_name') ?? '')}</label>)}{!filteredRegistrations.length && <p>{saving ? 'Loading eligible registrations…' : 'No eligible registrations found.'}</p>}</div><TablePagination {...registrationPage.pagination} label="eligible registrations" /><footer><button className="batch-secondary" type="button" disabled={saving} onClick={() => setStudentBatch(null)}>Cancel</button><button className="batch-primary" type="submit" disabled={saving}>{saving ? 'Adding...' : `Add Selected (${registrations.filter((item) => item.selected).length})`}</button></footer></form></section></div>, document.body)}
+    {attendanceBatch && createPortal(<div className="batch-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setAttendanceBatch(null); }}><section className="batch-modal" role="dialog" aria-modal="true" aria-labelledby="batch-attendance-title"><header><h2 id="batch-attendance-title">Attendance — {attendanceBatch.batchName}</h2><button type="button" aria-label="Close attendance form" disabled={saving} onClick={() => setAttendanceBatch(null)}>×</button></header><form onSubmit={saveAttendance}><label>Schedule *<select required value={attendanceScheduleId} onChange={(e) => setAttendanceScheduleId(Number(e.target.value))}><option value={0}>Select Schedule</option>{attendanceSchedules.filter((item) => !deleted(item)).map((item) => { const sid = Number(read(item, 'batch_schedule_id', 'batchScheduleId', 'id') ?? 0); return <option key={sid} value={sid}>{String(read(item, 'content_name', 'contentName', 'topic_name') ?? 'Content')} — {formatDate(read(item, 'expected_date', 'expectedDate'))}</option>; })}</select></label><label>Attendance Date *<input type="date" required value={attendanceDate} onChange={(e) => setAttendanceDate(e.target.value)}/></label><div style={{ maxHeight: 320, overflow: 'auto', margin: '12px 0' }}>{attendanceStudents.map((student) => <label key={student.registrationId} style={{ display: 'block', padding: 8 }}><input type="checkbox" checked={student.isPresent} onChange={(e) => setAttendanceStudents((previous) => previous.map((item) => item.registrationId === student.registrationId ? { ...item, isPresent: e.target.checked } : item))}/> {student.studentName} (Registration #{student.registrationId})</label>)}</div><footer><button className="batch-secondary" type="button" disabled={saving} onClick={() => setAttendanceBatch(null)}>Cancel</button><button className="batch-primary" type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Attendance'}</button></footer></form></section></div>, document.body)}
   </section>;
 }
