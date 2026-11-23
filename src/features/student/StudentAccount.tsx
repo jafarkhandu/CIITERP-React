@@ -316,11 +316,15 @@ export default function StudentAccount() {
   }, [showingCourses, studentId, studentRecord, paymentDetails]);
 
   const studentName = display(
+    readField(studentDetails, 'studentName', 'student_Name', 'name') ||
     readField(studentRecord, 'studentName', 'student_Name', 'name') ||
     identity.displayName || session.employeeName || session.username,
   );
   const qualifications = nestedRows(studentRecord, 'qualifications', 'Qualifications');
   const qualification = readField(
+    studentDetails,
+    'qualification', 'qualificationName', 'qualification_Name', 'qualification_name', 'Qualification', 'QualificationName',
+  ) ?? readField(
     studentRecord,
     'qualification',
     'qualificationName',
@@ -440,13 +444,13 @@ export default function StudentAccount() {
                       onChange={selectPhoto}
                       disabled={!studentId}
                     />
-                    <label htmlFor="sp-profile-photo-input" className="sp-profile-upload-button">Choose profile photo</label>
+                    <label htmlFor="sp-profile-photo-input" className="sp-profile-upload-button">Upload profile photo</label>
                     {profilePhoto && (
                       <button type="button" className="btn btn-outline-danger btn-sm ms-2" onClick={() => void handleRemovePhoto()}>
-                        Remove photo
+                        Clear local photo
                       </button>
                     )}
-                    <p className="sp-muted">JPG, PNG or WebP · Max 2 MB · Saved on this browser only</p>
+                    <p className="sp-muted">JPG, PNG or WebP · Max 2 MB · Uploads to your student account</p>
                     {photoMessage && <p role="status" className="sp-muted">{photoMessage}</p>}
                   </div>
                 </div>
@@ -455,11 +459,19 @@ export default function StudentAccount() {
                 <dl className="sp-details sp-profile-details">
                   <div><dt>Student code</dt><dd>{display(studentCode)}</dd></div>
                   <div><dt>Full name</dt><dd>{studentName}</dd></div>
-                  <div><dt>Email</dt><dd>{display(readField(studentRecord, 'emailAddress', 'email_Address') || identity.email || session.email)}</dd></div>
-                  <div><dt>Mobile number</dt><dd>{display(readField(studentRecord, 'mobileNumber', 'mobile_Number'))}</dd></div>
+                  <div><dt>Email</dt><dd>{display(readField(studentDetails, 'emailAddress', 'email_Address') || readField(studentRecord, 'emailAddress', 'email_Address') || identity.email || session.email)}</dd></div>
+                  <div><dt>Mobile number</dt><dd>{display(readField(studentDetails, 'mobileNumber', 'mobile_Number') ?? readField(studentRecord, 'mobileNumber', 'mobile_Number'))}</dd></div>
                   <div><dt>Qualification</dt><dd>{display(qualification)}</dd></div>
                   <div><dt>Branch</dt><dd>{display(readField(studentRecord, 'branchName', 'branch_Name'))}</dd></div>
                 </dl>
+                <StudentProfileEditor
+                  studentId={studentId}
+                  profile={studentDetails}
+                  registration={studentRecord}
+                  loading={detailsLoading}
+                  error={detailsError}
+                  onSaved={updated => setStudentDetails(current => current ? { ...current, ...updated } : current)}
+                />
               </section>
               <section className="sp-panel"><h2>Change Password</h2><p className="sp-muted">Student password changes are not yet available. The existing ERP change-password API belongs to staff accounts and cannot safely be used for student credentials.</p></section>
             </div>
