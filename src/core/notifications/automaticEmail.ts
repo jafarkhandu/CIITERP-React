@@ -2,8 +2,8 @@ import { emailApi } from '@/api/emailApi';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ADDRESS_KEYS = [
-  'emailAddress', 'email_address', 'email', 'EmailAddress',
-  'studentEmail', 'student_email', 'emailId', 'email_id',
+  'emailAddress', 'email_address', 'email_Address', 'EmailAddress', 'email',
+  'studentEmail', 'student_email', 'student_Email', 'emailId', 'email_id',
 ];
 const NESTED_KEYS = ['student', 'studentDetails', 'student_details', 'registration', 'studentRegistration'];
 
