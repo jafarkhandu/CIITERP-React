@@ -8,6 +8,8 @@ npm run dev      # http://localhost:4200
 npm run build
 ```
 
+With `npm run dev`, Vite forwards API requests from localhost to the configured HTTPS services using same-origin paths. The browser can send requests directly to Vite without a CORS preflight. The production build uses the HTTPS service URLs.
+
 ## Phase 1 – done
 - Vite + React 18 + TypeScript, React Router 6, axios
 - Auth: login, forgot password, reset password (UI only, same as Angular), change password, profile

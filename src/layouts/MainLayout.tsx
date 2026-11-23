@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { findCurrentUser, getAllUsers } from '@/api/userApi';
+import { resolveCurrentUser } from '@/api/userApi';
 import { usePermissionVersion, useSession } from '@/core/auth/hooks';
 import { userSession } from '@/core/auth/session';
 import { authService } from '@/core/auth/authService';
@@ -173,11 +173,10 @@ export default function MainLayout() {
     }
 
     let cancelled = false;
-    getAllUsers()
-      .then((users) => {
+    resolveCurrentUser(username, currentUser)
+      .then((current) => {
         if (cancelled || userSession.getSnapshot() !== session || !authService.isLoggedIn()
           || localStorage.getItem('username') !== storedUsername) return;
-        const current = findCurrentUser(users, username);
         if (current) userSession.setUser(current);
       })
       .catch((error) => {

@@ -36,13 +36,7 @@ export const enquiryFollowupApi = {
   update: async (id: number, payload: EnquiryFollowupRecord) => {
     requirePositiveId(id);
 
-    // Use the existing Vite proxy during local development to expose server errors
-    // without changing the production endpoint or the backend's authorization.
-    const updateUrl = import.meta.env.DEV
-      ? `/lead-api/EnquiryFollowup/Update/${id}`
-      : `${baseUrl}/Update/${id}`;
-
-    return (await http.put(updateUrl, {
+    return (await http.put(`${baseUrl}/Update/${id}`, {
       ...payload,
       followupId: id,
     })).data;

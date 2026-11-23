@@ -1,5 +1,6 @@
 import RowActionsMenu from '@/components/RowActionsMenu';
-import { useEffect, useMemo, useState } from 'react';
+import { TablePagination, useTablePage } from '@/components/TablePagination';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { FormEvent, ReactNode } from 'react';
 import { Fragment } from 'react';
@@ -14,10 +15,13 @@ import { sendAutomaticEmail } from '@/core/notifications/automaticEmail';
 
 type Row = Record<string, unknown>;
 type Qualification = { qualificationId: number; qualification: string };
+type Lookup = 'branches' | 'qualifications' | 'courses' | 'enquiries';
+type LookupStatus = 'loading' | 'ready' | 'failed';
 const today = () => new Date().toISOString().slice(0, 10);
 const pick = (row: Row, ...keys: string[]) => keys.map((key) => row[key]).find((v) => v !== undefined && v !== null && v !== '');
 const show = (v: unknown) => v === undefined || v === null || v === '' ? '—' : String(v);
-const money = (v: unknown) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(v) || 0);
+const currencyFormatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+const money = (v: unknown) => currencyFormatter.format(Number(v) || 0);
 // Keep entered calendar dates unchanged; converting local midnight to UTC can change the day.
 const iso = (value: string): string => `${value}T00:00:00`;
 const freshForm = () => ({
@@ -53,8 +57,14 @@ export default function StudentRegistration() {
   const [search, setSearch] = useState('');
   const [regSearch, setRegSearch] = useState('');
   const [expandedStudentKey, setExpandedStudentKey] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [dropdownLoading, setDropdownLoading] = useState(false);
+  const [studentsLoading, setStudentsLoading] = useState(true);
+  const [registrationsLoading, setRegistrationsLoading] = useState(true);
+  const [recordsError, setRecordsError] = useState('');
+  const [lookupStatus, setLookupStatus] = useState<Partial<Record<Lookup, LookupStatus>>>({});
+  const loadingLookups = useRef(new Set<Lookup>());
+  const dataRevision = useRef(0);
+  const feeRevision = useRef(0);
+  const feeTimer = useRef<number>();
   const [saving, setSaving] = useState(false);
   const [feeLoading, setFeeLoading] = useState(false);
   const [error, setError] = useState('');
@@ -68,42 +78,69 @@ export default function StudentRegistration() {
   const [existingPayment, setExistingPayment] = useState({ paymentAmount: 0, paymentDate: today(), paymentMode: 'Cash', paymentDescription: '' });
   const [feeInfo, setFeeInfo] = useState<{ actualFees: number; finalFees: number } | null>(null);
 
-  async function loadData() {
-    setLoading(true); setError('');
-    const [s, r] = await Promise.allSettled([studentApi.getStudents(), studentApi.getRegistrations()]);
-    if (s.status === 'fulfilled') setStudents(s.value);
-    if (r.status === 'fulfilled') setRegistrations(r.value);
-    if (s.status === 'rejected' || r.status === 'rejected') {
-      console.error('Student data refresh failed:', { students: s.status === 'rejected' ? s.reason : undefined, registrations: r.status === 'rejected' ? r.reason : undefined });
-      setError('Some student data could not be refreshed. Successfully loaded records remain visible.');
-    }
-    setLoading(false);
-  }
-  async function loadDropdowns() {
-    setDropdownLoading(true);
-    const results = await Promise.allSettled([
-      directoryApi.getBranches(),
-      http.get(API_ENDPOINTS.lead + '/Qualification').then(({ data }) => {
-        const rows = Array.isArray(data) ? data : data?.data ?? data?.result ?? data?.items ?? data?.$values ?? [];
-        return rows.map((x: Row) => ({ qualificationId: Number(pick(x, 'qualificationId', 'qualification_Id', 'qualification_id', 'QualificationId', 'id') ?? 0), qualification: String(pick(x, 'qualification', 'qualificationName', 'qualification_Name', 'qualification_name', 'QualificationName', 'name') ?? '') })).filter((x: Qualification) => x.qualification);
-      }),
-      courseApi.getAll(),
+  const loadData = useCallback(async () => {
+    const revision = ++dataRevision.current;
+    setStudentsLoading(true);
+    setRegistrationsLoading(true);
+    setRecordsError('');
+
+    const load = async <T,>(request: Promise<T>, assign: (rows: T) => void, finish: () => void) => {
+      try {
+        const rows = await request;
+        if (dataRevision.current === revision) assign(rows);
+      } catch (requestError) {
+        if (dataRevision.current !== revision) return;
+        console.error('Student data refresh failed:', requestError);
+        setRecordsError('Some student data could not be refreshed. Successfully loaded records remain visible.');
+      } finally {
+        if (dataRevision.current === revision) finish();
+      }
+    };
+
+    await Promise.all([
+      load(studentApi.getStudents(), setStudents, () => setStudentsLoading(false)),
+      load(studentApi.getRegistrations(), setRegistrations, () => setRegistrationsLoading(false)),
     ]);
-    if (results[0].status === 'fulfilled') setBranches(results[0].value);
-    if (results[1].status === 'fulfilled') setQualifications(results[1].value);
-    if (results[2].status === 'fulfilled') setCourses(results[2].value);
-    if (results.some((x) => x.status === 'rejected')) setError('Some form dropdowns failed to load. Please retry before submitting.');
-    setDropdownLoading(false);
+  }, []);
+
+  function loadLookup<T>(key: Lookup, request: () => Promise<T>, assign: (rows: T) => void) {
+    if (lookupStatus[key] === 'ready' || loadingLookups.current.has(key)) return;
+    loadingLookups.current.add(key);
+    setLookupStatus((current) => ({ ...current, [key]: 'loading' }));
+    void request()
+      .then((rows) => {
+        assign(rows);
+        setLookupStatus((current) => ({ ...current, [key]: 'ready' }));
+      })
+      .catch((requestError: unknown) => {
+        console.error(`Student registration ${key} lookup failed:`, requestError);
+        setLookupStatus((current) => ({ ...current, [key]: 'failed' }));
+      })
+      .finally(() => loadingLookups.current.delete(key));
   }
-  useEffect(() => { void loadData(); }, []);
+
+  function loadEnquiries() {
+    loadLookup('enquiries', async () => (await enquiryApi.getAll()).filter((item) => !item.deletedAt), setEnquiries);
+  }
+
+  useEffect(() => {
+    void loadData();
+    return () => {
+      dataRevision.current += 1;
+      feeRevision.current += 1;
+      window.clearTimeout(feeTimer.current);
+    };
+  }, [loadData]);
 
   const visibleStudents = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return students.filter((s) => !q || [s.studentId, s.studentName, s.lastName, s.studentCode, s.mobileNumber, s.emailAddress, s.qualification, s.branchName].some((v) => String(v ?? '').toLowerCase().includes(q)));
+    if (!q) return students;
+    return students.filter((s) => [s.studentId, s.studentName, s.lastName, s.studentCode, s.mobileNumber, s.emailAddress, s.qualification, s.branchName].some((v) => String(v ?? '').toLowerCase().includes(q)));
   }, [students, search]);
   const visibleRegs = useMemo(() => {
     const q = regSearch.trim().toLowerCase();
-    return registrations.filter((r) => !q || [pick(r, 'registrationId', 'registration_Id'), pick(r, 'studentName', 'student_Name'), pick(r, 'courseName', 'course_Name'), pick(r, 'registrationCode', 'registration_Code')].some((v) => String(v ?? '').toLowerCase().includes(q)));
+    if (!q) return registrations;
+    return registrations.filter((r) => [pick(r, 'registrationId', 'registration_Id'), pick(r, 'studentName', 'student_Name'), pick(r, 'courseName', 'course_Name'), pick(r, 'registrationCode', 'registration_Code')].some((v) => String(v ?? '').toLowerCase().includes(q)));
   }, [registrations, regSearch]);
 
   const groupedRegs = useMemo(() => {
@@ -120,31 +157,74 @@ export default function StudentRegistration() {
     return Array.from(groups.values());
   }, [visibleRegs]);
 
-  async function openForm(kind: 'new' | 'existing', studentId = 0) {
-    setError(''); setSuccess(''); setFeeInfo(null); setModal(kind);
-    if (!branches.length || !courses.length || !qualifications.length) await loadDropdowns();
+  const { pageRows: studentPage, pagination: studentPagination } = useTablePage(visibleStudents, search);
+  const { pageRows: registrationPage, pagination: registrationPagination } = useTablePage(groupedRegs, regSearch);
+
+  function resetFees() {
+    feeRevision.current += 1;
+    window.clearTimeout(feeTimer.current);
+    setFeeInfo(null);
+    setFeeLoading(false);
+  }
+
+  function closeForm() {
+    resetFees();
+    setModal(null);
+  }
+
+  function openForm(kind: 'new' | 'existing', studentId = 0) {
+    setError('');
+    setSuccess('');
+    resetFees();
+    setModal(kind);
+    loadLookup('courses', courseApi.getAll, setCourses);
     if (kind === 'new') {
       setForm(freshForm());
       setSelectedEnquiryId(0);
-      try {
-        setEnquiries((await enquiryApi.getAll()).filter((item) => !item.deletedAt));
-      } catch (requestError) {
-        console.error('Enquiry prefill list failed:', requestError);
+      if (!loadingLookups.current.has('enquiries')) {
         setEnquiries([]);
-        setError('Enquiry list could not be loaded. You can still enter student details manually.');
+        setLookupStatus((current) => ({ ...current, enquiries: undefined }));
       }
+      loadLookup('branches', directoryApi.getBranches, setBranches);
+      loadLookup('qualifications', async () => {
+        const { data } = await http.get(API_ENDPOINTS.lead + '/Qualification');
+        const rows: Row[] = Array.isArray(data) ? data : data?.data ?? data?.result ?? data?.items ?? data?.$values ?? [];
+        return rows.map((row) => ({
+          qualificationId: Number(pick(row, 'qualificationId', 'qualification_Id', 'qualification_id', 'QualificationId', 'id') ?? 0),
+          qualification: String(pick(row, 'qualification', 'qualificationName', 'qualification_Name', 'qualification_name', 'QualificationName', 'name') ?? ''),
+        })).filter((row) => row.qualification);
+      }, setQualifications);
+    } else {
+      setExistingStudentId(studentId);
+      setExistingCourseId(0);
+      setExistingDiscount(0);
+      setExistingPayment({ paymentAmount: 0, paymentDate: today(), paymentMode: 'Cash', paymentDescription: '' });
     }
-    else { setExistingStudentId(studentId); setExistingCourseId(0); setExistingDiscount(0); setExistingPayment({ paymentAmount: 0, paymentDate: today(), paymentMode: 'Cash', paymentDescription: '' }); }
   }
-  async function loadFees(courseId: number, discount: number) {
-    if (!courseId) { setFeeInfo(null); return; }
-    setFeeLoading(true); setError('');
-    try {
-      const data = await studentApi.getCourseFees(courseId, discount);
-      setFeeInfo({ actualFees: Number(pick(data, 'actualFees', 'actual_Fees') ?? 0), finalFees: Number(pick(data, 'finalFees', 'final_Fees') ?? 0) });
-    } catch (e) { console.error('Course fee lookup failed:', e); setFeeInfo(null); setError('Could not load the selected course fees. Please retry.'); }
-    finally { setFeeLoading(false); }
+
+  function loadFees(courseId: number, discount: number, delay = 0) {
+    resetFees();
+    if (!courseId) return;
+    const revision = feeRevision.current;
+    setFeeLoading(true);
+    setError('');
+    const fetch = async () => {
+      try {
+        const data = await studentApi.getCourseFees(courseId, discount);
+        if (feeRevision.current !== revision) return;
+        setFeeInfo({ actualFees: Number(pick(data, 'actualFees', 'actual_Fees') ?? 0), finalFees: Number(pick(data, 'finalFees', 'final_Fees') ?? 0) });
+      } catch (requestError) {
+        if (feeRevision.current !== revision) return;
+        console.error('Course fee lookup failed:', requestError);
+        setError('Could not load the selected course fees. Please retry.');
+      } finally {
+        if (feeRevision.current === revision) setFeeLoading(false);
+      }
+    };
+    if (delay) feeTimer.current = window.setTimeout(() => void fetch(), delay);
+    else void fetch();
   }
+
   const setField = (key: keyof ReturnType<typeof freshForm>, value: string | number) => setForm((f) => ({ ...f, [key]: value }));
   function prefillFromEnquiry(enquiryId: number) {
     setSelectedEnquiryId(enquiryId);
@@ -206,36 +286,38 @@ export default function StudentRegistration() {
 
   return <section className="container-fluid py-3 ciit-data-page">
     {modal !== 'new' && <>
-    <div className="ciit-page-heading mb-4"><div><span className="ciit-section-eyebrow">ACADEMIC MANAGEMENT</span><h1 className="h3 mb-1">Student Registration</h1><p className="text-muted mb-0">Manage student profiles, course registrations and enrollment.</p></div><div className="d-flex flex-wrap gap-2"><button className="btn btn-outline-primary" onClick={() => void loadData()} disabled={loading}><i className="bi bi-arrow-clockwise me-1" />Refresh</button><button className="btn btn-outline-primary" onClick={() => void openForm('existing')}><i className="bi bi-person-plus me-1" />Register Existing Student</button><button className="btn btn-primary" onClick={() => void openForm('new')}><i className="bi bi-plus-lg me-1" />Register New Student</button></div></div>
-    {error && !modal && <div className="alert alert-warning">{error}</div>}{success && <div className="alert alert-success">{success}</div>}
+    <div className="ciit-page-heading mb-4"><div><span className="ciit-section-eyebrow">ACADEMIC MANAGEMENT</span><h1 className="h3 mb-1">Student Registration</h1><p className="text-muted mb-0">Manage student profiles, course registrations and enrollment.</p></div><div className="d-flex flex-wrap gap-2"><button className="btn btn-outline-primary" onClick={() => { setError(''); void loadData(); }} disabled={studentsLoading || registrationsLoading || saving}><i className="bi bi-arrow-clockwise me-1" />Refresh</button><button className="btn btn-outline-primary" onClick={() => openForm('existing')}><i className="bi bi-person-plus me-1" />Register Existing Student</button><button className="btn btn-primary" onClick={() => openForm('new')}><i className="bi bi-plus-lg me-1" />Register New Student</button></div></div>
+    {(error || recordsError) && !modal && <div className="alert alert-warning" role="status">{error || recordsError}</div>}{success && <div className="alert alert-success">{success}</div>}
     <div className="row g-3 mb-4"><div className="col-sm-6 col-xl-3"><div className="card ciit-stat-card"><div className="card-body"><span>Total Students</span><strong>{students.length}</strong><small>Student profiles</small></div></div></div><div className="col-sm-6 col-xl-3"><div className="card ciit-stat-card"><div className="card-body"><span>Course Registrations</span><strong>{registrations.length}</strong><small>Enrollment records</small></div></div></div></div>
     <div className="card ciit-data-card mb-4"><div className="card-header"><div><h2 className="h6 mb-1">Student Directory</h2><span className="small text-muted">{visibleStudents.length} of {students.length} students</span></div><div className="ciit-table-search"><i className="bi bi-search" /><input className="form-control" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, code, mobile or email..." /></div></div>
       <div className="table-responsive"><table className="table table-hover align-middle ciit-professional-table mb-0"><thead><tr><th>#</th><th>Student</th><th>Code</th><th>Mobile</th><th>Email</th><th>Qualification</th><th>Branch</th><th className="text-end">Actions</th></tr></thead><tbody>
-        {loading ? <tr><td colSpan={8} className="ciit-table-state">Loading students...</td></tr> : visibleStudents.length ? visibleStudents.map((s, i) => <tr key={s.studentId}><td>{i + 1}</td><td><div className="ciit-student-cell"><span className="ciit-student-avatar">{s.studentName?.charAt(0)?.toUpperCase() || 'S'}</span><div><strong>{s.studentName} {s.lastName}</strong><small>Student ID: {s.studentId}</small></div></div></td><td>{show(s.studentCode)}</td><td>{show(s.mobileNumber)}</td><td>{show(s.emailAddress)}</td><td>{show(s.qualification)}</td><td>{show(s.branchName)}</td><td><RowActionsMenu label={`Actions for ${s.studentName} ${s.lastName ?? ''}`} actions={[
+        {studentsLoading ? <tr><td colSpan={8} className="ciit-table-state">Loading students...</td></tr> : studentPage.length ? studentPage.map((s, i) => <tr key={s.studentId}><td>{studentPagination.firstRow + i}</td><td><div className="ciit-student-cell"><span className="ciit-student-avatar">{s.studentName?.charAt(0)?.toUpperCase() || 'S'}</span><div><strong>{s.studentName} {s.lastName}</strong><small>Student ID: {s.studentId}</small></div></div></td><td>{show(s.studentCode)}</td><td>{show(s.mobileNumber)}</td><td>{show(s.emailAddress)}</td><td>{show(s.qualification)}</td><td>{show(s.branchName)}</td><td><RowActionsMenu label={`Actions for ${s.studentName} ${s.lastName ?? ''}`} actions={[
               { label: 'View student', onSelect: () => { setSelectedStudent(s); setModal('details'); } },
-              { label: 'Register course', onSelect: () => void openForm('existing', s.studentId) },
+              { label: 'Register course', onSelect: () => openForm('existing', s.studentId) },
             ]} /></td></tr>) : <tr><td colSpan={8} className="ciit-table-state">No student records found.</td></tr>}
       </tbody></table></div>
+      {!studentsLoading && <TablePagination {...studentPagination} label="students" />}
     </div>
-    <div className="card ciit-data-card"><div className="card-header"><div><h2 className="h6 mb-1">Course Registration Records</h2><span className="small text-muted">{visibleRegs.length} records</span></div><div className="ciit-table-search"><i className="bi bi-search" /><input className="form-control" value={regSearch} onChange={(e) => setRegSearch(e.target.value)} placeholder="Search student, course or registration..." /></div></div><div className="table-responsive"><table className="table table-hover align-middle ciit-professional-table mb-0"><thead><tr><th>Registration</th><th>Student</th><th>Course</th><th>Registration Code</th><th>Status</th><th className="text-end">Initial Paid</th></tr></thead><tbody>{loading ? <tr><td colSpan={6} className="ciit-table-state">Loading registrations...</td></tr> : groupedRegs.length ? groupedRegs.map((group) => {
+    <div className="card ciit-data-card"><div className="card-header"><div><h2 className="h6 mb-1">Course Registration Records</h2><span className="small text-muted">{visibleRegs.length} records</span></div><div className="ciit-table-search"><i className="bi bi-search" /><input className="form-control" value={regSearch} onChange={(e) => setRegSearch(e.target.value)} placeholder="Search student, course or registration..." /></div></div><div className="table-responsive"><table className="table table-hover align-middle ciit-professional-table mb-0"><thead><tr><th>Registration</th><th>Student</th><th>Course</th><th>Registration Code</th><th>Status</th><th className="text-end">Initial Paid</th></tr></thead><tbody>{registrationsLoading ? <tr><td colSpan={6} className="ciit-table-state">Loading registrations...</td></tr> : registrationPage.length ? registrationPage.map((group) => {
   const isExpanded = expandedStudentKey === group.key;
   const totalPaid = group.records.reduce((sum, record) => sum + Number(pick(record, 'paymentAmount', 'payment_Amount') ?? 0), 0);
   return <Fragment key={group.key}>
     <tr className="ciit-registration-student-row"><td><button type="button" className="btn btn-sm btn-outline-primary" aria-expanded={isExpanded} aria-label={(isExpanded ? 'Collapse' : 'Expand') + ' registrations for ' + group.studentName + ' ' + group.lastName} onClick={() => setExpandedStudentKey(isExpanded ? null : group.key)}>{isExpanded ? '−' : '+'} {group.records.length}</button></td><td><strong>{group.studentName} {group.lastName}</strong><div className="small text-muted">{group.records.length} course registration{group.records.length === 1 ? '' : 's'}</div></td><td>{group.records.length} course{group.records.length === 1 ? '' : 's'}</td><td>—</td><td>—</td><td className="text-end fw-semibold">{money(totalPaid)}</td></tr>
     {isExpanded && group.records.map((record, index) => <tr className="ciit-registration-detail-row" key={String(pick(record, 'registrationId', 'registration_Id') ?? (group.key + '-' + index))}><td className="ps-4">↳ #{show(pick(record, 'registrationId', 'registration_Id'))}</td><td className="text-muted small">Course detail</td><td>{show(pick(record, 'courseName', 'course_Name'))}</td><td>{show(pick(record, 'registrationCode', 'registration_Code'))}</td><td><span className="badge rounded-pill text-bg-success">{show(pick(record, 'currentStatus', 'current_Status', 'status'))}</span></td><td className="text-end fw-semibold">{money(pick(record, 'paymentAmount', 'payment_Amount'))}</td></tr>)}
   </Fragment>;
-}) : <tr><td colSpan={6} className="ciit-table-state">No course registrations found.</td></tr>}</tbody></table></div></div>
+}) : <tr><td colSpan={6} className="ciit-table-state">No course registrations found.</td></tr>}</tbody></table></div>{!registrationsLoading && <TablePagination {...registrationPagination} label="student registration groups" />}</div>
 
     {modal === 'details' && selectedStudent && <Modal title="Student Profile" subtitle={`Student ID: ${selectedStudent.studentId}`} onClose={() => setModal(null)} large={false}><div className="row g-3">{[['Name', `${selectedStudent.studentName} ${selectedStudent.lastName ?? ''}`], ['Student Code', selectedStudent.studentCode], ['Mobile', selectedStudent.mobileNumber], ['Email', selectedStudent.emailAddress], ['Qualification', selectedStudent.qualification], ['Branch', selectedStudent.branchName], ['Gender', selectedStudent.gender], ['Date of Birth', selectedStudent.birthDate ? String(selectedStudent.birthDate).split('T')[0] : ''], ['Parent', selectedStudent.parentName], ['Parent Mobile', selectedStudent.parentNumber], ['WhatsApp', selectedStudent.whatsappNumber], ['Address', selectedStudent.localAddress]].map(([label, value]) => <div className="col-sm-6" key={String(label)}><div className="ciit-detail-field"><small>{String(label)}</small><strong>{show(value)}</strong></div></div>)}</div><div className="text-end mt-4"><button className="btn btn-secondary" onClick={() => setModal(null)}>Close</button></div></Modal>}
 
     </>}
 
-    {modal === 'new' && <div className="ciit-registration-form-page"><div className="ciit-page-heading mb-3"><div><span className="ciit-section-eyebrow">CIIT · STUDENT MANAGEMENT</span><h1 className="h3 mb-1">Register New Student</h1><p className="text-muted mb-0">Create a student profile and enroll in a course.</p></div><button type="button" className="btn btn-outline-secondary" disabled={saving} onClick={() => setModal(null)}>Back to Student Registration</button></div><div className="card ciit-data-card"><div className="card-body">
-      {dropdownLoading && <div className="alert alert-info py-2">Loading branches, qualifications and courses...</div>}
+    {modal === 'new' && <div className="ciit-registration-form-page"><div className="ciit-page-heading mb-3"><div><span className="ciit-section-eyebrow">CIIT · STUDENT MANAGEMENT</span><h1 className="h3 mb-1">Register New Student</h1><p className="text-muted mb-0">Create a student profile and enroll in a course.</p></div><button type="button" className="btn btn-outline-secondary" disabled={saving} onClick={closeForm}>Back to Student Registration</button></div><div className="card ciit-data-card"><div className="card-body">
+      {(lookupStatus.branches === 'loading' || lookupStatus.courses === 'loading') && <div className="alert alert-info py-2" role="status">Loading branches and courses...</div>}
+      {(lookupStatus.branches === 'failed' || lookupStatus.courses === 'failed' || lookupStatus.qualifications === 'failed') && <div className="alert alert-warning py-2" role="status">Some form options could not be loaded. Reopen the form to retry.</div>}
       <form onSubmit={submitNew}>
         <div className="ciit-registration-columns">
         <div className="ciit-form-section ciit-registration-personal"><h3>Personal Information</h3><div className="row g-2">
-          <div className="col-12"><label className="form-label">Search Enquiry Student</label><select className="form-select" value={selectedEnquiryId} onChange={(e) => prefillFromEnquiry(Number(e.target.value))}><option value={0}>Select enquiry to auto-fill details (optional)</option>{enquiries.map((item) => <option key={item.enquiryId} value={item.enquiryId}>{item.candidateName} · {item.mobileNumber}</option>)}</select><small className="text-muted">Selecting an enquiry fills available personal details. You can edit them before registering.</small></div>
+          <div className="col-12"><label className="form-label">Search Enquiry Student</label>{lookupStatus.enquiries === 'ready' ? <select className="form-select" value={selectedEnquiryId} onChange={(e) => prefillFromEnquiry(Number(e.target.value))}><option value={0}>{enquiries.length ? 'Select enquiry to auto-fill details (optional)' : 'No enquiries available'}</option>{enquiries.map((item) => <option key={item.enquiryId} value={item.enquiryId}>{item.candidateName} · {item.mobileNumber}</option>)}</select> : <div><button type="button" className="btn btn-outline-secondary btn-sm" onClick={loadEnquiries} disabled={lookupStatus.enquiries === 'loading'}>{lookupStatus.enquiries === 'loading' ? 'Loading enquiries...' : 'Load enquiry options'}</button>{lookupStatus.enquiries === 'failed' && <span className="text-muted small ms-2" role="status">Enquiries are unavailable. You can still enter details manually.</span>}</div>}<small className="text-muted">Selecting an enquiry fills available personal details. You can edit them before registering.</small></div>
           <div className="col-md-6"><label className="form-label">First Name *</label><input className="form-control" required value={form.studentName} onChange={(e) => setField('studentName', e.target.value)} /></div>
           <div className="col-md-6"><label className="form-label">Last Name *</label><input className="form-control" required value={form.lastName} onChange={(e) => setField('lastName', e.target.value)} /></div>
           <div className="col-md-4"><label className="form-label">Gender *</label><select className="form-select" required value={form.gender} onChange={(e) => setField('gender', e.target.value)}><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div>
@@ -258,9 +340,9 @@ export default function StudentRegistration() {
           <div className="col-12"><label className="form-label">Permanent Address</label><textarea className="form-control" rows={2} value={form.permanentAddress} onChange={(e) => setField('permanentAddress', e.target.value)} /></div></div></div>
         <div className="ciit-form-section ciit-registration-course"><h3>Course & Fee Details</h3><div className="row g-2">
           <div className="col-md-6"><label className="form-label">Branch *</label><select className="form-select" required value={form.branchId} onChange={(e) => setField('branchId', Number(e.target.value))}><option value={0}>Select branch</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
-          <div className="col-md-6"><label className="form-label">Course *</label><select className="form-select" required value={form.courseId} onChange={(e) => { const id = Number(e.target.value); setField('courseId', id); void loadFees(id, form.discount); }}><option value={0}>Select course</option>{courses.map((c) => <option key={c.courseId} value={c.courseId}>{c.courseName}</option>)}</select></div>
+          <div className="col-md-6"><label className="form-label">Course *</label><select className="form-select" required value={form.courseId} onChange={(e) => { const id = Number(e.target.value); setField('courseId', id); loadFees(id, form.discount); }}><option value={0}>Select course</option>{courses.map((c) => <option key={c.courseId} value={c.courseId}>{c.courseName}</option>)}</select></div>
           <div className="col-md-4"><label className="form-label">Registration Date *</label><input type="date" required className="form-control" value={form.registrationDate} onChange={(e) => setField('registrationDate', e.target.value)} /></div>
-          <div className="col-md-4"><label className="form-label">Discount</label><input type="number" min="0" className="form-control" value={form.discount || ''} onChange={(e) => { const d = Number(e.target.value); setField('discount', d); if (form.courseId) void loadFees(form.courseId, d); }} /></div>
+          <div className="col-md-4"><label className="form-label">Discount</label><input type="number" min="0" className="form-control" value={form.discount || ''} onChange={(e) => { const d = Number(e.target.value); setField('discount', d); if (form.courseId) loadFees(form.courseId, d, 250); }} /></div>
           <div className="col-md-4"><label className="form-label">Initial Payment</label><input type="number" min="0" className="form-control" value={form.paymentAmount || ''} onChange={(e) => setField('paymentAmount', Number(e.target.value))} /></div>
           {feeLoading && <div className="col-12 small text-muted">Calculating course fees...</div>}{feeInfo && <div className="col-12"><div className="ciit-fee-summary"><span>Course Fee <strong>{money(feeInfo.actualFees)}</strong></span><span>Final Fee <strong>{money(feeInfo.finalFees)}</strong></span></div></div>}
           <div className="col-md-4"><label className="form-label">Payment Date</label><input type="date" required className="form-control" value={form.paymentDate} onChange={(e) => setField('paymentDate', e.target.value)} /></div>
@@ -268,22 +350,23 @@ export default function StudentRegistration() {
           <div className="col-md-4"><label className="form-label">Payment Description</label><input className="form-control" value={form.paymentDescription} onChange={(e) => setField('paymentDescription', e.target.value)} /></div>
         </div></div>
         </div>
-        {error && <div className="alert alert-danger mt-3">{error}</div>}<div className="d-flex justify-content-end gap-2 mt-4"><button type="button" className="btn btn-light" disabled={saving} onClick={() => setModal(null)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={saving || dropdownLoading || feeLoading}>{saving ? 'Registering...' : 'Register Student'}</button></div>
+        {error && <div className="alert alert-danger mt-3">{error}</div>}<div className="d-flex justify-content-end gap-2 mt-4"><button type="button" className="btn btn-light" disabled={saving} onClick={closeForm}>Cancel</button><button type="submit" className="btn btn-primary" disabled={saving || lookupStatus.branches === 'loading' || lookupStatus.courses === 'loading' || feeLoading}>{saving ? 'Registering...' : 'Register Student'}</button></div>
       </form>
     </div></div></div>}
 
-    {modal === 'existing' && <Modal title="Register Existing Student" subtitle="Enroll an existing student in another course." onClose={() => !saving && setModal(null)} large={false}>
-      {dropdownLoading && <div className="alert alert-info py-2">Loading course list...</div>}
+    {modal === 'existing' && <Modal title="Register Existing Student" subtitle="Enroll an existing student in another course." onClose={() => !saving && closeForm()} large={false}>
+      {lookupStatus.courses === 'loading' && <div className="alert alert-info py-2" role="status">Loading course list...</div>}
+      {lookupStatus.courses === 'failed' && <div className="alert alert-warning py-2" role="status">The course list could not be loaded. Reopen the form to retry.</div>}
       <form onSubmit={submitExisting}><div className="row g-3">
         <div className="col-12"><label className="form-label">Student *</label><select required className="form-select" value={existingStudentId} onChange={(e) => setExistingStudentId(Number(e.target.value))}><option value={0}>Choose student</option>{students.map((s) => <option key={s.studentId} value={s.studentId}>{s.studentName} {s.lastName} · {s.mobileNumber}</option>)}</select></div>
-        <div className="col-md-7"><label className="form-label">Course *</label><select required className="form-select" value={existingCourseId} onChange={(e) => { const id = Number(e.target.value); setExistingCourseId(id); void loadFees(id, existingDiscount); }}><option value={0}>Select course</option>{courses.map((c) => <option key={c.courseId} value={c.courseId}>{c.courseName}</option>)}</select></div>
-        <div className="col-md-5"><label className="form-label">Discount</label><input type="number" min="0" className="form-control" value={existingDiscount || ''} onChange={(e) => { const d = Number(e.target.value); setExistingDiscount(d); if (existingCourseId) void loadFees(existingCourseId, d); }} /></div>
+        <div className="col-md-7"><label className="form-label">Course *</label><select required className="form-select" value={existingCourseId} onChange={(e) => { const id = Number(e.target.value); setExistingCourseId(id); loadFees(id, existingDiscount); }}><option value={0}>Select course</option>{courses.map((c) => <option key={c.courseId} value={c.courseId}>{c.courseName}</option>)}</select></div>
+        <div className="col-md-5"><label className="form-label">Discount</label><input type="number" min="0" className="form-control" value={existingDiscount || ''} onChange={(e) => { const d = Number(e.target.value); setExistingDiscount(d); if (existingCourseId) loadFees(existingCourseId, d, 250); }} /></div>
         {feeInfo && <div className="col-12"><div className="ciit-fee-summary"><span>Course Fee <strong>{money(feeInfo.actualFees)}</strong></span><span>Final Fee <strong>{money(feeInfo.finalFees)}</strong></span></div></div>}{feeLoading && <div className="col-12 small text-muted">Loading fees...</div>}
         <div className="col-md-6"><label className="form-label">Payment Amount</label><input type="number" min="0" className="form-control" value={existingPayment.paymentAmount || ''} onChange={(e) => setExistingPayment((p) => ({ ...p, paymentAmount: Number(e.target.value) }))} /></div>
         <div className="col-md-6"><label className="form-label">Payment Date *</label><input type="date" required className="form-control" value={existingPayment.paymentDate} onChange={(e) => setExistingPayment((p) => ({ ...p, paymentDate: e.target.value }))} /></div>
         <div className="col-md-6"><label className="form-label">Payment Mode *</label><select required className="form-select" value={existingPayment.paymentMode} onChange={(e) => setExistingPayment((p) => ({ ...p, paymentMode: e.target.value }))}><option>Cash</option><option>UPI</option><option>Online</option><option>Card</option><option>Bank Transfer</option><option>Cheque</option></select></div>
         <div className="col-12"><label className="form-label">Description</label><input className="form-control" value={existingPayment.paymentDescription} onChange={(e) => setExistingPayment((p) => ({ ...p, paymentDescription: e.target.value }))} /></div>
-      </div>{error && <div className="alert alert-danger mt-3">{error}</div>}<div className="d-flex justify-content-end gap-2 mt-4"><button type="button" className="btn btn-light" disabled={saving} onClick={() => setModal(null)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={saving || dropdownLoading || feeLoading}>{saving ? 'Registering...' : 'Register Existing Student'}</button></div></form>
+      </div>{error && <div className="alert alert-danger mt-3">{error}</div>}<div className="d-flex justify-content-end gap-2 mt-4"><button type="button" className="btn btn-light" disabled={saving} onClick={closeForm}>Cancel</button><button type="submit" className="btn btn-primary" disabled={saving || studentsLoading || lookupStatus.courses === 'loading' || feeLoading}>{saving ? 'Registering...' : 'Register Existing Student'}</button></div></form>
     </Modal>}
   </section>;
 }

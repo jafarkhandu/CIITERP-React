@@ -17,7 +17,10 @@ export default function CourseMapping() {
   const [selectedTopicIds, setSelectedTopicIds] = useState<number[]>([]);
   const [search, setSearch] = useState('');
   const [showDeleted, setShowDeleted] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [topicsLoading, setTopicsLoading] = useState(true);
+  const [coursesError, setCoursesError] = useState('');
+  const [topicsError, setTopicsError] = useState('');
   const [mappingLoading, setMappingLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -25,18 +28,27 @@ export default function CourseMapping() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([trainingCourseTopicApi.getCourses(), trainingTopicApi.getAll()])
-      .then(([courseRows, topicRows]) => {
+    void trainingCourseTopicApi.getCourses()
+      .then(courseRows => {
         if (!active) return;
         setCourses(courseRows);
-        setTopics(topicRows);
         setCourseId(courseRows[0]?.courseId ?? 0);
       })
       .catch(requestError => {
-        if (active) setError(trainingError(requestError, 'Unable to load courses or topics.'));
+        if (active) setCoursesError(trainingError(requestError, 'Unable to load courses.'));
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) setCoursesLoading(false);
+      });
+    void trainingTopicApi.getAll()
+      .then(topicRows => {
+        if (active) setTopics(topicRows);
+      })
+      .catch(requestError => {
+        if (active) setTopicsError(trainingError(requestError, 'Unable to load topics.'));
+      })
+      .finally(() => {
+        if (active) setTopicsLoading(false);
       });
     return () => { active = false; };
   }, []);
@@ -169,18 +181,20 @@ export default function CourseMapping() {
       </header>
 
       {error && <div className="dt-notice dt-error" role="alert">{error}</div>}
+      {coursesError && <div className="dt-notice dt-error" role="alert">{coursesError}</div>}
+      {topicsError && <div className="dt-notice dt-error" role="alert">{topicsError}</div>}
       {success && <div className="dt-notice dt-success" role="status">{success}</div>}
 
       <div className="dt-panel dt-course-selector">
         <label>Choose Course
           <select aria-label="Choose course" value={courseId || ''}
-            disabled={loading || saving}
+            disabled={coursesLoading || Boolean(coursesError) || saving}
             onChange={event => {
               setError('');
               setSuccess('');
               setCourseId(Number(event.target.value));
             }}>
-            {courses.length === 0 && <option value="">No courses available</option>}
+            {courses.length === 0 && <option value="">{coursesLoading ? 'Loading courses…' : 'No courses available'}</option>}
             {courses.map(course => <option key={course.courseId} value={course.courseId}>
               {course.courseName} (ID: {course.courseId})
             </option>)}
@@ -197,8 +211,8 @@ export default function CourseMapping() {
               placeholder="Search topics..." value={search}
               onChange={event => setSearch(event.target.value)} />
             <div className="dt-check-list dt-mapping-topic-grid">
-              {loading ? <p className="dt-muted">Loading topics…</p>
-                : matchingTopics.length === 0 ? <p className="dt-muted">No active topics found.</p>
+              {topicsLoading ? <p className="dt-muted" role="status">Loading topics…</p>
+                : matchingTopics.length === 0 && !topicsError ? <p className="dt-muted">No active topics found.</p>
                   : matchingTopics.map(topic => <label key={topic.topicId} className={`dt-topic-checkbox dt-mapping-topic-card${selectedTopicIds.includes(topic.topicId) ? ' is-selected' : ''}`}>
                     <input type="checkbox" checked={selectedTopicIds.includes(topic.topicId)}
                       disabled={!courseId || mappingLoading || saving}
@@ -208,7 +222,7 @@ export default function CourseMapping() {
             </div>
             <div className="dt-form-actions">
               <button type="submit" className="dt-primary"
-                disabled={!courseId || loading || mappingLoading || saving || topics.length === 0}>
+                disabled={!courseId || topicsLoading || mappingLoading || saving || topics.length === 0}>
                 {saving ? 'Saving…' : 'Save Mapping'}
               </button>
             </div>

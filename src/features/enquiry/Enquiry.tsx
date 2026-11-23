@@ -1,4 +1,5 @@
 import RowActionsMenu from '@/components/RowActionsMenu';
+import { TablePagination, useTablePage } from '@/components/TablePagination';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { enquiryApi, type EnquiryRecord } from '@/api/enquiryApi';
@@ -92,6 +93,7 @@ export default function Enquiry() {
     });
   }, [enquiries, search, branch, fromDate, toDate]);
   const visibleEnquiries = useMemo(() => filtered.filter((item) => Boolean(item.deletedAt) === (tab === 'deleted')), [filtered, tab]);
+  const { pageRows, pagination } = useTablePage(visibleEnquiries, JSON.stringify([tab, search, branch, fromDate, toDate]));
 
   async function removeEnquiry(item: EnquiryRecord) {
     if (!window.confirm(`Delete enquiry for ${item.candidateName}?`)) return;
@@ -146,7 +148,7 @@ export default function Enquiry() {
     <div className="enquiry-table-card"><div className="enquiry-table-scroll"><table className="enquiry-table">
       <thead><tr><th>ID</th><th>Date</th><th>Candidate</th><th>Email</th><th>Mobile</th><th>Branch</th><th>Qualification</th><th>Enquiry For</th><th>Status</th><th>Action</th></tr></thead>
       <tbody>{loading ? <tr><td colSpan={10} className="enquiry-empty">Loading enquiries...</td></tr> :
-        visibleEnquiries.map((item) => <tr key={item.enquiryId}>
+        pageRows.map((item) => <tr key={item.enquiryId}>
           <td>{item.enquiryId}</td><td>{formatDate(item.enquiryDate)}</td><td className="enquiry-candidate">{item.candidateName}</td>
           <td>{item.emailAddress}</td><td>{item.mobileNumber}</td><td>{item.branchName || '-'}</td><td>{item.qualification || '-'}</td>
           <td>{item.enquiryFors || '-'}</td><td><span className="enquiry-status">{item.status || 'New'}</span></td>
@@ -160,7 +162,9 @@ export default function Enquiry() {
         </tr>)}
         {!loading && visibleEnquiries.length === 0 && <tr><td colSpan={10} className="enquiry-empty">No enquiries found.</td></tr>}
       </tbody>
-    </table></div></div>
-    <p className="enquiry-count">Showing {visibleEnquiries.length} enquiries</p>
+    </table></div>
+      {!loading && <TablePagination {...pagination} label="enquiries" />}
+    </div>
+    {!loading && pagination.pages === 1 && <p className="enquiry-count">Showing {visibleEnquiries.length} enquiries</p>}
   </section>;
 }

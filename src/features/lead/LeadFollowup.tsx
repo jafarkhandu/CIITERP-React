@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { leadApi, type LeadFollowupRecord, type LeadRecord } from '@/api/leadApi';
 import { userSession } from '@/core/auth/session';
+import { useFollowupHistory } from '@/features/followup/useFollowupHistory';
 import './Lead.css';
 import './LeadFollowup.css';
 
@@ -16,18 +17,40 @@ function formatDate(value: string | Date, withTime = false): string {
   return withTime ? date.toLocaleString('en-GB') : date.toLocaleDateString('en-GB');
 }
 
+async function getAdditionalFollowups(leadId: number) {
+  const rows = await leadApi.getAllFollowups();
+  return rows.filter((item) => Number(item.leadId ?? (item as any).lead_id ?? 0) === leadId);
+}
+
+function mergeFollowups(scoped: LeadFollowupRecord[], additional: LeadFollowupRecord[], leadId: number) {
+  const merged = new Map<number, LeadFollowupRecord>();
+  [...scoped, ...additional].forEach((item) => {
+    const raw = item as LeadFollowupRecord & Record<string, unknown>;
+    const id = Number(raw.leadFollowupId ?? raw.lead_followup_id ?? raw.id ?? 0);
+    if (id > 0) merged.set(id, {
+      ...item, leadFollowupId: id, leadId: Number(raw.leadId ?? raw.lead_id ?? leadId),
+      deletedAt: (raw.deletedAt ?? raw.deleted_at ?? ((raw.is_deleted ?? raw.isDeleted ?? raw.deleted) ? 'deleted' : null)) as string | null,
+    });
+  });
+  return [...merged.values()].sort((a, b) => Number(a.leadFollowupId) - Number(b.leadFollowupId));
+}
+
 export default function LeadFollowup() {
-  const { leadId: rawLeadId = '' } = useParams();
-  const leadId = Number(rawLeadId);
+  const { leadId = '' } = useParams();
+  return <LeadFollowupPage key={leadId} leadId={Number(leadId)} />;
+}
+
+function LeadFollowupPage({ leadId }: { leadId: number }) {
   const navigate = useNavigate();
+  const validLeadId = Number.isInteger(leadId) && leadId > 0;
   const [lead, setLead] = useState<LeadRecord | null>(null);
-  const [followups, setFollowups] = useState<LeadFollowupRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [leadLoading, setLeadLoading] = useState(true);
+  const [leadLoading, setLeadLoading] = useState(validLeadId);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [expandedForm, setExpandedForm] = useState(false);
   const [expandedHistory, setExpandedHistory] = useState(false);
+  const [historyRequested, setHistoryRequested] = useState(false);
+  const history = useFollowupHistory(leadId, historyRequested, leadApi.getFollowups, getAdditionalFollowups, mergeFollowups);
   const [editingFollowupId, setEditingFollowupId] = useState(0);
   const [status, setStatus] = useState('');
   const [description, setDescription] = useState('');
@@ -35,43 +58,15 @@ export default function LeadFollowup() {
   const [followupBy, setFollowupBy] = useState(userSession.employeeName || userSession.username || '');
   const [nextFollowupDate, setNextFollowupDate] = useState(toLocalDate());
 
-  async function loadLead() {
-    setLeadLoading(true);
-    try { setLead(await leadApi.getById(leadId)); }
-    catch { setLead(null); setError('Unable to load lead details.'); }
-    finally { setLeadLoading(false); }
-  }
-  async function loadFollowups() {
-    setLoading(true);
-    try {
-      const [byLeadResult, allResult] = await Promise.allSettled([
-        leadApi.getFollowups(leadId),
-        leadApi.getAllFollowups(),
-      ]);
-      const byLead = byLeadResult.status === 'fulfilled' ? byLeadResult.value : [];
-      const allForLead = allResult.status === 'fulfilled'
-        ? allResult.value.filter((item) => Number((item as any).leadId ?? (item as any).lead_id ?? 0) === leadId)
-        : [];
-      if (byLeadResult.status === 'rejected' && allResult.status === 'rejected') {
-        throw byLeadResult.reason;
-      }
-      const merged = new Map<number, LeadFollowupRecord>();
-      [...byLead, ...allForLead].forEach((item) => {
-        const id = Number(item.leadFollowupId ?? (item as any).lead_followup_id ?? (item as any).id ?? 0);
-        if (id > 0) merged.set(id, { ...item, leadFollowupId: id, leadId: Number((item as any).leadId ?? (item as any).lead_id ?? leadId), deletedAt: (item as any).deletedAt ?? (item as any).deleted_at ?? (((item as any).is_deleted ?? (item as any).isDeleted ?? (item as any).deleted) ? 'deleted' : null) });
-      });
-      setFollowups(Array.from(merged.values()).sort((a, b) => Number(a.leadFollowupId || (a as any).id || 0) - Number(b.leadFollowupId || (b as any).id || 0)));
-      setError('');
-    } catch { setFollowups([]); setError('Unable to load follow-up history.'); }
-    finally { setLoading(false); }
-  }
-
   useEffect(() => {
-    if (!Number.isInteger(leadId) || leadId <= 0) {
-      setError('Invalid lead ID.'); setLeadLoading(false); setLoading(false); return;
-    }
-    void loadLead(); void loadFollowups();
-  }, [leadId]);
+    if (!validLeadId) return;
+    let active = true;
+    void leadApi.getById(leadId).then(
+      (record) => { if (active) setLead(record); },
+      () => { if (active) setError('Unable to load lead details.'); },
+    ).finally(() => { if (active) setLeadLoading(false); });
+    return () => { active = false; };
+  }, [leadId, validLeadId]);
 
   async function editFollowup(item: LeadFollowupRecord) {
     const id = Number(item.leadFollowupId ?? 0);
@@ -95,14 +90,14 @@ export default function LeadFollowup() {
     const id = Number(item.leadFollowupId ?? 0);
     if (!id || !window.confirm('Delete this lead follow-up?')) return;
     setSaving(true); setError('');
-    try { await leadApi.removeFollowup(id); await loadFollowups(); }
+    try { await leadApi.removeFollowup(id); history.refresh(); }
     catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to delete follow-up.'); }
     finally { setSaving(false); }
   }
   async function restoreFollowup(item: LeadFollowupRecord) {
     const id = Number(item.leadFollowupId ?? 0);
     setSaving(true); setError('');
-    try { await leadApi.restoreFollowup(id); await loadFollowups(); }
+    try { await leadApi.restoreFollowup(id); history.refresh(); }
     catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to restore follow-up.'); }
     finally { setSaving(false); }
   }
@@ -124,7 +119,7 @@ export default function LeadFollowup() {
       else await leadApi.createFollowup(payload);
       setDescription(''); setStatus(''); setEditingFollowupId(0);
       setFollowupDate(toLocalDateTime()); setFollowupBy(userSession.employeeName || userSession.username || ''); setNextFollowupDate(toLocalDate());
-      await loadFollowups();
+      history.refresh();
     } catch (requestError: any) {
       setError(requestError?.response?.data?.message || 'Unable to save follow-up.');
     } finally { setSaving(false); }
@@ -134,6 +129,7 @@ export default function LeadFollowup() {
     <header className="lead-page-header"><div><h1>Lead Follow-up</h1><p>Manage lead communication and follow-up history</p></div>
       <button className="lead-secondary-btn" type="button" onClick={() => navigate('/main/lead')}>← Back to Leads</button>
     </header>
+    {!validLeadId && <div className="lead-alert" role="alert">Invalid lead ID.</div>}
     {error && <div className="lead-alert" role="alert">{error}</div>}
     <div className="lead-details-card">
       <div className="lead-section-heading"><div><h2>Lead Details</h2><p>Lead information</p></div><span>Lead #{leadId}</span></div>
@@ -162,16 +158,21 @@ export default function LeadFollowup() {
       </form>}
     </div>
     <div className="lead-accordion-card">
-      <button className="lead-accordion-header" type="button" aria-expanded={expandedHistory} onClick={() => setExpandedHistory((value) => !value)}>
+      <button className="lead-accordion-header" type="button" disabled={!validLeadId} aria-expanded={expandedHistory} onClick={() => {
+        setHistoryRequested(true);
+        setExpandedHistory((value) => !value);
+      }}>
         <span><strong>◷ Previous Lead Follow-ups</strong><small>View complete follow-up communication history</small></span><b>{expandedHistory ? '−' : '+'}</b>
       </button>
-      {expandedHistory && <div className="lead-table-scroll"><table className="lead-table">
+      {expandedHistory && <>
+        {history.error != null && <div className="lead-alert" role="alert">Unable to load follow-up history.<button type="button" onClick={history.refresh}>Retry</button></div>}
+        {history.pending && history.rows.length > 0 && <p role="status">Loading remaining follow-ups…</p>}
+        <div className="lead-table-scroll"><table className="lead-table">
         <thead><tr><th>#</th><th>Follow-up Date</th><th>Follow-up By</th><th>Status</th><th>Description</th><th>Next Follow-up</th><th>Actions</th></tr></thead>
-        <tbody>{loading ? <tr><td colSpan={7} className="lead-empty">Loading follow-ups...</td></tr> :
-          followups.map((item, index) => { const deleted = Boolean((item as any).deletedAt ?? (item as any).deleted_at); return <tr key={item.leadFollowupId ?? index}><td>{index + 1}</td><td>{formatDate(item.followUpDate, true)}</td><td>{item.followUpBy}</td><td>{item.status}</td><td>{item.description}</td><td>{formatDate(item.nextFollowupDate)}</td><td><div className="d-flex align-items-center justify-content-center gap-2 flex-nowrap">{deleted ? <button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => void restoreFollowup(item)}>Restore</button> : <><button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => void editFollowup(item)}>Edit</button><button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => void removeFollowup(item)}>Delete</button></>}</div></td></tr>; })}
-          {!loading && followups.length === 0 && <tr><td colSpan={7} className="lead-empty">No previous follow-ups found.</td></tr>}
+        <tbody>{history.rows.map((item, index) => { const deleted = Boolean(item.deletedAt); return <tr key={item.leadFollowupId ?? index}><td>{index + 1}</td><td>{formatDate(item.followUpDate, true)}</td><td>{item.followUpBy}</td><td>{item.status}</td><td>{item.description}</td><td>{formatDate(item.nextFollowupDate)}</td><td><div className="d-flex align-items-center justify-content-center gap-2 flex-nowrap">{deleted ? <button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => void restoreFollowup(item)}>Restore</button> : <><button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => void editFollowup(item)}>Edit</button><button className="lead-secondary-btn" type="button" disabled={saving} onClick={() => void removeFollowup(item)}>Delete</button></>}</div></td></tr>; })}
+          {history.rows.length === 0 && history.error == null && <tr><td colSpan={7} className="lead-empty">{history.pending ? 'Loading follow-ups...' : 'No previous follow-ups found.'}</td></tr>}
         </tbody>
-      </table></div>}
+      </table></div></>}
     </div>
   </section>;
 }

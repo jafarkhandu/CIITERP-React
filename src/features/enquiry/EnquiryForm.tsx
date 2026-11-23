@@ -1,9 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { enquiryApi, type EnquiryRecord } from '@/api/enquiryApi';
-import { directoryApi, type BranchOption } from '@/api/directoryApi';
-import { leadApi, type LeadSourceRecord } from '@/api/leadApi';
+import { directoryApi } from '@/api/directoryApi';
 import { sendAutomaticEmail } from '@/core/notifications/automaticEmail';
+import { getEnquiryLeadSources, useEnquiryOptions } from './useEnquiryOptions';
 import './Enquiry.css';
 
 type FormState = Omit<EnquiryRecord, 'enquiryId'>;
@@ -29,27 +29,28 @@ function isValidIndianMobile(number: string): boolean {
   return /^[6-9]\d{9}$/.test(number) && !/^(\d)\1{9}$/.test(number);
 }
 
-function rows(value: any): any[] {
-  let current = value;
-  for (let i = 0; i < 4 && current && !Array.isArray(current); i += 1) {
-    current = current.data ?? current.result ?? current.items ?? current.records ?? current.$values;
-  }
-  return Array.isArray(current) ? current : [];
+export default function EnquiryForm() {
+  const { id = '' } = useParams();
+  return <EnquiryFormPage key={id} enquiryId={Number(id)} />;
 }
 
-export default function EnquiryForm() {
+function EnquiryFormPage({ enquiryId }: { enquiryId: number }) {
   const navigate = useNavigate();
-  const { id } = useParams();
-  const enquiryId = Number(id ?? 0);
   const editMode = enquiryId > 0;
   const [form, setForm] = useState<FormState>(initialForm);
-  const [branches, setBranches] = useState<BranchOption[]>([]);
-  const [qualifications, setQualifications] = useState<Record<string, unknown>[]>([]);
-  const [leadSources, setLeadSources] = useState<LeadSourceRecord[]>([]);
-  const [loading, setLoading] = useState(editMode);
+  const branchOptions = useEnquiryOptions(directoryApi.getBranches);
+  const qualificationOptions = useEnquiryOptions(enquiryApi.getQualifications);
+  const sourceOptions = useEnquiryOptions(getEnquiryLeadSources);
+  const { rows: branches } = branchOptions;
+  const { rows: qualifications } = qualificationOptions;
+  const { rows: leadSources } = sourceOptions;
+  const [recordLoading, setRecordLoading] = useState(editMode);
+  const [recordError, setRecordError] = useState(false);
+  const [recordRevision, setRecordRevision] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [mobileTouched, setMobileTouched] = useState(false);
+  const optionsLoading = branchOptions.loading || qualificationOptions.loading || (Boolean(form.leadSources) && sourceOptions.loading);
   const mobileError = form.mobileNumber && !isValidIndianMobile(form.mobileNumber)
     ? 'Enter a valid 10-digit Indian mobile number starting with 6, 7, 8 or 9. Repeated digits are not allowed.'
     : '';
@@ -65,19 +66,12 @@ export default function EnquiryForm() {
   }
 
   useEffect(() => {
+    if (!editMode) return;
     let active = true;
-    Promise.allSettled([
-      directoryApi.getBranches(),
-      enquiryApi.getQualifications(),
-      leadApi.getSources(),
-      editMode ? enquiryApi.getById(enquiryId) : Promise.resolve(null),
-    ]).then(([branchResult, qualificationResult, sourceResult, enquiryResult]) => {
+    void enquiryApi.getById(enquiryId).then((record) => {
       if (!active) return;
-      if (branchResult.status === 'fulfilled') setBranches(branchResult.value);
-      if (qualificationResult.status === 'fulfilled') setQualifications(qualificationResult.value);
-      if (sourceResult.status === 'fulfilled') setLeadSources(sourceResult.value.filter((source) => source.sourceId > 0 && !source.deletedAt));
-      if (editMode && enquiryResult.status === 'fulfilled' && enquiryResult.value) {
-        const item = enquiryResult.value as any;
+      if (record) {
+        const item = record as EnquiryRecord & Record<string, unknown>;
         setForm({
           ...initialForm,
           ...item,
@@ -97,13 +91,11 @@ export default function EnquiryForm() {
           interestedTopics: String(item.interestedTopics ?? item.interested_topics ?? ''),
           status: String(item.status ?? 'New'),
         });
-      } else if (editMode && enquiryResult.status === 'rejected') {
-        setError('Unable to load enquiry details.');
-      }
-      setLoading(false);
-    });
+      } else setRecordError(true);
+    }, () => { if (active) setRecordError(true); })
+      .finally(() => { if (active) setRecordLoading(false); });
     return () => { active = false; };
-  }, [editMode, enquiryId]);
+  }, [editMode, enquiryId, recordRevision]);
 
   function change<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((previous) => ({ ...previous, [key]: value }));
@@ -111,6 +103,7 @@ export default function EnquiryForm() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (optionsLoading) return;
     setError('');
     const branch = branches.find((item) => item.id === Number(form.branchId));
     const qualification = qualifications.find((item) =>
@@ -165,19 +158,30 @@ export default function EnquiryForm() {
     }
   }
 
-  if (loading) return <section className="enquiry-page"><p>Loading enquiry...</p></section>;
-
   return <section className="enquiry-page">
     <header className="enquiry-header"><div><h1>{editMode ? 'Edit Enquiry' : 'Add Enquiry'}</h1><p>Capture candidate enquiry details</p></div>
       <button className="enquiry-secondary-btn" type="button" onClick={() => navigate('/main/enquiry')}>Back to Enquiries</button>
     </header>
+    {recordLoading && <p role="status">Loading enquiry...</p>}
+    {recordError && <div className="enquiry-alert" role="alert">Unable to load enquiry details.<button type="button" onClick={() => {
+      setRecordError(false);
+      setRecordLoading(true);
+      setRecordRevision((revision) => revision + 1);
+    }}>Retry</button></div>}
+    {branchOptions.error && <div className="enquiry-alert" role="alert">Unable to load branches.<button type="button" onClick={branchOptions.retry}>Retry</button></div>}
+    {qualificationOptions.error && <div className="enquiry-alert" role="alert">Unable to load qualifications.<button type="button" onClick={qualificationOptions.retry}>Retry</button></div>}
+    {sourceOptions.error && <div className="enquiry-alert" role="alert">Unable to load lead sources.<button type="button" onClick={sourceOptions.retry}>Retry</button></div>}
     {error && <div className="enquiry-alert" role="alert">{error}</div>}
-    <div className="enquiry-table-card" style={{ padding: 24 }}>
+    {!recordLoading && !recordError && <div className="enquiry-table-card" style={{ padding: 24 }}>
       <form onSubmit={submit} className="enquiry-form">
         <div className="enquiry-original-layout">
           <div className="enquiry-original-fields">
             <label>Enquiry Date:<input type="date" required value={form.enquiryDate} onChange={(e) => change('enquiryDate', e.target.value)} /></label>
-            <label>Branch Name:<select required value={form.branchId} onChange={(e) => change('branchId', Number(e.target.value))}><option value={0}>Select Branch</option>{branches.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+            <label>Branch Name:<select required disabled={branchOptions.loading || branchOptions.error} value={form.branchId} onChange={(e) => change('branchId', Number(e.target.value))}>
+              <option value={0}>{branchOptions.loading ? 'Loading branches…' : 'Select Branch'}</option>
+              {branchOptions.loading && form.branchId > 0 && <option value={form.branchId}>{form.branchName || 'Current Branch'}</option>}
+              {branches.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select></label>
             <label>Candidate Name:<input required minLength={2} placeholder="Enter candidate name" value={form.candidateName} onChange={(e) => change('candidateName', e.target.value)} /></label>
             <fieldset className="enquiry-gender"><legend>Gender:</legend>{['Male','Female','Other'].map((gender) => <label key={gender}><input type="radio" name="gender" required checked={form.gender === gender} onChange={() => change('gender', gender)} />{gender}</label>)}</fieldset>
             <label>Local Address:<textarea rows={2} value={form.localAddress} onChange={(e) => change('localAddress', e.target.value)} /></label>
@@ -200,11 +204,14 @@ export default function EnquiryForm() {
               )}
             </label>
             <label>Birth Date:<input type="date" value={form.birthDate} onChange={(e) => change('birthDate', e.target.value)} /></label>
-            <label>Qualification:<select required value={form.qualificationId} onChange={(e) => {
+            <label>Qualification:<select required disabled={qualificationOptions.loading || qualificationOptions.error} value={form.qualificationId} onChange={(e) => {
               const selected = qualifications.find((item) => Number(item.qualificationId ?? item.qualification_Id ?? item.qualification_id ?? item.QualificationId ?? item.id) === Number(e.target.value));
               change('qualificationId', Number(e.target.value));
               change('qualification', String(selected?.qualificationName ?? selected?.qualification_Name ?? selected?.qualification_name ?? selected?.qualification ?? selected?.QualificationName ?? selected?.name ?? ''));
-            }}><option value={0}>Select Qualification</option>{qualifications.map((item) => {
+            }}>
+              <option value={0}>{qualificationOptions.loading ? 'Loading qualifications…' : 'Select Qualification'}</option>
+              {qualificationOptions.loading && form.qualificationId > 0 && <option value={form.qualificationId}>{form.qualification || 'Current Qualification'}</option>}
+              {qualifications.map((item) => {
               const qid = Number(item.qualificationId ?? item.qualification_Id ?? item.qualification_id ?? item.QualificationId ?? item.id ?? 0);
               const name = String(item.qualificationName ?? item.qualification_Name ?? item.qualification_name ?? item.qualification ?? item.QualificationName ?? item.name ?? 'Qualification');
               return <option key={qid} value={qid}>{name}</option>;
@@ -219,9 +226,9 @@ export default function EnquiryForm() {
         </div>
         <footer style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 20 }}>
           <button className="enquiry-secondary-btn" type="button" disabled={saving} onClick={() => navigate('/main/enquiry')}>Cancel</button>
-          <button className="enquiry-primary-btn" type="submit" disabled={saving}>{saving ? 'Saving...' : editMode ? 'Update Enquiry' : 'Create Enquiry'}</button>
+          <button className="enquiry-primary-btn" type="submit" disabled={saving || optionsLoading}>{saving ? 'Saving...' : editMode ? 'Update Enquiry' : 'Create Enquiry'}</button>
         </footer>
       </form>
-    </div>
+    </div>}
   </section>;
 }
