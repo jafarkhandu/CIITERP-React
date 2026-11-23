@@ -1,5 +1,5 @@
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { authService } from '@/core/auth/authService';
 import { useSession } from '@/core/auth/hooks';
 import { readTokenIdentity } from '@/core/auth/tokenIdentity';
@@ -120,7 +120,7 @@ export default function StudentAccount() {
     }
   }
 
-  async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
+  async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!studentId || !editSource || Number(readField(editSource, 'studentId')) !== studentId) return;
     const name = editFields.studentName.trim();
