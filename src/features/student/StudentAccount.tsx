@@ -489,9 +489,9 @@ export default function StudentAccount() {
               
               <section id="student-batch" className="sp-panel">
               <h2>Batches</h2>
-              {batchesLoading && <p className="sp-muted" role="status">Loading your assigned batches…</p>}
+              {(recordLoading || batchesLoading) && <p className="sp-muted" role="status">Loading your assigned batches…</p>}
               {batchesError && <div className="sp-alert" role="alert">{batchesError}</div>}
-              {!batchesLoading && !batchesError && (batchRows.length
+              {!recordLoading && !recordError && !batchesLoading && !batchesError && (batchRows.length
                 ? <div className="sp-stack">{batchRows.map((row, index) => {
                     const batch = asRecord(readField(row, 'batch', 'Batch'));
                     const details = batch ? { ...row, ...batch } : row;
