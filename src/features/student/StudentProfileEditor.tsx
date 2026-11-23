@@ -118,8 +118,8 @@ export default function StudentProfileEditor({ studentId, profile, registration,
     next.lastName = next.lastName.trim();
     next.emailAddress = next.emailAddress.trim();
     next.mobileNumber = next.mobileNumber.trim();
-    if (!next.studentName || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(next.emailAddress)
-        || !/^\\+?[0-9 -]{7,16}$/.test(next.mobileNumber)) {
+    if (!next.studentName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next.emailAddress)
+        || !/^\+?[0-9 -]{7,16}$/.test(next.mobileNumber)) {
       setMessage('Enter a name, valid email address, and valid mobile number.');
       return;
     }
