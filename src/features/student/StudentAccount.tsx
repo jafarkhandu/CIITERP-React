@@ -5,6 +5,7 @@ import { useSession } from '@/core/auth/hooks';
 import { readTokenIdentity } from '@/core/auth/tokenIdentity';
 import { tokenService } from '@/core/services/tokenService';
 import { studentApi } from '@/api/studentApi';
+import { downloadPremiumPaymentReceipt } from './paymentReceiptPdf';
 import { API_ORIGINS } from '@/core/config/api-services';
 import StudentProfileEditor from './StudentProfileEditor';
 import { studentBatchApi } from '@/api/batchApi';
@@ -108,7 +109,12 @@ export default function StudentAccount() {
   const [invoiceDownloadingId, setInvoiceDownloadingId] = useState<number | null>(null);
   const [invoiceError, setInvoiceError] = useState<{ paymentId: number; message: string } | null>(null);
 
-  async function downloadPaymentInvoice(paymentId: number, registrationId: number): Promise<void> {
+  async function downloadPaymentInvoice(
+    paymentId: number,
+    registrationId: number,
+    payment: StudentRecord,
+    registration: StudentRecord | null,
+  ): Promise<void> {
     if (!Number.isSafeInteger(paymentId) || paymentId <= 0 ||
         !Number.isSafeInteger(registrationId) || registrationId <= 0 ||
         invoiceDownloadingId !== null) return;
@@ -116,24 +122,33 @@ export default function StudentAccount() {
     setInvoiceError(null);
     setInvoiceDownloadingId(paymentId);
     try {
-      // Reuse the official PDF produced by the payment service.
-      const invoice = await studentApi.downloadInvoice(registrationId, paymentId);
-      if (!(invoice instanceof Blob) || invoice.size < 5 ||
-          await invoice.slice(0, 5).text() !== '%PDF-') {
-        throw new Error('The invoice API did not return a valid PDF.');
-      }
-
-      const url = URL.createObjectURL(new Blob([invoice], { type: 'application/pdf' }));
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = `CIIT-Payment-Invoice-${paymentId}.pdf`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+      await downloadPremiumPaymentReceipt({
+        paymentId,
+        paymentAmount: Number(readField(payment, 'paymentAmount', 'payment_Amount', 'payment_amount') ?? 0),
+        paymentDate: String(readField(payment, 'paymentDate', 'payment_Date', 'payment_date') ?? ''),
+        paymentMode: String(readField(payment, 'paymentMode', 'payment_Mode', 'payment_mode') ?? ''),
+        paymentDescription: String(readField(payment, 'paymentDescription', 'payment_Description', 'payment_description') ?? ''),
+        studentName: studentName,
+        studentCode,
+        studentEmail: String(
+          readField(studentDetails, 'emailAddress', 'email_Address') ??
+          readField(studentRecord, 'emailAddress', 'email_Address') ??
+          identity.email ?? session.email ?? ''
+        ),
+        studentMobile: String(
+          readField(studentDetails, 'mobileNumber', 'mobile_Number') ??
+          readField(studentRecord, 'mobileNumber', 'mobile_Number') ?? ''
+        ),
+        courseName: String(readField(registration, 'courseName', 'course_Name', 'course_name') ?? 'Course payment'),
+        registrationCode: String(readField(registration, 'registrationCode', 'registration_Code', 'registration_code') ?? ''),
+        branchName: String(
+          readField(studentDetails, 'branchName', 'branch_Name') ??
+          readField(studentRecord, 'branchName', 'branch_Name') ?? ''
+        ),
+      });
     } catch (error) {
       console.error('Student invoice download failed:', error);
-      setInvoiceError({ paymentId, message: 'Invoice download failed. Please try again.' });
+      setInvoiceError({ paymentId, message: 'Receipt PDF could not be generated. Please try again.' });
     } finally {
       setInvoiceDownloadingId(null);
     }
@@ -663,9 +678,9 @@ export default function StudentAccount() {
                       {canDownloadInvoice ? (
                         <button type="button" className="sp-student-invoice-button"
                           disabled={invoiceDownloadingId !== null}
-                          onClick={() => void downloadPaymentInvoice(paymentId, linkedRegistrationId)}>
+                          onClick={() => void downloadPaymentInvoice(paymentId, linkedRegistrationId, row, registration ?? null)}>
                           <i className="bi bi-file-earmark-pdf" aria-hidden="true" />
-                          {invoiceDownloadingId === paymentId ? 'Downloading…' : 'Download Invoice (PDF)'}
+                          {invoiceDownloadingId === paymentId ? 'Generating…' : 'Download Receipt (PDF)'}
                         </button>
                       ) : <p className="sp-muted">Invoice is unavailable for this payment.</p>}
                       {invoiceError?.paymentId === paymentId && (
