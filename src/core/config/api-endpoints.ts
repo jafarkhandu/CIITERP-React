@@ -26,6 +26,7 @@ export const API_ENDPOINTS = Object.freeze({
   studentRegistration: `${student}/StudentRegistration`,
   studentDetails: `${student}/StudentDetails`,
   studentPayment: `${student}/StudentPayment`,
+  studentAttendance: `${student}/StudentAttendance`,
 
   batchManagement: apiRoot('batch'),
   trainer: apiRoot('trainer'),

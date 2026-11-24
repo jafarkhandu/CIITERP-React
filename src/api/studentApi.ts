@@ -108,6 +108,12 @@ const registrationBase = API_ENDPOINTS.studentRegistration;
 const paymentBase = API_ENDPOINTS.studentPayment;
 
 export const studentApi = {
+  async getBatchAttendance(batchId: number): Promise<unknown> {
+    if (!Number.isSafeInteger(batchId) || batchId <= 0) throw new Error('Valid batch ID required.');
+    const { data } = await http.get(`${API_ENDPOINTS.studentAttendance}/batch/${batchId}/attendance`);
+    return data;
+  },
+
   async getStudentDetailsById(studentId: number): Promise<unknown> {
     if (!Number.isSafeInteger(studentId) || studentId <= 0) throw new Error('Valid student ID required.');
     const { data } = await http.get(`${API_ENDPOINTS.studentDetails}/get-by-id/${studentId}`);

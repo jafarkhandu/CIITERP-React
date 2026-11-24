@@ -1145,3 +1145,95 @@ main.ciit-student-portal .sp-staff-record-panel > .sp-stack:focus-visible {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+
+/* Student-only attendance, inside assigned batch cards. */
+.ciit-student-public-shell .sp-batch-attendance {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ciit-border, #dce6f2);
+}
+.ciit-student-public-shell .sp-batch-attendance-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--ciit-border, #dce6f2);
+  border-radius: 9px;
+  background: var(--ciit-surface, #fff);
+  color: var(--ciit-text, #25364d);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ciit-student-public-shell .sp-batch-attendance-toggle span {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.ciit-student-public-shell .sp-batch-attendance-toggle:focus-visible,
+.ciit-student-public-shell .sp-batch-attendance-retry:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+.ciit-student-public-shell .sp-batch-attendance-content { margin-top: 12px; }
+.ciit-student-public-shell .sp-batch-attendance-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.ciit-student-public-shell .sp-batch-attendance-summary span {
+  padding: 6px 10px;
+  border: 1px solid var(--ciit-border, #dce6f2);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.ciit-student-public-shell .sp-batch-attendance-scroll {
+  overflow: auto;
+  border: 1px solid var(--ciit-border, #dce6f2);
+  border-radius: 9px;
+}
+.ciit-student-public-shell .sp-batch-attendance-table {
+  width: 100%;
+  min-width: 380px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.ciit-student-public-shell .sp-batch-attendance-table th,
+.ciit-student-public-shell .sp-batch-attendance-table td {
+  text-align: left;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--ciit-border, #dce6f2);
+}
+.ciit-student-public-shell .sp-batch-attendance-table th {
+  color: var(--ciit-muted, #687b94);
+  background: var(--ciit-surface, #f3f7fc);
+  font-size: 11px;
+}
+.ciit-student-public-shell .sp-batch-attendance-table tr:last-child td { border-bottom: 0; }
+.ciit-student-public-shell .sp-batch-attendance-badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.ciit-student-public-shell .sp-batch-attendance-badge.is-present { background: #dcfce7; color: #166534; }
+.ciit-student-public-shell .sp-batch-attendance-badge.is-absent { background: #fee2e2; color: #991b1b; }
+.ciit-student-public-shell .sp-batch-attendance-badge.is-unmarked { background: #e2e8f0; color: #475569; }
+html[data-theme="dark"] .ciit-student-public-shell .sp-batch-attendance-badge.is-present { background: #14532d; color: #bbf7d0; }
+html[data-theme="dark"] .ciit-student-public-shell .sp-batch-attendance-badge.is-absent { background: #7f1d1d; color: #fecaca; }
+html[data-theme="dark"] .ciit-student-public-shell .sp-batch-attendance-badge.is-unmarked { background: #334155; color: #e2e8f0; }
+.ciit-student-public-shell .sp-batch-attendance-retry {
+  margin-left: 10px;
+  border: 1px solid var(--ciit-border, #dce6f2);
+  border-radius: 7px;
+  padding: 5px 10px;
+  color: var(--ciit-text, #25364d);
+  background: var(--ciit-surface, #fff);
+  cursor: pointer;
+}

@@ -13,6 +13,7 @@ import StudentProfileEditor from './StudentProfileEditor';
 import { studentBatchApi } from '@/api/batchApi';
 import { loadStudentPhoto, removeStudentPhoto, saveStudentPhoto } from './studentPhotoStorage';
 import StudentDashboard from './StudentDashboard';
+import StudentBatchAttendance from './StudentBatchAttendance';
 import '@/layouts/MainLayout.css';
 import './StudentPortal.css';
 
@@ -108,6 +109,7 @@ export default function StudentAccount() {
     rows: StudentRecord[];
   } | null>(null);
   const [expandedDetail, setExpandedDetail] = useState<string | null>(null);
+  const [expandedAttendanceBatch, setExpandedAttendanceBatch] = useState<string | null>(null);
   const [invoiceDownloadingId, setInvoiceDownloadingId] = useState<number | null>(null);
   const [invoiceError, setInvoiceError] = useAutoDismissMessage<{ paymentId: number; message: string } | null>(null);
 
@@ -152,6 +154,9 @@ export default function StudentAccount() {
   const legacyPage = sections.find(section => '#' + section.id === hash)?.slug;
   const activeSection = sections.find(section => section.slug === (page ?? legacyPage ?? 'dashboard'))?.id;
   const showingCourses = activeSection === 'student-course';
+  useEffect(() => {
+    setExpandedAttendanceBatch(null);
+  }, [activeSection, studentId, session.generation]);
   const showingBatches = activeSection === 'student-batch' || activeSection === 'student-overview';
   const paymentDetails = coursePaymentDetails?.registration === studentRecord ? coursePaymentDetails.rows : null;
 
@@ -615,7 +620,17 @@ export default function StudentAccount() {
                     const start = readField(details, 'startDate', 'start_date', 'start_Date');
                     const end = readField(details, 'endDate', 'end_date', 'end_Date');
                     const status = readField(details, 'status', 'batchStatus', 'batch_status');
-                    return <article className="sp-entry" key={String(readField(details, 'batchId', 'batch_Id', 'batch_id') ?? index) + '-' + index}>
+                    const batchId = Number(readField(details, 'batchId', 'batch_Id', 'batch_id', 'BatchId') ?? 0);
+                    const batchKey = `${batchId}-${index}`;
+                    const expanded = expandedAttendanceBatch === batchKey;
+                    const canViewAttendance = !!studentId &&
+                      Number(readField(studentRecord, 'studentId', 'student_Id', 'student_id', 'StudentId')) === studentId &&
+                      Number.isSafeInteger(batchId) && batchId > 0;
+                    const registrationIds = [...courseRows, ...(studentRecord ? [studentRecord] : [])]
+                      .filter(belongsToStudent)
+                      .map(item => Number(readField(item, 'registrationId', 'registration_Id', 'registration_id', 'RegistrationId')))
+                      .filter(id => Number.isSafeInteger(id) && id > 0);
+                    return <article className="sp-entry" key={batchKey}>
                       <h3>{display(readField(details, 'batchName', 'batch_Name', 'batch_name', 'BatchName'))}</h3>
                       <p>Time: {display(readField(details, 'batchTime', 'batch_Time', 'batch_time'))}</p>
                       {course !== null && <p>Course: {display(course)}</p>}
@@ -623,6 +638,19 @@ export default function StudentAccount() {
                       {start !== null && <p>Start date: {formatStudentDate(start)}</p>}
                       {end !== null && <p>End date: {formatStudentDate(end)}</p>}
                       {status !== null && <p>Status: {display(status)}</p>}
+                      {canViewAttendance && (
+                        <div className="sp-batch-attendance">
+                          <button type="button" className="sp-batch-attendance-toggle" aria-expanded={expanded}
+                            onClick={() => setExpandedAttendanceBatch(previous => previous === batchKey ? null : batchKey)}>
+                            <span><i className="bi bi-calendar-check" aria-hidden="true" /> My Attendance</span>
+                            <i className={`bi bi-chevron-${expanded ? 'up' : 'down'}`} aria-hidden="true" />
+                          </button>
+                          {expanded && (
+                            <StudentBatchAttendance key={`${studentId}-${session.generation}-${batchKey}`}
+                              batchId={batchId} studentId={studentId!} registrationIds={registrationIds} />
+                          )}
+                        </div>
+                      )}
                     </article>;
                   })}</div>
                 : <p className="sp-muted">No batches have been assigned to your student account yet.</p>
