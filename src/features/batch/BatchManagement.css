@@ -639,3 +639,95 @@ html[data-theme="dark"] .batch-schedule-tabs button.is-active {
     transition: none;
   }
 }
+
+
+/* Session-wise attendance records, scoped to the records tab. */
+.batch-attendance-sessions .batch-attendance-session-row {
+  cursor: pointer;
+}
+
+.batch-attendance-sessions .batch-attendance-session-row.is-expanded {
+  background: rgba(219, 234, 254, .45);
+}
+
+.batch-attendance-expand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--batch-border);
+  border-radius: 9px;
+  background: var(--batch-surface);
+  color: var(--batch-text);
+  cursor: pointer;
+}
+
+.batch-attendance-expand:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.batch-attendance-sessions > tbody > .batch-attendance-expanded-row > td {
+  padding: 10px 16px 14px;
+  text-align: left;
+  white-space: normal;
+  background: transparent;
+}
+
+.batch-attendance-details {
+  border: 1px solid var(--batch-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.batch-attendance-records {
+  width: 100%;
+  min-width: 0;
+}
+
+.batch-attendance-records th,
+.batch-attendance-records td {
+  padding: 9px 12px;
+}
+
+.batch-attendance-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  padding: 3px 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.batch-attendance-badge.is-present {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+.batch-attendance-badge.is-absent {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+
+html[data-theme="dark"] .batch-attendance-sessions .batch-attendance-session-row.is-expanded {
+  background: rgba(59, 130, 246, .14);
+}
+
+html[data-theme="dark"] .batch-attendance-badge.is-present {
+  background: #14532d;
+  color: #bbf7d0;
+  border-color: #166534;
+}
+
+html[data-theme="dark"] .batch-attendance-badge.is-absent {
+  background: #7f1d1d;
+  color: #fecaca;
+  border-color: #991b1b;
+}

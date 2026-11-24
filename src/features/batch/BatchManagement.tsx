@@ -2,7 +2,7 @@ import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessag
 import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { TablePagination, useTablePage } from '@/components/TablePagination';
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import {
   batchApi,
@@ -37,6 +37,27 @@ const time12 = (value: string) => {
   const [hour, minute] = value.split(':').map(Number);
   return `${String(hour % 12 || 12).padStart(2, '0')}:${String(minute).padStart(2, '0')} ${hour >= 12 ? 'PM' : 'AM'}`;
 };
+
+const attendanceSessionId = (row: Row) => Number(read(row, 'schedule_attendance_id', 'scheduleAttendanceId', 'batch_schedule_attendance_id', 'batchScheduleAttendanceId') ?? 0);
+const attendanceRegistrationId = (row: Row) => Number(read(row, 'registration_id', 'registrationId', 'registration_Id', 'student_registration_id', 'studentRegistrationId') ?? 0);
+const attendanceName = (row: Row): string => {
+  const name = String(read(row, 'student_name', 'studentName', 'student_Name', 'candidateName', 'fullName', 'full_name', 'name') ?? '').trim();
+  const firstName = String(read(row, 'firstName', 'first_name') ?? '').trim();
+  const lastName = String(read(row, 'lastName', 'last_name', 'last_Name') ?? '').trim();
+  return name || [firstName, lastName].filter(Boolean).join(' ');
+};
+const attendancePresent = (row: Row) => Number(read(row, 'is_present', 'isPresent') ?? 0) === 1 || read(row, 'is_present', 'isPresent') === true;
+
+function groupAttendanceRecords(records: Row[]): [number, Row[]][] {
+  const groups = new Map<number, Row[]>();
+  for (const record of records) {
+    const sessionId = attendanceSessionId(record);
+    const existing = groups.get(sessionId);
+    if (existing) existing.push(record);
+    else groups.set(sessionId, [record]);
+  }
+  return Array.from(groups.entries());
+}
 
 const emptyForm = (): CreateBatchRequest => ({
   batch_name: '', topic_id: 0, employee_id: 0, start_date: '', end_date: '',
@@ -175,6 +196,9 @@ export default function BatchManagement() {
   const [roster, setRoster] = useState<StudentRow[]>([]);
   const [attendanceSessions, setAttendanceSessions] = useState<Row[]>([]);
   const [studentAttendanceRecords, setStudentAttendanceRecords] = useState<Row[]>([]);
+  const [attendanceNames, setAttendanceNames] = useState<Map<number, string>>(() => new Map());
+  const [expandedAttendanceSession, setExpandedAttendanceSession] = useState<number | null>(null);
+  const attendanceGroups = useMemo(() => groupAttendanceRecords(studentAttendanceRecords), [studentAttendanceRecords]);
   const [editingSessionId, setEditingSessionId] = useState(0);
   const [sessionEditDate, setSessionEditDate] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -388,6 +412,7 @@ export default function BatchManagement() {
     const tab = requestedTab ?? (sameBatch ? scheduleViewTab : 'schedule');
     const version = ++scheduleVersion.current;
     if (!requestedTab || !sameBatch) setScheduleCounts({});
+    if (!sameBatch || tab !== 'records') setExpandedAttendanceSession(null);
     setScheduleBatch(row); setScheduleViewTab(tab);
     setEditingScheduleId(0); setEditingSessionId(0); setError(''); setScheduleError('');
     setLoadingSchedule(true);
@@ -410,10 +435,11 @@ export default function BatchManagement() {
         })));
         count = studentRows.length;
       } else {
-        const [scheduleRows, allSessions, allAttendance] = await Promise.all([
+        const [scheduleRows, allSessions, allAttendance, batchRoster] = await Promise.all([
           batchScheduleApi.getByBatch(row.batchId),
           batchScheduleAttendanceApi.getAll(),
           tab === 'records' ? scheduleAttendanceApi.getAll() : [],
+          tab === 'records' ? batchStudentApi.getByBatch(row.batchId).catch(() => []) : [],
         ]);
         if (version !== scheduleVersion.current) return;
         const scheduleIds = new Set(scheduleRows.map((item) => Number(read(item, 'batch_schedule_id', 'batchScheduleId', 'id') ?? 0)));
@@ -423,8 +449,16 @@ export default function BatchManagement() {
           count = batchSessions.length;
         } else {
           const sessionIds = new Set(batchSessions.map((item) => Number(read(item, 'schedule_attendance_id', 'scheduleAttendanceId', 'batch_schedule_attendance_id', 'id') ?? 0)));
-          const records = allAttendance.filter((item) => sessionIds.has(Number(read(item, 'schedule_attendance_id', 'scheduleAttendanceId') ?? 0)));
+          const records = allAttendance.filter((item) => sessionIds.has(attendanceSessionId(item)));
+          const names = new Map<number, string>();
+          for (const student of batchRoster) {
+            const registrationId = attendanceRegistrationId(student);
+            const name = attendanceName(student);
+            if (registrationId > 0 && name) names.set(registrationId, name);
+          }
+          setAttendanceNames(names);
           setStudentAttendanceRecords(records);
+          setExpandedAttendanceSession(previous => previous !== null && records.some(record => attendanceSessionId(record) === previous) ? previous : null);
           count = records.length;
         }
       }
@@ -441,6 +475,7 @@ export default function BatchManagement() {
   function closeSchedule() {
     scheduleVersion.current += 1;
     setScheduleBatch(null);
+    setExpandedAttendanceSession(null);
   }
 
   async function generateSchedule(row: BatchRow) {
@@ -740,13 +775,98 @@ export default function BatchManagement() {
       </>}
       {editingSessionId > 0 && createPortal(<div className="batch-modal-backdrop" onMouseDown={() => setEditingSessionId(0)}><form onSubmit={submitSessionEdit} className="batch-modal batch-modal-small" role="dialog" aria-modal="true" aria-labelledby="attendance-edit-title" onMouseDown={(event) => event.stopPropagation()}><header><h2 id="attendance-edit-title">Edit Attendance Session</h2><button type="button" aria-label="Close attendance editor" onClick={() => setEditingSessionId(0)}>×</button></header><div className="batch-form-grid"><label>Attendance Date<input type="date" required value={sessionEditDate} onChange={(e) => setSessionEditDate(e.target.value)}/></label></div><footer><button type="button" className="batch-secondary" onClick={() => setEditingSessionId(0)}>Cancel</button><button type="submit" className="batch-primary" disabled={saving}>Update Session</button></footer></form></div>, document.body)}
       {!loadingSchedule && !scheduleError && scheduleViewTab === 'records' && <>
-      <div className="batch-table-heading batch-schedule-section-heading"><div><h2>Student Attendance Records</h2><p>Toggle present/absent or manage individual records</p></div><span className="batch-count">{studentAttendanceRecords.length} records</span></div>
-      <div className="batch-table-scroll batch-schedule-table-scroll"><table className="batch-table batch-schedule-table batch-schedule-table-short"><thead><tr><th>Record ID</th><th>Session ID</th><th>Registration ID</th><th>Present</th><th>Actions</th></tr></thead><tbody>{studentAttendanceRecords.map((item, index) => { const recordId = Number(read(item, 'attendance_id', 'attendanceId', 'id') ?? 0); const isDeleted = deleted(item); const isPresent = Number(read(item, 'is_present', 'isPresent') ?? 0) === 1 || read(item, 'is_present', 'isPresent') === true; return <tr key={recordId || index}><td>{recordId}</td><td>{Number(read(item, 'schedule_attendance_id', 'scheduleAttendanceId') ?? 0)}</td><td>{Number(read(item, 'registration_id', 'registrationId') ?? 0)}</td><td>{isPresent ? 'Present' : 'Absent'}</td><td><RowActionsMenu label={`Actions for attendance record ${recordId}`} disabled={saving} actions={isDeleted ? [
-          { label: 'Restore attendance', onSelect: () => void restoreStudentAttendance(item) },
-        ] : [
-          { label: isPresent ? 'Mark absent' : 'Mark present', onSelect: () => void toggleStudentAttendance(item) },
-          { label: 'Delete attendance', danger: true, onSelect: () => void removeStudentAttendance(item) },
-        ]} /></td></tr>; })}{!studentAttendanceRecords.length && <tr><td colSpan={5} className="batch-empty">No individual attendance records found.</td></tr>}</tbody></table></div>
+      <div className="batch-table-heading batch-schedule-section-heading">
+        <div>
+          <h2>Student Attendance Records</h2>
+          <p>Expand a session to view and manage student attendance.</p>
+        </div>
+        <span className="batch-count">{studentAttendanceRecords.length} records</span>
+      </div>
+      <div className="batch-table-scroll batch-schedule-table-scroll">
+        <table className="batch-table batch-schedule-table batch-schedule-table-short batch-attendance-sessions">
+          <thead>
+            <tr>
+              <th>Session ID</th>
+              <th>Records</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            {attendanceGroups.map(([sessionId, records]) => {
+              const expanded = expandedAttendanceSession === sessionId;
+              const panelId = `batch-attendance-session-${sessionId}`;
+              return (
+                <Fragment key={sessionId}>
+                  <tr className={expanded ? 'batch-attendance-session-row is-expanded' : 'batch-attendance-session-row'}
+                    onClick={() => setExpandedAttendanceSession(previous => previous === sessionId ? null : sessionId)}>
+                    <td><strong>{sessionId || '—'}</strong></td>
+                    <td>{records.length}</td>
+                    <td>
+                      <button type="button" className="batch-attendance-expand" aria-expanded={expanded}
+                        aria-controls={expanded ? panelId : undefined}
+                        aria-label={`${expanded ? 'Collapse' : 'Expand'} session ${sessionId}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setExpandedAttendanceSession(previous => previous === sessionId ? null : sessionId);
+                        }}>
+                        <i className={`bi bi-chevron-${expanded ? 'up' : 'down'}`} aria-hidden="true" />
+                      </button>
+                    </td>
+                  </tr>
+                  {expanded && (
+                    <tr className="batch-attendance-expanded-row">
+                      <td colSpan={3}>
+                        <div id={panelId} className="batch-attendance-details">
+                          <table className="batch-table batch-attendance-records">
+                            <thead>
+                              <tr>
+                                <th>Record ID</th>
+                                <th>Student Name</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {records.map((item, index) => {
+                                const recordId = Number(read(item, 'attendance_id', 'attendanceId', 'id') ?? 0);
+                                const registrationId = attendanceRegistrationId(item);
+                                const name = attendanceName(item) || attendanceNames.get(registrationId) ||
+                                  (registrationId > 0 ? `Student unavailable (Reg #${registrationId})` : 'Student unavailable');
+                                const isDeleted = deleted(item);
+                                const isPresent = attendancePresent(item);
+                                return (
+                                  <tr key={recordId || index}>
+                                    <td>{recordId}</td>
+                                    <td>{name}</td>
+                                    <td>
+                                      <span className={`batch-attendance-badge ${isPresent ? 'is-present' : 'is-absent'}`}>
+                                        {isPresent ? 'Present' : 'Absent'}
+                                      </span>
+                                    </td>
+                                    <td>
+                                      <RowActionsMenu label={`Actions for attendance record ${recordId}`} disabled={saving} actions={isDeleted ? [
+                                        { label: 'Restore attendance', onSelect: () => void restoreStudentAttendance(item) },
+                                      ] : [
+                                        { label: isPresent ? 'Mark absent' : 'Mark present', onSelect: () => void toggleStudentAttendance(item) },
+                                        { label: 'Delete attendance', danger: true, onSelect: () => void removeStudentAttendance(item) },
+                                      ]} />
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+            {!attendanceGroups.length && <tr><td colSpan={3} className="batch-empty">No individual attendance records found.</td></tr>}
+          </tbody>
+        </table>
+      </div>
       </>}
     </section> : <>
       <div className="batch-tabs"><button type="button" className={tab === 'active' ? 'active' : ''} onClick={() => setTab('active')}>Active Batches <span>{active.length}</span></button><button type="button" className={tab === 'deleted' ? 'active' : ''} onClick={() => setTab('deleted')}>Deleted Batches <span>{removed.length}</span></button></div>
