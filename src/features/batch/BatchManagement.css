@@ -668,27 +668,29 @@ html[data-theme="dark"] .batch-schedule-tabs button.is-active {
   outline-offset: 2px;
 }
 
-.batch-attendance-sessions > tbody > .batch-attendance-expanded-row > td {
-  padding: 10px 16px 14px;
+.batch-attendance-sessions th:not(:last-child),
+.batch-attendance-sessions td:not(:last-child) {
   text-align: left;
-  white-space: normal;
-  background: transparent;
 }
 
-.batch-attendance-details {
-  border: 1px solid var(--batch-border);
-  border-radius: 10px;
-  overflow: hidden;
+.batch-attendance-session-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
 }
 
-.batch-attendance-records {
-  width: 100%;
-  min-width: 0;
+.batch-attendance-expand-spacer {
+  display: inline-block;
+  flex: 0 0 32px;
 }
 
-.batch-attendance-records th,
-.batch-attendance-records td {
-  padding: 9px 12px;
+.batch-attendance-sessions .batch-attendance-member-row {
+  background: rgba(219, 234, 254, .18);
+}
+
+html[data-theme="dark"] .batch-attendance-sessions .batch-attendance-member-row {
+  background: rgba(59, 130, 246, .07);
 }
 
 .batch-attendance-badge {

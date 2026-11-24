@@ -786,84 +786,71 @@ export default function BatchManagement() {
         <table className="batch-table batch-schedule-table batch-schedule-table-short batch-attendance-sessions">
           <thead>
             <tr>
+              <th>Record ID</th>
               <th>Session ID</th>
-              <th>Records</th>
-              <th>Details</th>
+              <th>Student Name</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {attendanceGroups.map(([sessionId, records]) => {
               const expanded = expandedAttendanceSession === sessionId;
-              const panelId = `batch-attendance-session-${sessionId}`;
+              const expandable = records.length > 1;
+              const toggleSession = () => setExpandedAttendanceSession(previous => previous === sessionId ? null : sessionId);
               return (
                 <Fragment key={sessionId}>
-                  <tr className={expanded ? 'batch-attendance-session-row is-expanded' : 'batch-attendance-session-row'}
-                    onClick={() => setExpandedAttendanceSession(previous => previous === sessionId ? null : sessionId)}>
-                    <td><strong>{sessionId || '—'}</strong></td>
-                    <td>{records.length}</td>
-                    <td>
-                      <button type="button" className="batch-attendance-expand" aria-expanded={expanded}
-                        aria-controls={expanded ? panelId : undefined}
-                        aria-label={`${expanded ? 'Collapse' : 'Expand'} session ${sessionId}`}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setExpandedAttendanceSession(previous => previous === sessionId ? null : sessionId);
-                        }}>
-                        <i className={`bi bi-chevron-${expanded ? 'up' : 'down'}`} aria-hidden="true" />
-                      </button>
-                    </td>
-                  </tr>
-                  {expanded && (
-                    <tr className="batch-attendance-expanded-row">
-                      <td colSpan={3}>
-                        <div id={panelId} className="batch-attendance-details">
-                          <table className="batch-table batch-attendance-records">
-                            <thead>
-                              <tr>
-                                <th>Record ID</th>
-                                <th>Student Name</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {records.map((item, index) => {
-                                const recordId = Number(read(item, 'attendance_id', 'attendanceId', 'id') ?? 0);
-                                const registrationId = attendanceRegistrationId(item);
-                                const name = attendanceName(item) || attendanceNames.get(registrationId) ||
-                                  (registrationId > 0 ? `Student unavailable (Reg #${registrationId})` : 'Student unavailable');
-                                const isDeleted = deleted(item);
-                                const isPresent = attendancePresent(item);
-                                return (
-                                  <tr key={recordId || index}>
-                                    <td>{recordId}</td>
-                                    <td>{name}</td>
-                                    <td>
-                                      <span className={`batch-attendance-badge ${isPresent ? 'is-present' : 'is-absent'}`}>
-                                        {isPresent ? 'Present' : 'Absent'}
-                                      </span>
-                                    </td>
-                                    <td>
-                                      <RowActionsMenu label={`Actions for attendance record ${recordId}`} disabled={saving} actions={isDeleted ? [
-                                        { label: 'Restore attendance', onSelect: () => void restoreStudentAttendance(item) },
-                                      ] : [
-                                        { label: isPresent ? 'Mark absent' : 'Mark present', onSelect: () => void toggleStudentAttendance(item) },
-                                        { label: 'Delete attendance', danger: true, onSelect: () => void removeStudentAttendance(item) },
-                                      ]} />
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
+                  {(expanded ? records : records.slice(0, 1)).map((item, index) => {
+                    const recordId = Number(read(item, 'attendance_id', 'attendanceId', 'id') ?? 0);
+                    const registrationId = attendanceRegistrationId(item);
+                    const name = attendanceName(item) || attendanceNames.get(registrationId) ||
+                      (registrationId > 0 ? `Student unavailable (Reg #${registrationId})` : 'Student unavailable');
+                    const isDeleted = deleted(item);
+                    const isPresent = attendancePresent(item);
+                    const groupStart = index === 0;
+                    return (
+                      <tr key={recordId || index}
+                        className={groupStart && expandable
+                          ? `batch-attendance-session-row${expanded ? ' is-expanded' : ''}`
+                          : groupStart ? '' : 'batch-attendance-member-row'}
+                        onClick={groupStart && expandable ? toggleSession : undefined}>
+                        <td>{recordId}</td>
+                        <td>
+                          <div className="batch-attendance-session-cell">
+                            {groupStart && expandable ? (
+                              <button type="button" className="batch-attendance-expand" aria-expanded={expanded}
+                                aria-label={`${expanded ? 'Collapse' : 'Expand'} session ${sessionId}`}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  toggleSession();
+                                }}>
+                                <i className={`bi bi-chevron-${expanded ? 'up' : 'down'}`} aria-hidden="true" />
+                              </button>
+                            ) : <span className="batch-attendance-expand-spacer" aria-hidden="true" />}
+                            <span>{sessionId || '—'}</span>
+                          </div>
+                        </td>
+                        <td>{name}</td>
+                        <td>
+                          <span className={`batch-attendance-badge ${isPresent ? 'is-present' : 'is-absent'}`}>
+                            {isPresent ? 'Present' : 'Absent'}
+                          </span>
+                        </td>
+                        <td onClick={(event) => event.stopPropagation()}>
+                          <RowActionsMenu label={`Actions for attendance record ${recordId}`} disabled={saving} actions={isDeleted ? [
+                            { label: 'Restore attendance', onSelect: () => void restoreStudentAttendance(item) },
+                          ] : [
+                            { label: isPresent ? 'Mark absent' : 'Mark present', onSelect: () => void toggleStudentAttendance(item) },
+                            { label: 'Delete attendance', danger: true, onSelect: () => void removeStudentAttendance(item) },
+                          ]} />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </Fragment>
               );
             })}
-            {!attendanceGroups.length && <tr><td colSpan={3} className="batch-empty">No individual attendance records found.</td></tr>}
+            {!attendanceGroups.length && <tr><td colSpan={5} className="batch-empty">No individual attendance records found.</td></tr>}
           </tbody>
         </table>
       </div>
