@@ -165,8 +165,13 @@ function feeSummary(detail: RecordRow, registration: RecordRow, paymentId: numbe
   if (reportedPrevious !== null && reportedPrevious !== previous) return null;
 
   const throughPayment = previous + amount;
-  const totalPaid = cents(read([detail, registration], ['totalPaid', 'total_Paid', 'total_paid']));
-  const balance = cents(read([detail, registration], ['remainingBalance', 'remaining_Balance', 'remaining_balance']));
+  const paidKeys = ['totalPaid', 'total_Paid', 'total_paid'];
+  const balanceKeys = ['remainingBalance', 'remaining_Balance', 'remaining_balance'];
+  const totalsSource = [detail, registration].find(source =>
+    cents(read([source], paidKeys)) !== null && cents(read([source], balanceKeys)) !== null,
+  );
+  const totalPaid = cents(read([totalsSource], paidKeys));
+  const balance = cents(read([totalsSource], balanceKeys));
   let net = cents(read([detail, registration], ['finalFees', 'final_Fees', 'final_fees', 'netFees', 'net_Fees']));
   let gross = cents(read([detail, registration], [
     'actualFees', 'actual_Fees', 'totalFees', 'total_Fees', 'total_fees', 'courseFees', 'course_Fees',
@@ -228,7 +233,10 @@ async function loadReceipt(request: PaymentReceiptRequest): Promise<ReceiptData 
   const detail = row(await studentApi.getPaymentById(paymentId));
   if (!detail || !matchesId(detail, PAYMENT_ID, paymentId) ||
       !matchesId(detail, REGISTRATION_ID, registrationId) ||
-      !matchesIfPresent(detail, STUDENT_ID, studentId)) return null;
+      !matchesIfPresent(detail, STUDENT_ID, studentId) ||
+      !matchesIfPresent(request.payment, PAYMENT_ID, paymentId) ||
+      !matchesIfPresent(request.payment, REGISTRATION_ID, registrationId) ||
+      !matchesIfPresent(request.payment, STUDENT_ID, studentId)) return null;
 
   let student = request.student && matchesId(request.student, STUDENT_ID, studentId) ? request.student : null;
   let registration = request.registration;
@@ -258,7 +266,9 @@ async function loadReceipt(request: PaymentReceiptRequest): Promise<ReceiptData 
   const studentSources = [profile, detail, student, registration, request.payment];
   const firstName = text(read(studentSources, ['studentName', 'student_Name', 'student_name', 'StudentName']));
   const lastName = text(read(studentSources, ['lastName', 'last_Name', 'last_name', 'LastName']));
-  const studentName = [firstName, lastName].filter(Boolean).join(' ');
+  const studentName = lastName && firstName.toLowerCase().endsWith(' ' + lastName.toLowerCase())
+    ? firstName
+    : [firstName, lastName].filter(Boolean).join(' ');
   const courseName = text(read([detail, registration], ['courseName', 'course_Name', 'course_name', 'CourseName']));
   const registrationCode = text(read([detail, registration], ['registrationCode', 'registration_Code', 'registration_code']));
   const paymentMode = text(read([detail], ['paymentMode', 'payment_Mode', 'payment_mode']));
@@ -276,8 +286,9 @@ async function loadReceipt(request: PaymentReceiptRequest): Promise<ReceiptData 
     studentMobile: text(read(studentSources, ['mobileNumber', 'mobile_Number', 'mobile_number', 'MobileNumber'])),
     permanentId: text(read(studentSources, [
       'permanentIdentificationNumber', 'permanent_Identification_Number', 'permanent_IdentificationNumber',
-      'permanentIdentificationNo', 'permanentIdentificationId', 'permanentId', 'permanent_Id',
-      'permanentRegistrationCode', 'permanentRegistrationNumber', 'pin',
+      'permanentIdentificationNo', 'permanent_Identification_No', 'permanentIdentificationId',
+      'permanentId', 'permanent_Id', 'permanent_id', 'permanentStudentCode',
+      'permanentRegistrationCode', 'permanentRegistrationNumber',
     ])),
     courseName,
     registrationCode,
@@ -465,8 +476,12 @@ async function downloadOfficialReceipt(registrationId: number, paymentId: number
 }
 
 export async function downloadPremiumPaymentReceipt(request: PaymentReceiptRequest): Promise<'premium' | 'official'> {
-  if (!positiveId(request.paymentId) || !positiveId(request.registrationId) || !positiveId(request.studentId)) {
-    throw new Error('Valid payment, registration and student identifiers are required.');
+  if (!positiveId(request.paymentId) || !positiveId(request.registrationId)) {
+    throw new Error('Valid payment and registration identifiers are required.');
+  }
+  if (!positiveId(request.studentId)) {
+    await downloadOfficialReceipt(request.registrationId, request.paymentId);
+    return 'official';
   }
 
   let receipt: ReceiptData | null = null;
