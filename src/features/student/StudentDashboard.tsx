@@ -76,7 +76,7 @@ export default function StudentDashboard({
     <div className="sp-section-page sp-dashboard">
       <div id="student-overview" className="sp-stats" aria-label="Student account summary">
         <div className="sp-panel"><span>Enrolled courses</span><strong>{studentRecordLoaded ? courseRows.length : '—'}</strong></div>
-        <div className="sp-panel"><span>Assigned batches</span><strong>{studentRecordLoaded && !batchesLoading && !batchesError ? batchRows.length : '—'}</strong></div>
+        <div className="sp-panel"><span>Assigned batches</span><strong>{studentRecordLoaded && !batchesLoading && (!batchesError || batchRows.length > 0) ? batchRows.length : '—'}</strong></div>
         <div className="sp-panel"><span>Recorded payments</span><strong>{studentRecordLoaded ? paymentRows.length : '—'}</strong></div>
         <div className="sp-panel"><span>Payment total</span><strong>{paymentRows.length ? money(totalPaid) : '—'}</strong></div>
       </div>
@@ -117,7 +117,7 @@ export default function StudentDashboard({
             </div>
             <Link className="sp-dashboard-view-link" to="/student-portal/batches">View all <i className="bi bi-arrow-right" aria-hidden="true" /></Link>
           </div>
-          {!batchesLoading && !batchesError && batchRows.length ? (
+          {!batchesLoading && batchRows.length ? (
             <ul className="sp-dashboard-record-list">
               {batchRows.slice(0, 2).map((batch, index) => (
                 <li key={String(field(batch, 'batchId', 'batch_Id', 'batch_id') ?? index)}>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { studentApi } from '@/api/studentApi';
+import { httpStatus } from '@/core/http/errors';
 import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { normalizeStudentAttendance, type StudentAttendanceEntry } from './studentAttendanceData';
 
@@ -11,7 +12,7 @@ interface Props {
 
 type AttendanceState =
   | { status: 'loading' }
-  | { status: 'error' }
+  | { status: 'error'; message: string }
   | { status: 'ready'; rows: StudentAttendanceEntry[] };
 
 function formatDate(date: string): string {
@@ -34,8 +35,17 @@ export default function StudentBatchAttendance({ batchId, studentId, registratio
         const rows = normalizeStudentAttendance(response, studentId, batchId, owned);
         setState({ status: 'ready', rows });
       })
-      .catch(() => {
-        if (active) setState({ status: 'error' });
+      .catch((error: unknown) => {
+        if (!active) return;
+        const status = httpStatus(error);
+        setState({
+          status: 'error',
+          message: status === 404
+            ? 'The attendance service could not find this batch (ID ' + batchId + ').'
+            : status === 403
+              ? 'The attendance service did not allow access to this batch.'
+              : 'Your attendance could not be loaded or verified.',
+        });
       });
 
     return () => { active = false; };
@@ -43,7 +53,7 @@ export default function StudentBatchAttendance({ batchId, studentId, registratio
 
   if (state.status === 'loading') return <p className="sp-muted" role="status">Loading your attendance…</p>;
   if (state.status === 'error') return (
-    <AutoDismissAlert className="sp-alert" message="Your attendance could not be loaded or verified.">
+    <AutoDismissAlert className="sp-alert" message={state.message}>
       <button type="button" className="sp-batch-attendance-retry" onClick={() => setAttempt(value => value + 1)}>Retry</button>
     </AutoDismissAlert>
   );

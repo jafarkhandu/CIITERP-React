@@ -7,6 +7,7 @@ import { useSession } from '@/core/auth/hooks';
 import { readTokenIdentity } from '@/core/auth/tokenIdentity';
 import { tokenService } from '@/core/services/tokenService';
 import { studentApi } from '@/api/studentApi';
+import { httpStatus } from '@/core/http/errors';
 import { downloadPremiumPaymentReceipt } from './paymentReceiptPdf';
 import { API_ORIGINS } from '@/core/config/api-services';
 import StudentProfileEditor from './StudentProfileEditor';
@@ -104,6 +105,8 @@ export default function StudentAccount() {
   const [myBatchResult, setMyBatchResult] = useState<{ studentId: number; rows: StudentRecord[] } | null>(null);
   const [batchesLoading, setBatchesLoading] = useState(false);
   const [batchesError, setBatchesError] = useState('');
+  const [batchLookupAttempt, setBatchLookupAttempt] = useState(0);
+  const [registrationLookupAttempt, setRegistrationLookupAttempt] = useState(0);
   const [coursePaymentDetails, setCoursePaymentDetails] = useState<{
     registration: StudentRecord;
     rows: StudentRecord[];
@@ -290,6 +293,8 @@ export default function StudentAccount() {
     if (!studentId) return;
 
     let active = true;
+    setRecordLoading(true);
+    setRecordError('');
     studentApi.getRegistrationById(studentId)
       .then((response) => {
         if (!active) return;
@@ -308,7 +313,7 @@ export default function StudentAccount() {
       });
 
     return () => { active = false; };
-  }, [studentId]);
+  }, [studentId, registrationLookupAttempt]);
 
   useEffect(() => {
     if (!showingBatches || !studentId || !studentRecord ||
@@ -345,14 +350,19 @@ export default function StudentAccount() {
       .catch((error: unknown) => {
         if (!active) return;
         console.error('Student batch lookup failed:', error);
-        setBatchesError('Your assigned batches could not be loaded. Please try again.');
+        const status = httpStatus(error);
+        setBatchesError(status === 404
+          ? 'The batch service could not find your assigned batch (404). Please retry or contact your institute.'
+          : status === 403
+            ? 'The batch service did not allow access to your assigned batches (403).'
+            : 'Your assigned batches could not be loaded. Please try again.');
       })
       .finally(() => {
         if (active) setBatchesLoading(false);
       });
 
     return () => { active = false; };
-  }, [showingBatches, studentId, studentRecord, myBatchResult?.studentId]);
+  }, [showingBatches, studentId, studentRecord, myBatchResult?.studentId, batchLookupAttempt]);
 
   useEffect(() => {
     if (!showingCourses || !studentId || !studentRecord || paymentDetails) return;
@@ -417,12 +427,28 @@ export default function StudentAccount() {
     ...nestedRows(studentRecord, 'payments', 'Payments'),
     ...courseRows.flatMap((row) => nestedRows(row, 'payments', 'Payments')),
   ].filter(belongsToStudent);
+  // A failed batch lookup must not hide assignments already returned by
+  // the verified student registration response.
+  const registrationMatchesStudent = !!studentId &&
+    Number(readField(studentRecord, 'studentId', 'student_Id', 'student_id', 'StudentId')) === studentId;
+  const ownedRegistrationIds = new Set(
+    [...courseRows, ...(studentRecord ? [studentRecord] : [])]
+      .filter(belongsToStudent)
+      .map(row => Number(readField(row, 'registrationId', 'registration_Id', 'registration_id', 'RegistrationId')))
+      .filter(id => Number.isSafeInteger(id) && id > 0),
+  );
   const batchRows = myBatchResult?.studentId === studentId
     ? myBatchResult.rows
-    : [
-        ...nestedRows(studentRecord, 'batches', 'Batches'),
-        ...courseRows.flatMap((row) => nestedRows(row, 'batches', 'Batches')),
-      ].filter(belongsToStudent);
+    : registrationMatchesStudent
+      ? [
+          ...nestedRows(studentRecord, 'batches', 'Batches'),
+          ...courseRows.flatMap((row) => nestedRows(row, 'batches', 'Batches')),
+        ].filter(row => {
+          if (!belongsToStudent(row)) return false;
+          const registrationId = readField(row, 'registrationId', 'registration_Id', 'registration_id', 'RegistrationId');
+          return registrationId === null || ownedRegistrationIds.has(Number(registrationId));
+        })
+      : [];
   const totalPaid = paymentRows.reduce((sum, row) =>
     sum + (Number(readField(row, 'paymentAmount', 'payment_Amount')) || 0), 0);
   const newestPayments = [...paymentRows].sort(comparePaymentsNewestFirst);
@@ -610,8 +636,20 @@ export default function StudentAccount() {
               <section id="student-batch" className="sp-panel">
               <h2>Batches</h2>
               {(recordLoading || batchesLoading) && <p className="sp-muted" role="status">Loading your assigned batches…</p>}
-              {batchesError && <AutoDismissAlert className="sp-alert" message={batchesError} />}
-              {!recordLoading && !recordError && !batchesLoading && !batchesError && (batchRows.length
+              {recordError && !recordLoading && (
+                <div className="sp-batch-attendance-content">
+                  <p className="sp-muted">Your registration information is unavailable.</p>
+                  <button type="button" className="sp-batch-attendance-retry"
+                    onClick={() => setRegistrationLookupAttempt(attempt => attempt + 1)}>Retry registration</button>
+                </div>
+              )}
+              {batchesError && !batchesLoading && (
+                <AutoDismissAlert className="sp-alert" message={batchesError}>
+                  <button type="button" className="sp-batch-attendance-retry"
+                    onClick={() => setBatchLookupAttempt(attempt => attempt + 1)}>Retry batches</button>
+                </AutoDismissAlert>
+              )}
+              {!recordLoading && !recordError && !batchesLoading && (batchRows.length
                 ? <div className="sp-stack">{batchRows.map((row, index) => {
                     const batch = asRecord(readField(row, 'batch', 'Batch'));
                     const details = batch ? { ...row, ...batch } : row;
@@ -620,16 +658,18 @@ export default function StudentAccount() {
                     const start = readField(details, 'startDate', 'start_date', 'start_Date');
                     const end = readField(details, 'endDate', 'end_date', 'end_Date');
                     const status = readField(details, 'status', 'batchStatus', 'batch_status');
-                    const batchId = Number(readField(details, 'batchId', 'batch_Id', 'batch_id', 'BatchId') ?? 0);
+                    const assignedBatchId = readField(row, 'batchId', 'batch_Id', 'batch_id', 'BatchId');
+                    const nestedBatchId = readField(batch, 'batchId', 'batch_Id', 'batch_id', 'BatchId', 'id');
+                    // Never substitute a batch-student assignment ID for the actual batch ID.
+                    const conflictingBatchIds = assignedBatchId !== null && nestedBatchId !== null &&
+                      Number(assignedBatchId) !== Number(nestedBatchId);
+                    const batchId = conflictingBatchIds ? 0 : Number(nestedBatchId ?? assignedBatchId ?? 0);
                     const batchKey = `${batchId}-${index}`;
                     const expanded = expandedAttendanceBatch === batchKey;
                     const canViewAttendance = !!studentId &&
                       Number(readField(studentRecord, 'studentId', 'student_Id', 'student_id', 'StudentId')) === studentId &&
                       Number.isSafeInteger(batchId) && batchId > 0;
-                    const registrationIds = [...courseRows, ...(studentRecord ? [studentRecord] : [])]
-                      .filter(belongsToStudent)
-                      .map(item => Number(readField(item, 'registrationId', 'registration_Id', 'registration_id', 'RegistrationId')))
-                      .filter(id => Number.isSafeInteger(id) && id > 0);
+                    const registrationIds = [...ownedRegistrationIds];
                     return <article className="sp-entry" key={batchKey}>
                       <h3>{display(readField(details, 'batchName', 'batch_Name', 'batch_name', 'BatchName'))}</h3>
                       <p>Time: {display(readField(details, 'batchTime', 'batch_Time', 'batch_time'))}</p>
@@ -638,6 +678,7 @@ export default function StudentAccount() {
                       {start !== null && <p>Start date: {formatStudentDate(start)}</p>}
                       {end !== null && <p>End date: {formatStudentDate(end)}</p>}
                       {status !== null && <p>Status: {display(status)}</p>}
+                      {!canViewAttendance && <p className="sp-muted">Attendance is unavailable because the batch ID could not be verified.</p>}
                       {canViewAttendance && (
                         <div className="sp-batch-attendance">
                           <button type="button" className="sp-batch-attendance-toggle" aria-expanded={expanded}
@@ -653,7 +694,9 @@ export default function StudentAccount() {
                       )}
                     </article>;
                   })}</div>
-                : <p className="sp-muted">No batches have been assigned to your student account yet.</p>
+                : <p className="sp-muted">{batchesError
+                    ? 'Assigned batch information is currently unavailable.'
+                    : 'No batches have been assigned to your student account yet.'}</p>
               )}
             </section>
             </div>
