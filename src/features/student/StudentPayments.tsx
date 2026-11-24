@@ -381,20 +381,15 @@ export default function StudentPayments() {
     if (!regId || !payId) { setError('Receipt cannot be generated because the registration or payment ID is missing.'); return; }
     setReceiptLoading(true); setError('');
     try {
-      await downloadPremiumPaymentReceipt({
+      const result = await downloadPremiumPaymentReceipt({
         paymentId: payId,
-        paymentAmount: Number(payment.paymentAmount),
-        paymentDate: payment.paymentDate,
-        paymentMode: payment.paymentMode,
-        paymentDescription: payment.paymentDescription,
-        studentName: [payment.studentName, payment.lastName].filter(Boolean).join(' ') || 'Student',
-        studentCode: String(pick(payment, 'studentCode', 'student_Code', 'student_code') ?? ''),
-        studentEmail: String(pick(payment, 'emailAddress', 'email_Address', 'email_address') ?? ''),
-        studentMobile: payment.mobileNumber,
-        courseName: payment.courseName || 'Course payment',
-        registrationCode: payment.registrationCode,
-        branchName: payment.branchName,
+        registrationId: regId,
+        studentId: Number(payment.studentId || pick(payment, 'student_Id', 'student_id', 'StudentId') || 0),
+        payment,
       });
+      if (result === 'official') {
+        setError('The official receipt was downloaded because the full premium receipt details were unavailable.');
+      }
     } catch (err) { console.error('Receipt download failed:', err); setError('Receipt PDF could not be generated. Please retry.'); }
     finally { setReceiptLoading(false); }
   }
