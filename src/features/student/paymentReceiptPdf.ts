@@ -106,12 +106,9 @@ export async function downloadPremiumPaymentReceipt(receipt: PaymentReceiptData)
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(204, 221, 247);
-  doc.text(
-    receipt.branchName ? 'Branch: ' + safeText(receipt.branchName) : 'Training & Skills Development',
-    edge,
-    36,
-    { maxWidth: 96 },
-  );
+  if (receipt.branchName) {
+    doc.text('Branch: ' + safeText(receipt.branchName), edge, 36, { maxWidth: 96 });
+  }
 
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
@@ -170,12 +167,34 @@ export async function downloadPremiumPaymentReceipt(receipt: PaymentReceiptData)
   const noteY = detailsY + 40;
   fieldLabel(doc, 'PAYMENT DESCRIPTION', edge, noteY);
   const note = safeText(receipt.paymentDescription, 'Payment received towards course fees.');
-  const noteEnd = fieldValue(doc, note, edge, noteY + 9, pageWidth - edge * 2, 9.5);
-  if (noteEnd > 263) {
-    throw new Error('The payment description is too long for a single-page receipt.');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.setTextColor(...NAVY);
+  const noteLines = doc.splitTextToSize(note, pageWidth - edge * 2) as string[];
+  let lineY = noteY + 9;
+  for (const line of noteLines) {
+    if (lineY > 253) {
+      doc.addPage();
+      doc.setFillColor(...NAVY);
+      doc.rect(0, 0, pageWidth, 19, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text('CIIT PAYMENT RECEIPT - CONTINUED', edge, 12);
+      doc.setTextColor(...NAVY);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9.5);
+      lineY = 33;
+    }
+    doc.text(line, edge, lineY);
+    lineY += 5;
   }
 
-  const footerY = Math.max(noteEnd + 17, 270);
+  if (lineY + 20 > 286) {
+    doc.addPage();
+    lineY = 243;
+  }
+  const footerY = Math.max(lineY + 12, 270);
   doc.setDrawColor(...BORDER);
   doc.line(edge, footerY, right, footerY);
   doc.setTextColor(...NAVY);
