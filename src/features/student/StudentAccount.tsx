@@ -117,35 +117,23 @@ export default function StudentAccount() {
   ): Promise<void> {
     if (!Number.isSafeInteger(paymentId) || paymentId <= 0 ||
         !Number.isSafeInteger(registrationId) || registrationId <= 0 ||
-        invoiceDownloadingId !== null) return;
+        !studentId || invoiceDownloadingId !== null) return;
 
     setInvoiceError(null);
     setInvoiceDownloadingId(paymentId);
     try {
-      await downloadPremiumPaymentReceipt({
+      const result = await downloadPremiumPaymentReceipt({
         paymentId,
-        paymentAmount: Number(readField(payment, 'paymentAmount', 'payment_Amount', 'payment_amount') ?? 0),
-        paymentDate: String(readField(payment, 'paymentDate', 'payment_Date', 'payment_date') ?? ''),
-        paymentMode: String(readField(payment, 'paymentMode', 'payment_Mode', 'payment_mode') ?? ''),
-        paymentDescription: String(readField(payment, 'paymentDescription', 'payment_Description', 'payment_description') ?? ''),
-        studentName: studentName,
-        studentCode,
-        studentEmail: String(
-          readField(studentDetails, 'emailAddress', 'email_Address') ??
-          readField(studentRecord, 'emailAddress', 'email_Address') ??
-          identity.email ?? session.email ?? ''
-        ),
-        studentMobile: String(
-          readField(studentDetails, 'mobileNumber', 'mobile_Number') ??
-          readField(studentRecord, 'mobileNumber', 'mobile_Number') ?? ''
-        ),
-        courseName: String(readField(registration, 'courseName', 'course_Name', 'course_name') ?? 'Course payment'),
-        registrationCode: String(readField(registration, 'registrationCode', 'registration_Code', 'registration_code') ?? ''),
-        branchName: String(
-          readField(studentDetails, 'branchName', 'branch_Name') ??
-          readField(studentRecord, 'branchName', 'branch_Name') ?? ''
-        ),
+        registrationId,
+        studentId: Number(studentId),
+        payment,
+        student: studentRecord,
+        profile: studentDetails,
+        registration,
       });
+      if (result === 'official') {
+        setInvoiceError({ paymentId, message: 'The official receipt was downloaded because the full premium receipt details were unavailable.' });
+      }
     } catch (error) {
       console.error('Student invoice download failed:', error);
       setInvoiceError({ paymentId, message: 'Receipt PDF could not be generated. Please try again.' });
