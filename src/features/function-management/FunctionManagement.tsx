@@ -1,3 +1,4 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -54,7 +55,7 @@ export default function FunctionManagement() {
   const [id, setId] = useState('');
   const [module, setModule] = useState('');
   const [description, setDescription] = useState('');
-  const [formError, setFormError] = useState('');
+  const [formError, setFormError] = useAutoDismissMessage();
 
   const rows = useMemo<FunctionRow[]>(() => [
     ...Object.entries(PERMISSIONS).map(([key, value]) => ({

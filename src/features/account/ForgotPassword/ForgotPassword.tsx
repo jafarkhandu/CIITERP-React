@@ -1,3 +1,4 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { accountApi } from '@/api/accountApi';
@@ -8,8 +9,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+$/;
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
-  const [errormessage, setErrormessage] = useState('');
-  const [successmessage, setSuccessmessage] = useState('');
+  const [errormessage, setErrormessage] = useAutoDismissMessage();
+  const [successmessage, setSuccessmessage] = useAutoDismissMessage();
 
   async function sendResetLink(e: FormEvent) {
     e.preventDefault();

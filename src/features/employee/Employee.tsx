@@ -1,3 +1,5 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
+import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
@@ -43,8 +45,8 @@ export default function Employee() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [formError, setFormError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [formError, setFormError] = useAutoDismissMessage();
+  const [success, setSuccess] = useAutoDismissMessage();
   const [search, setSearch] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -202,7 +204,7 @@ export default function Employee() {
         }}><i className="bi bi-person-plus" /> Add Employee</button>
       </header>
       {success && <div className="employee-alert success" role="status">{success}</div>}
-      {error && <div className="employee-alert error" role="alert">{error}<button type="button" onClick={() => void loadData()}>Retry</button></div>}
+      {error && <AutoDismissAlert className="employee-alert error" message={error}><button type="button" onClick={() => void loadData()}>Retry</button></AutoDismissAlert>}
       <div className="employee-filters">
         <input aria-label="Search employees" value={search} onChange={(event) => {
           setSearch(event.target.value); setPage(1);
@@ -271,9 +273,9 @@ export default function Employee() {
           </select></label>
         </div>
         {(branchLookup.status === 'error' || roleLookup.status === 'error') &&
-          <div className="employee-alert error" role="alert">Some registration options could not be loaded.
+          <AutoDismissAlert className="employee-alert error" message="Some registration options could not be loaded.">
             <button type="button" onClick={() => setLookupAttempt((attempt) => attempt + 1)}>Retry</button>
-          </div>}
+          </AutoDismissAlert>}
         {formError && <div className="employee-alert error" role="alert">{formError}</div>}
         <footer><button type="button" className="employee-secondary-btn" disabled={saving} onClick={() => setShowCreate(false)}>Cancel</button>
           <button className="employee-primary-btn" type="submit" disabled={saving || !canSubmit}>{saving ? 'Registering...' : 'Register Employee'}</button></footer>

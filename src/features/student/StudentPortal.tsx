@@ -1,3 +1,4 @@
+import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { useOutletContext } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { studentApi, type StudentRow, type PaymentRow } from '@/api/studentApi';
@@ -105,7 +106,7 @@ export default function StudentPortal() {
 
   return <main className="ciit-student-portal">
     {statuses.students === 'loading' && <div className="sp-panel" role="status">Loading student records…</div>}
-    {!!errors.length && <div className="sp-alert" role="alert">Could not load: {errors.join(', ')}. Some information may be unavailable. Refresh to retry.</div>}
+    {!!errors.length && <AutoDismissAlert className="sp-alert" message={`Could not load: ${errors.join(', ')}. Some information may be unavailable. Refresh to retry.`} />}
     {statuses.students === 'ready' && !students.length && <div className="sp-panel">No student records are available for this account.</div>}
     {!!students.length && !student && <div className="sp-panel sp-empty">Select a student above to view their profile, courses, batches and payments.</div>}
     {student && <div className="sp-content">

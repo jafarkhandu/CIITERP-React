@@ -1,3 +1,5 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
+import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { TablePagination, useTablePage } from '@/components/TablePagination';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
@@ -161,7 +163,7 @@ export default function BatchManagement() {
   const loadVersion = useRef(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [success, setSuccess] = useAutoDismissMessage();
   const [tab, setTab] = useState<'active' | 'deleted'>('active');
   const [scheduleBatch, setScheduleBatch] = useState<BatchRow | null>(null);
   const [scheduleViewTab, setScheduleViewTab] = useState<ScheduleTab>('schedule');
@@ -691,7 +693,7 @@ export default function BatchManagement() {
     <header className="batch-header"><div><div className="batch-eyebrow">GROUP LEADER / BATCH MANAGEMENT</div><h1>Batch Management</h1><p>Manage active batches, students and class schedules.</p></div>
       <div className="batch-header-actions"><button className="batch-secondary" type="button" onClick={() => void (scheduleBatch ? viewSchedule(scheduleBatch) : load())} disabled={saving || (scheduleBatch ? loadingSchedule : loading || loadingCounts)}>↻ Refresh</button><button className="batch-primary" type="button" onClick={openCreate} disabled={saving}>＋ New Batch</button></div>
     </header>
-    {error && <div className="batch-error" role="alert">{error}<button type="button" onClick={() => void load()}>Retry</button></div>}
+    {error && <AutoDismissAlert className="batch-error" message={error}><button type="button" onClick={() => void load()}>Retry</button></AutoDismissAlert>}
     {success && <div className="batch-success" role="status">{success}</div>}
     {scheduleBatch ? <section className="batch-table-card batch-schedule-view">
       <div className="batch-table-heading batch-schedule-heading">
@@ -710,7 +712,7 @@ export default function BatchManagement() {
         ))}
       </div>
       {loadingSchedule && <p className="batch-empty" role="status">Loading batch section…</p>}
-      {scheduleError && <div className="batch-error" role="alert">{scheduleError}<button type="button" onClick={() => void viewSchedule(scheduleBatch, scheduleViewTab)}>Retry</button></div>}
+      {scheduleError && <AutoDismissAlert className="batch-error" message={scheduleError}><button type="button" onClick={() => void viewSchedule(scheduleBatch, scheduleViewTab)}>Retry</button></AutoDismissAlert>}
       {!loadingSchedule && !scheduleError && scheduleViewTab === 'schedule' && <div className="batch-table-scroll batch-schedule-table-scroll"><table className="batch-table batch-schedule-table"><thead><tr><th>#</th><th>Content / Topic</th><th>Expected Date</th><th>Expected Day</th><th>Actual Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>
         {schedules.map((row, index) => <tr key={String(read(row, 'batch_schedule_id', 'batchScheduleId', 'id') ?? index)}><td>{index + 1}</td><td>{String(read(row, 'content_name', 'contentName', 'topic_name') ?? '—')}</td><td>{formatDate(read(row, 'expected_date', 'expectedDate'))}</td><td>{String(read(row, 'expected_day', 'expectedDay') ?? '—')}</td><td>{formatDate(read(row, 'actual_date', 'actualDate'))}</td><td>{String(read(row, 'status') ?? '—')}</td><td><RowActionsMenu label="Schedule actions" disabled={saving} actions={deleted(row) ? [
           { label: 'Restore schedule', onSelect: () => void restoreSchedule(row) },
@@ -788,7 +790,7 @@ export default function BatchManagement() {
     </div>, document.body)}
     {showCreate && createPortal(<div className="batch-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setShowCreate(false); }}><section className="batch-modal" role="dialog" aria-modal="true" aria-labelledby="batch-form-title"><header><h2 id="batch-form-title">{editingBatchId ? 'Edit Batch' : 'New Batch'}</h2><button type="button" aria-label="Close batch form" disabled={saving} onClick={() => setShowCreate(false)}>×</button></header><form onSubmit={submitBatch}>
       {loadingOptions && <p role="status">Loading topics, trainers and branches…</p>}
-      {optionError && <div className="batch-error" role="alert">{optionError}<button type="button" onClick={loadBatchOptions}>Retry</button></div>}
+      {optionError && <AutoDismissAlert className="batch-error" message={optionError}><button type="button" onClick={loadBatchOptions}>Retry</button></AutoDismissAlert>}
       <div className="batch-form-grid">
       <label>Batch Name *<input required value={form.batch_name} onChange={(e) => setForm({ ...form, batch_name: e.target.value })}/></label>
       <label>Topic *<select required disabled={loadingOptions} value={form.topic_id} onChange={(e) => setForm({ ...form, topic_id: Number(e.target.value) })}><option value={0}>Select Topic</option>{topics.map((item) => { const topicId = Number(read(item, 'topic_id', 'topicId', 'id') ?? 0); return <option key={topicId} value={topicId}>{String(read(item, 'topic_name', 'topicName', 'name') ?? 'Topic')}</option>; })}</select></label>

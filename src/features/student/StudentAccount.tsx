@@ -1,3 +1,5 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
+import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { authService } from '@/core/auth/authService';
@@ -107,7 +109,7 @@ export default function StudentAccount() {
   } | null>(null);
   const [expandedDetail, setExpandedDetail] = useState<string | null>(null);
   const [invoiceDownloadingId, setInvoiceDownloadingId] = useState<number | null>(null);
-  const [invoiceError, setInvoiceError] = useState<{ paymentId: number; message: string } | null>(null);
+  const [invoiceError, setInvoiceError] = useAutoDismissMessage<{ paymentId: number; message: string } | null>(null);
 
   async function downloadPaymentInvoice(
     paymentId: number,
@@ -156,7 +158,7 @@ export default function StudentAccount() {
   // Start each routed page at the top, even when navigating from a scrolled view.
   useEffect(() => { window.scrollTo(0, 0); }, [page, hash]);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
-  const [photoMessage, setPhotoMessage] = useState('');
+  const [photoMessage, setPhotoMessage] = useAutoDismissMessage();
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoUploadLock = useRef(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -215,7 +217,7 @@ export default function StudentAccount() {
     photoUploadLock.current = true;
     setPhotoUploading(true);
     const revision = ++photoRevision.current;
-    setPhotoMessage('Uploading profile photo…');
+    setPhotoMessage('');
     try {
       const photo = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -484,7 +486,7 @@ export default function StudentAccount() {
             Student records cannot be safely linked without it.
           </div>}
           {recordLoading && <div className="sp-alert" role="status">Loading your registration information…</div>}
-          {recordError && <div className="sp-alert" role="alert">{recordError}</div>}
+          {recordError && <AutoDismissAlert className="sp-alert" message={recordError} />}
           {activeSection === 'student-profile' && (
             <div className="sp-my-profile" id="student-profile">
               
@@ -512,7 +514,7 @@ export default function StudentAccount() {
                       </button>
                     )}
                     <p className="sp-muted">JPG, PNG or WebP · Max 4 MB · Uploads to your student account</p>
-                    {photoMessage && <p role="status" className="sp-muted">{photoMessage}</p>}
+                    {(photoUploading || photoMessage) && <p role="status" className="sp-muted">{photoUploading ? 'Uploading profile photo…' : photoMessage}</p>}
                   </div>
                 </div>
                 <div className="sp-profile-divider" aria-hidden="true" />
@@ -603,7 +605,7 @@ export default function StudentAccount() {
               <section id="student-batch" className="sp-panel">
               <h2>Batches</h2>
               {(recordLoading || batchesLoading) && <p className="sp-muted" role="status">Loading your assigned batches…</p>}
-              {batchesError && <div className="sp-alert" role="alert">{batchesError}</div>}
+              {batchesError && <AutoDismissAlert className="sp-alert" message={batchesError} />}
               {!recordLoading && !recordError && !batchesLoading && !batchesError && (batchRows.length
                 ? <div className="sp-stack">{batchRows.map((row, index) => {
                     const batch = asRecord(readField(row, 'batch', 'Batch'));

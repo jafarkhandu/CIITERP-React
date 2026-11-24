@@ -1,3 +1,4 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { accountApi } from '@/api/accountApi';
@@ -37,8 +38,8 @@ export default function ChangePassword() {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const [errormessage, setErrormessage] = useState('');
-  const [successmessage, setSuccessmessage] = useState('');
+  const [errormessage, setErrormessage] = useAutoDismissMessage();
+  const [successmessage, setSuccessmessage] = useAutoDismissMessage();
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => () => window.clearTimeout(timer.current), []);

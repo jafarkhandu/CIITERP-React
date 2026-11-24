@@ -1,3 +1,4 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { directoryApi, type RoleOption } from '@/api/directoryApi';
@@ -14,8 +15,8 @@ export default function EditUserRoles() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useAutoDismissMessage();
+  const [success, setSuccess] = useAutoDismissMessage();
 
   useEffect(() => {
     let cancelled = false;

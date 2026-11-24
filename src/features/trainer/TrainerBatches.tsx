@@ -1,3 +1,4 @@
+import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { trainerApi } from '@/api/studentApi';
@@ -34,7 +35,7 @@ export default function TrainerBatches() {
   useEffect(() => { void load(); }, []);
   return <section className="container-fluid py-3 trainer-workspace trainer-batches-page">
     <div className="trainer-page-heading d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3"><div><span className="trainer-eyebrow">TRAINING WORKSPACE</span><h2 className="h3 mb-1">My Assigned Batches</h2><p className="text-muted mb-0">{isPrivilegedUser ? 'All training batches across branches.' : 'Batches assigned to your trainer account.'}</p></div><button className="btn btn-outline-primary" onClick={() => void load()} disabled={loading}><i className="bi bi-arrow-clockwise me-1" />Refresh</button></div>
-    {error && <div className="alert alert-danger" role="alert">{error}</div>}
+    {error && <AutoDismissAlert className="alert alert-danger" message={error} />}
     {loading ? <div className="text-center py-5"><span className="spinner-border me-2" />Loading assigned batches...</div>
       : batches.length ? <div className="row g-3">{batches.map((batch) => <div className="col-md-6 col-xl-4" key={batch.batchId}><article className="card trainer-batch-card h-100"><div className="card-body"><div className="d-flex justify-content-between gap-2"><h3 className="h5">{batch.batchName}</h3><span className="badge text-bg-primary">{batch.studentCount ?? 0} students</span></div><p className="text-muted mb-1">{batch.courseName || 'Course not specified'}</p><p className="small mb-2"><strong>Trainer:</strong> {batch.trainerName || 'Trainer not assigned'}</p><div className="small text-muted mb-3">Start: {formatDate(batch.startDate)} · End: {formatDate(batch.endDate)}{batch.batchTime ? ` · ${batch.batchTime}` : ''}</div><Link className="btn btn-primary btn-sm" to={`/main/trainer/batches/${batch.batchId}`}>Open batch <i className="bi bi-arrow-right ms-1" /></Link></div></article></div>)}</div>
       : <div className="alert alert-info">{error ? 'Batch list is unavailable.' : (isPrivilegedUser ? 'No batches are currently available.' : 'No batches are currently assigned to this trainer.')}</div>}

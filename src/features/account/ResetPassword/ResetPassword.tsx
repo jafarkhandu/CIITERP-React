@@ -1,3 +1,4 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { useState, type FormEvent } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { accountApi } from '@/api/accountApi';
@@ -11,8 +12,8 @@ export default function ResetPassword() {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useAutoDismissMessage();
+  const [success, setSuccess] = useAutoDismissMessage();
   const [saving, setSaving] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {

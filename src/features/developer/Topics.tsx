@@ -1,3 +1,4 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
   trainingError,
@@ -27,8 +28,8 @@ export default function Topics() {
   const [topicForm, setTopicForm] = useState<TopicInput>(EMPTY_TOPIC);
   const [contentForm, setContentForm] = useState<ContentInput>(EMPTY_CONTENT);
   const [contentTopicId, setContentTopicId] = useState(0);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useAutoDismissMessage();
+  const [success, setSuccess] = useAutoDismissMessage();
 
   async function refreshTopics() {
     const next = await trainingTopicApi.getAll();

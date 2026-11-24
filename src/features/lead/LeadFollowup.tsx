@@ -1,3 +1,5 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
+import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { leadApi, type LeadFollowupRecord, type LeadRecord } from '@/api/leadApi';
@@ -46,7 +48,7 @@ function LeadFollowupPage({ leadId }: { leadId: number }) {
   const [lead, setLead] = useState<LeadRecord | null>(null);
   const [leadLoading, setLeadLoading] = useState(validLeadId);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useAutoDismissMessage();
   const [expandedForm, setExpandedForm] = useState(false);
   const [expandedHistory, setExpandedHistory] = useState(false);
   const [historyRequested, setHistoryRequested] = useState(false);
@@ -129,7 +131,7 @@ function LeadFollowupPage({ leadId }: { leadId: number }) {
     <header className="lead-page-header"><div><h1>Lead Follow-up</h1><p>Manage lead communication and follow-up history</p></div>
       <button className="lead-secondary-btn" type="button" onClick={() => navigate('/main/lead')}>← Back to Leads</button>
     </header>
-    {!validLeadId && <div className="lead-alert" role="alert">Invalid lead ID.</div>}
+    {!validLeadId && <AutoDismissAlert className="lead-alert" message="Invalid lead ID." />}
     {error && <div className="lead-alert" role="alert">{error}</div>}
     <div className="lead-details-card">
       <div className="lead-section-heading"><div><h2>Lead Details</h2><p>Lead information</p></div><span>Lead #{leadId}</span></div>
@@ -165,7 +167,7 @@ function LeadFollowupPage({ leadId }: { leadId: number }) {
         <span><strong>◷ Previous Lead Follow-ups</strong><small>View complete follow-up communication history</small></span><b>{expandedHistory ? '−' : '+'}</b>
       </button>
       {expandedHistory && <>
-        {history.error != null && <div className="lead-alert" role="alert">Unable to load follow-up history.<button type="button" onClick={history.refresh}>Retry</button></div>}
+        {history.error != null && <AutoDismissAlert className="lead-alert" message="Unable to load follow-up history."><button type="button" onClick={history.refresh}>Retry</button></AutoDismissAlert>}
         {history.pending && history.rows.length > 0 && <p role="status">Loading remaining follow-ups…</p>}
         <div className="lead-table-scroll"><table className="lead-table">
         <thead><tr><th>#</th><th>Follow-up Date</th><th>Follow-up By</th><th>Status</th><th>Description</th><th>Next Follow-up</th><th>Actions</th></tr></thead>

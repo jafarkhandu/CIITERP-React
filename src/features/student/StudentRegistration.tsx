@@ -1,3 +1,5 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
+import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { TablePagination, useTablePage } from '@/components/TablePagination';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -59,7 +61,7 @@ export default function StudentRegistration() {
   const [expandedStudentKey, setExpandedStudentKey] = useState<string | null>(null);
   const [studentsLoading, setStudentsLoading] = useState(true);
   const [registrationsLoading, setRegistrationsLoading] = useState(true);
-  const [recordsError, setRecordsError] = useState('');
+  const [recordsError, setRecordsError] = useAutoDismissMessage();
   const [lookupStatus, setLookupStatus] = useState<Partial<Record<Lookup, LookupStatus>>>({});
   const loadingLookups = useRef(new Set<Lookup>());
   const dataRevision = useRef(0);
@@ -67,8 +69,8 @@ export default function StudentRegistration() {
   const feeTimer = useRef<number>();
   const [saving, setSaving] = useState(false);
   const [feeLoading, setFeeLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useAutoDismissMessage();
+  const [success, setSuccess] = useAutoDismissMessage();
   const [modal, setModal] = useState<'new' | 'existing' | 'details' | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudentRow | null>(null);
   const [form, setForm] = useState(freshForm);
@@ -313,7 +315,7 @@ export default function StudentRegistration() {
 
     {modal === 'new' && <div className="ciit-registration-form-page"><div className="ciit-page-heading mb-3"><div><span className="ciit-section-eyebrow">CIIT · STUDENT MANAGEMENT</span><h1 className="h3 mb-1">Register New Student</h1><p className="text-muted mb-0">Create a student profile and enroll in a course.</p></div><button type="button" className="btn btn-outline-secondary" disabled={saving} onClick={closeForm}>Back to Student Registration</button></div><div className="card ciit-data-card"><div className="card-body">
       {(lookupStatus.branches === 'loading' || lookupStatus.courses === 'loading') && <div className="alert alert-info py-2" role="status">Loading branches and courses...</div>}
-      {(lookupStatus.branches === 'failed' || lookupStatus.courses === 'failed' || lookupStatus.qualifications === 'failed') && <div className="alert alert-warning py-2" role="status">Some form options could not be loaded. Reopen the form to retry.</div>}
+      {(lookupStatus.branches === 'failed' || lookupStatus.courses === 'failed' || lookupStatus.qualifications === 'failed') && <AutoDismissAlert className="alert alert-warning py-2" role="status" message="Some form options could not be loaded. Reopen the form to retry." />}
       <form onSubmit={submitNew}>
         <div className="ciit-registration-columns">
         <div className="ciit-form-section ciit-registration-personal"><h3>Personal Information</h3><div className="row g-2">
@@ -356,7 +358,7 @@ export default function StudentRegistration() {
 
     {modal === 'existing' && <Modal title="Register Existing Student" subtitle="Enroll an existing student in another course." onClose={() => !saving && closeForm()} large={false}>
       {lookupStatus.courses === 'loading' && <div className="alert alert-info py-2" role="status">Loading course list...</div>}
-      {lookupStatus.courses === 'failed' && <div className="alert alert-warning py-2" role="status">The course list could not be loaded. Reopen the form to retry.</div>}
+      {lookupStatus.courses === 'failed' && <AutoDismissAlert className="alert alert-warning py-2" role="status" message="The course list could not be loaded. Reopen the form to retry." />}
       <form onSubmit={submitExisting}><div className="row g-3">
         <div className="col-12"><label className="form-label">Student *</label><select required className="form-select" value={existingStudentId} onChange={(e) => setExistingStudentId(Number(e.target.value))}><option value={0}>Choose student</option>{students.map((s) => <option key={s.studentId} value={s.studentId}>{s.studentName} {s.lastName} · {s.mobileNumber}</option>)}</select></div>
         <div className="col-md-7"><label className="form-label">Course *</label><select required className="form-select" value={existingCourseId} onChange={(e) => { const id = Number(e.target.value); setExistingCourseId(id); loadFees(id, existingDiscount); }}><option value={0}>Select course</option>{courses.map((c) => <option key={c.courseId} value={c.courseId}>{c.courseName}</option>)}</select></div>

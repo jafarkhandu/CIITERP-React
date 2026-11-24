@@ -1,3 +1,5 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
+import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { TablePagination, useTablePage } from '@/components/TablePagination';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -49,7 +51,7 @@ export default function Enquiry() {
   const [tab, setTab] = useState<'active' | 'deleted'>('active');
   const [savingId, setSavingId] = useState(0);
   const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState('');
+  const [exportError, setExportError] = useAutoDismissMessage();
 
   const load = useCallback(async () => {
     const version = ++loadVersion.current;
@@ -135,7 +137,7 @@ export default function Enquiry() {
       <div><button className="enquiry-secondary-btn" type="button" disabled={loading || exporting} onClick={() => void exportExcel()}>{exporting ? 'Exporting…' : 'Export Excel'}</button>
         <button className="enquiry-primary-btn" type="button" onClick={() => navigate('/main/enquiry/add')}>+ Add Enquiry</button></div>
     </header>
-    {error && <div className="enquiry-alert" role="alert">{error}<button type="button" onClick={() => void load()}>Retry</button></div>}
+    {error && <AutoDismissAlert className="enquiry-alert" message={error}><button type="button" onClick={() => void load()}>Retry</button></AutoDismissAlert>}
     {exportError && <div className="enquiry-alert" role="alert">{exportError}</div>}
     <div className="enquiry-tabs"><button type="button" className={tab === 'active' ? 'active' : ''} onClick={() => setTab('active')}>Active Enquiries</button><button type="button" className={tab === 'deleted' ? 'active' : ''} onClick={() => setTab('deleted')}>Deleted Enquiries</button></div>
     <div className="enquiry-filters">

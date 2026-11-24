@@ -1,3 +1,5 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
+import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
   trainingCourseTopicApi,
@@ -23,8 +25,8 @@ export default function CourseMapping() {
   const [topicsError, setTopicsError] = useState('');
   const [mappingLoading, setMappingLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useAutoDismissMessage();
+  const [success, setSuccess] = useAutoDismissMessage();
 
   useEffect(() => {
     let active = true;
@@ -181,8 +183,8 @@ export default function CourseMapping() {
       </header>
 
       {error && <div className="dt-notice dt-error" role="alert">{error}</div>}
-      {coursesError && <div className="dt-notice dt-error" role="alert">{coursesError}</div>}
-      {topicsError && <div className="dt-notice dt-error" role="alert">{topicsError}</div>}
+      {coursesError && <AutoDismissAlert className="dt-notice dt-error" message={coursesError} />}
+      {topicsError && <AutoDismissAlert className="dt-notice dt-error" message={topicsError} />}
       {success && <div className="dt-notice dt-success" role="status">{success}</div>}
 
       <div className="dt-panel dt-course-selector">

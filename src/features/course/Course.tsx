@@ -1,3 +1,4 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
@@ -30,8 +31,8 @@ export default function Course() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<CourseForm>(EMPTY_FORM);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useAutoDismissMessage();
+  const [success, setSuccess] = useAutoDismissMessage();
   const canCreate = permissionService.hasPermission(PERMISSIONS.COURSE_CREATE);
   const canUpdate = permissionService.hasPermission(PERMISSIONS.COURSE_UPDATE);
   const canDelete = permissionService.hasPermission(PERMISSIONS.COURSE_DELETE);

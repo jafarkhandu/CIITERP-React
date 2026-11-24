@@ -1,3 +1,5 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
+import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { trainerApi } from '@/api/studentApi';
@@ -32,8 +34,8 @@ function TrainerBatch({ batchId }: { batchId: number }) {
   const rosterRequest = useRef<Promise<Row[]> | null>(null);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useAutoDismissMessage();
+  const [success, setSuccess] = useAutoDismissMessage();
 
   async function loadBatch() {
     if (!Number.isInteger(batchId) || batchId <= 0) {
@@ -142,7 +144,7 @@ function TrainerBatch({ batchId }: { batchId: number }) {
     <div className="mb-3"><Link to="/main/trainer" className="text-decoration-none"><i className="bi bi-arrow-left me-1" />Back to batches</Link></div>
     <div className="trainer-page-heading d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3"><div><span className="trainer-eyebrow">TRAINING WORKSPACE</span><h2 className="h3 mb-1">{text(details, 'batchName', 'batch_name', 'name') || 'Batch Details'}</h2><p className="text-muted mb-0">{text(details, 'courseName', 'course_name', 'course')}</p></div><button className="btn btn-outline-primary" disabled={loading || saving} onClick={() => { setSuccess(''); void loadBatch(); }}><i className="bi bi-arrow-clockwise me-1" />Refresh</button></div>
     {error && <div className="alert alert-danger" role="alert">{error}</div>}{success && <div className="alert alert-success" role="status">{success}</div>}
-    {failedSources.length > 0 && <div className="alert alert-warning" role="status">Could not load batch {failedSources.join(', ')}. Refresh to retry.</div>}
+    {failedSources.length > 0 && <AutoDismissAlert className="alert alert-warning" role="status" message={`Could not load batch ${failedSources.join(', ')}. Refresh to retry.`} />}
     <div className="row g-3 mb-3"><div className="col-sm-6 col-lg-3"><div className="card trainer-summary-card"><div className="card-body"><div className="small text-muted">Students</div><div className="fs-3 fw-semibold">{pending.students ? '…' : studentsFailed ? '—' : students.length}</div></div></div></div><div className="col-sm-6 col-lg-3"><div className="card"><div className="card-body"><div className="small text-muted">Schedules</div><div className="fs-3 fw-semibold">{pending.schedules ? '…' : schedulesFailed ? '—' : schedules.length}</div></div></div></div></div>
     <div className="row g-3">
       <div className="col-lg-6"><div className="card trainer-panel-card h-100" aria-busy={pending.students}><div className="card-header bg-white d-flex justify-content-between align-items-center"><h3 className="h6 mb-0">Students</h3><input className="form-control form-control-sm" style={{maxWidth:220}} value={studentSearch} onChange={(event) => setStudentSearch(event.target.value)} placeholder="Search students" /></div><div className="table-responsive"><table className="table table-hover mb-0"><thead className="table-light"><tr><th>Student</th><th>Registration</th><th>Mobile</th></tr></thead><tbody>

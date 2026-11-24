@@ -1,3 +1,5 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
+import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { TablePagination, useTablePage } from '@/components/TablePagination';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
@@ -52,7 +54,7 @@ export default function Lead() {
   const loadVersion = useRef(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [formError, setFormError] = useState('');
+  const [formError, setFormError] = useAutoDismissMessage();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [trainingType, setTrainingType] = useState('');
@@ -63,7 +65,7 @@ export default function Lead() {
   const [tab, setTab] = useState<'active' | 'deleted'>('active');
   const [showExport, setShowExport] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState('');
+  const [exportError, setExportError] = useAutoDismissMessage();
   const [form, setForm] = useState({
     candidateName: '', emailAddress: '', mobileNumber: '', trainingType: 'Online',
     description: '', status: 'New', leadDate: localDateValue(), sourceId: 0, sourceName: '',
@@ -256,7 +258,7 @@ export default function Lead() {
         {canCreate && <button className="lead-primary-btn" type="button" onClick={openCreate}>+ Add Lead</button>}
       </div>
     </header>
-    {error && <div className="lead-alert" role="alert">{error}<button type="button" onClick={() => void loadData()}>Retry</button></div>}
+    {error && <AutoDismissAlert className="lead-alert" message={error}><button type="button" onClick={() => void loadData()}>Retry</button></AutoDismissAlert>}
     {exportError && <div className="lead-alert" role="alert">{exportError}</div>}
     <div className="lead-tabs"><button type="button" className={tab === 'active' ? 'active' : ''} onClick={() => setTab('active')}>Active Leads</button><button type="button" className={tab === 'deleted' ? 'active' : ''} onClick={() => setTab('deleted')}>Deleted Leads</button></div>
     <div className="lead-filters">

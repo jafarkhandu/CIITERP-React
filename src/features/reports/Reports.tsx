@@ -1,3 +1,5 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
+import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { leadApi, type LeadRecord, type LeadFollowupRecord } from '@/api/leadApi';
 import { enquiryApi, type EnquiryRecord } from '@/api/enquiryApi';
@@ -53,7 +55,7 @@ export default function Reports() {
   const [sourceStatus, setSourceStatus] = useState<Partial<Record<ReportSource, 'ready' | 'failed'>>>({});
   const reportRequest = useRef(0);
   const [exporting, setExporting] = useState<`${ReportKind}-${ExportFormat}` | null>(null);
-  const [exportError, setExportError] = useState('');
+  const [exportError, setExportError] = useAutoDismissMessage();
 
   const loadReports = useCallback(() => {
     const request = ++reportRequest.current;
@@ -317,10 +319,9 @@ export default function Reports() {
       </section>
       {exportError && <div className="error" role="alert">{exportError}</div>}
       {failedSources.length > 0 &&
-        <div className="error" role="alert">
-          <span>Some report data could not be loaded ({failedSources.join(', ')}).</span>
+        <AutoDismissAlert className="error" message={`Some report data could not be loaded (${failedSources.join(', ')}).`}>
           <button type="button" onClick={loadReports}>Retry</button>
-        </div>}
+        </AutoDismissAlert>}
       {leadFollowupStatus !== 'ready' ? <PendingSection label="lead follow-up report" status={leadFollowupStatus} /> : (
         <section className="section">
           <div className="section-title"><div><h2>1. Lead Follow-up Report</h2><p>Latest follow-up for each lead within the selected period.</p></div>{exportActions('lead')}</div>

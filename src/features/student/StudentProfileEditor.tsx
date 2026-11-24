@@ -1,3 +1,5 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
+import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { useEffect, useState, type FormEvent } from 'react';
 import { studentApi, type StudentMyProfilePayload } from '@/api/studentApi';
 
@@ -95,7 +97,7 @@ export default function StudentProfileEditor({ studentId, profile, registration,
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Record<EditableField, string> | null>(null);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useAutoDismissMessage();
 
   useEffect(() => {
     setEditing(false);
@@ -146,12 +148,9 @@ export default function StudentProfileEditor({ studentId, profile, registration,
         <button type="button" className="sp-profile-edit-button" onClick={beginEdit}
           disabled={loading || !snapshot?.payload}>Edit profile</button>
         {loading && <p className="sp-muted" role="status">Loading editable profile…</p>}
-        {!loading && error && <p className="sp-muted" role="alert">{error}</p>}
+        {!loading && error && <AutoDismissAlert as="p" className="sp-muted" message={error} />}
         {!loading && snapshot && !!snapshot.missing.length && (
-          <p className="sp-muted" role="alert">
-            Profile editing is unavailable because the backend did not return all the original fields
-            ({snapshot.missing.join(', ')}). No incomplete profile will be submitted.
-          </p>
+          <AutoDismissAlert as="p" className="sp-muted" message={`Profile editing is unavailable because the backend did not return all the original fields (${snapshot.missing.join(', ')}). No incomplete profile will be submitted.`} />
         )}
       </div>
     ) : (

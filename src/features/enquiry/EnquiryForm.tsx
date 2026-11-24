@@ -1,3 +1,5 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
+import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { enquiryApi, type EnquiryRecord } from '@/api/enquiryApi';
@@ -48,7 +50,7 @@ function EnquiryFormPage({ enquiryId }: { enquiryId: number }) {
   const [recordError, setRecordError] = useState(false);
   const [recordRevision, setRecordRevision] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useAutoDismissMessage();
   const [mobileTouched, setMobileTouched] = useState(false);
   const optionsLoading = branchOptions.loading || qualificationOptions.loading || (Boolean(form.leadSources) && sourceOptions.loading);
   const mobileError = form.mobileNumber && !isValidIndianMobile(form.mobileNumber)
@@ -163,14 +165,14 @@ function EnquiryFormPage({ enquiryId }: { enquiryId: number }) {
       <button className="enquiry-secondary-btn" type="button" onClick={() => navigate('/main/enquiry')}>Back to Enquiries</button>
     </header>
     {recordLoading && <p role="status">Loading enquiry...</p>}
-    {recordError && <div className="enquiry-alert" role="alert">Unable to load enquiry details.<button type="button" onClick={() => {
+    {recordError && <AutoDismissAlert className="enquiry-alert" message="Unable to load enquiry details."><button type="button" onClick={() => {
       setRecordError(false);
       setRecordLoading(true);
       setRecordRevision((revision) => revision + 1);
-    }}>Retry</button></div>}
-    {branchOptions.error && <div className="enquiry-alert" role="alert">Unable to load branches.<button type="button" onClick={branchOptions.retry}>Retry</button></div>}
-    {qualificationOptions.error && <div className="enquiry-alert" role="alert">Unable to load qualifications.<button type="button" onClick={qualificationOptions.retry}>Retry</button></div>}
-    {sourceOptions.error && <div className="enquiry-alert" role="alert">Unable to load lead sources.<button type="button" onClick={sourceOptions.retry}>Retry</button></div>}
+    }}>Retry</button></AutoDismissAlert>}
+    {branchOptions.error && <AutoDismissAlert className="enquiry-alert" message="Unable to load branches."><button type="button" onClick={branchOptions.retry}>Retry</button></AutoDismissAlert>}
+    {qualificationOptions.error && <AutoDismissAlert className="enquiry-alert" message="Unable to load qualifications."><button type="button" onClick={qualificationOptions.retry}>Retry</button></AutoDismissAlert>}
+    {sourceOptions.error && <AutoDismissAlert className="enquiry-alert" message="Unable to load lead sources."><button type="button" onClick={sourceOptions.retry}>Retry</button></AutoDismissAlert>}
     {error && <div className="enquiry-alert" role="alert">{error}</div>}
     {!recordLoading && !recordError && <div className="enquiry-table-card" style={{ padding: 24 }}>
       <form onSubmit={submit} className="enquiry-form">

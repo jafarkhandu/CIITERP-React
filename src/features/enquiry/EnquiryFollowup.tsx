@@ -1,3 +1,5 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
+import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { enquiryApi, type EnquiryRecord } from '@/api/enquiryApi';
@@ -62,7 +64,7 @@ function EnquiryFollowupPage({ enquiryId }: { enquiryId: number }) {
   const [sourcesRequested, setSourcesRequested] = useState(false);
   const { rows: sources, loading: sourcesLoading, error: sourcesError, retry: retrySources } = useEnquiryOptions(getEnquiryLeadSources, sourcesRequested);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useAutoDismissMessage();
   const [editingId, setEditingId] = useState(0);
   const [newFollowupExpanded, setNewFollowupExpanded] = useState(false);
   const [previousFollowupsExpanded, setPreviousFollowupsExpanded] = useState(false);
@@ -184,12 +186,12 @@ function EnquiryFollowupPage({ enquiryId }: { enquiryId: number }) {
       <div><h1>Enquiry Followup</h1><p>Manage enquiry followup details</p></div>
       <button className="enquiry-secondary-btn" type="button" onClick={() => navigate('/main/enquiry')}>← Back</button>
     </header>
-    {!validEnquiryId && <div className="enquiry-alert" role="alert">Invalid enquiry ID.</div>}
-    {detailsError && <div className="enquiry-alert" role="alert">{detailsError}<button type="button" onClick={() => {
+    {!validEnquiryId && <AutoDismissAlert className="enquiry-alert" message="Invalid enquiry ID." />}
+    {detailsError && <AutoDismissAlert className="enquiry-alert" message={detailsError}><button type="button" onClick={() => {
       setDetailsError('');
       setDetailsLoading(true);
       setDetailsRevision((revision) => revision + 1);
-    }}>Retry</button></div>}
+    }}>Retry</button></AutoDismissAlert>}
     {error && <div className="enquiry-alert" role="alert">{error}</div>}
     <section className="enquiry-followup-section enquiry-details-card">
       <div className="enquiry-followup-section-title">
@@ -212,7 +214,7 @@ function EnquiryFollowupPage({ enquiryId }: { enquiryId: number }) {
         </div></div><span className="enquiry-accordion-expand">{newFollowupExpanded ? '−' : '+'}</span>
       </button>
       {newFollowupExpanded && <div className="enquiry-accordion-content">
-        {sourcesError && <div className="enquiry-alert" role="alert">Unable to load lead sources.<button type="button" onClick={retrySources}>Retry</button></div>}
+        {sourcesError && <AutoDismissAlert className="enquiry-alert" message="Unable to load lead sources."><button type="button" onClick={retrySources}>Retry</button></AutoDismissAlert>}
         <form onSubmit={submit}>
           <div className="enquiry-followup-form-grid">
             <label>Candidate Name *<input required value={editingId ? form.candidateName : String(enquiry?.candidateName ?? '')} readOnly /></label>
@@ -246,7 +248,7 @@ function EnquiryFollowupPage({ enquiryId }: { enquiryId: number }) {
         </div></div><span className="enquiry-accordion-expand">{previousFollowupsExpanded ? '−' : '+'}</span>
       </button>
       {previousFollowupsExpanded && <div className="enquiry-accordion-content">
-        {history.error != null && <div className="enquiry-alert" role="alert">{apiErrorMessage(history.error, 'Unable to load enquiry follow-ups.')}<button type="button" onClick={history.refresh}>Retry</button></div>}
+        {history.error != null && <AutoDismissAlert className="enquiry-alert" message={apiErrorMessage(history.error, 'Unable to load enquiry follow-ups.')}><button type="button" onClick={history.refresh}>Retry</button></AutoDismissAlert>}
         {history.pending && history.rows.length > 0 && <p role="status">Loading remaining follow-ups…</p>}
         <div className="enquiry-table-scroll"><table className="enquiry-table">
           <thead><tr><th>ID</th><th>Followup Date</th><th>Followup By</th><th>Status</th><th>Next Date</th><th>Description</th><th>Actions</th></tr></thead>

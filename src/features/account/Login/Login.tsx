@@ -1,3 +1,4 @@
+import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authApi } from '@/api/authApi';
@@ -37,7 +38,7 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(() => localStorage.getItem(rememberedLoginKey(mode)) !== null);
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState({ username: false, password: false });
-  const [errormessage, setErrormessage] = useState('');
+  const [errormessage, setErrormessage] = useAutoDismissMessage();
   const [isLoading, setIsLoading] = useState(false);
 
   const usernameInvalid = !username && touched.username;
