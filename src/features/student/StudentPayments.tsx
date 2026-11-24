@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { FormEvent } from 'react';
 import { studentApi, type PaymentRequest, type PaymentRow } from '@/api/studentApi';
+import { downloadPremiumPaymentReceipt } from './paymentReceiptPdf';
 
 type Row = Record<string, unknown>;
 type Registration = { registrationId: number; studentId: number; courseId: number; registrationCode: string; courseName: string; discount: number; studentName: string; lastName: string; mobileNumber: string };
@@ -380,18 +381,27 @@ export default function StudentPayments() {
     if (!regId || !payId) { setError('Receipt cannot be generated because the registration or payment ID is missing.'); return; }
     setReceiptLoading(true); setError('');
     try {
-      const blob = await studentApi.downloadInvoice(regId, payId);
-      if (!(blob instanceof Blob) || blob.size === 0) throw new Error('Empty receipt PDF');
-      const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-      const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'Payment-Receipt-' + payId + '.pdf'; document.body.appendChild(anchor); anchor.click(); anchor.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
-    } catch (err) { console.error('Receipt download failed:', err); setError('Receipt PDF could not be downloaded. Please retry.'); }
+      await downloadPremiumPaymentReceipt({
+        paymentId: payId,
+        paymentAmount: Number(payment.paymentAmount),
+        paymentDate: payment.paymentDate,
+        paymentMode: payment.paymentMode,
+        paymentDescription: payment.paymentDescription,
+        studentName: [payment.studentName, payment.lastName].filter(Boolean).join(' ') || 'Student',
+        studentCode: typeof payment.studentCode === 'string' ? payment.studentCode : undefined,
+        studentEmail: typeof payment.emailAddress === 'string' ? payment.emailAddress : undefined,
+        studentMobile: payment.mobileNumber,
+        courseName: payment.courseName || 'Course payment',
+        registrationCode: payment.registrationCode,
+        branchName: payment.branchName,
+      });
+    } catch (err) { console.error('Receipt download failed:', err); setError('Receipt PDF could not be generated. Please retry.'); }
     finally { setReceiptLoading(false); }
   }
   const clearFilters = () => { setSearch(''); setFromDate(''); setToDate(''); setMode(''); };
 
   return <section className="container-fluid py-3 ciit-data-page">
-    <div className="ciit-page-heading mb-4"><div><span className="ciit-section-eyebrow">ACCOUNTS MANAGEMENT</span><h1 className="h3 mb-1">Student Payments</h1><p className="text-muted mb-0">Track collections, filter transactions and download official receipts.</p></div><div className="d-flex gap-2"><button className="btn btn-outline-primary" onClick={() => { setError(''); void loadPayments(); }} disabled={paymentStatus === 'loading' || saving || modal !== null}><i className="bi bi-arrow-clockwise me-1" />Refresh</button><button className="btn btn-primary" onClick={openCreate} disabled={saving}><i className="bi bi-plus-lg me-1" />Create Payment</button></div></div>
+    <div className="ciit-page-heading mb-4"><div><span className="ciit-section-eyebrow">ACCOUNTS MANAGEMENT</span><h1 className="h3 mb-1">Student Payments</h1><p className="text-muted mb-0">Track collections, filter transactions and download payment receipts.</p></div><div className="d-flex gap-2"><button className="btn btn-outline-primary" onClick={() => { setError(''); void loadPayments(); }} disabled={paymentStatus === 'loading' || saving || modal !== null}><i className="bi bi-arrow-clockwise me-1" />Refresh</button><button className="btn btn-primary" onClick={openCreate} disabled={saving}><i className="bi bi-plus-lg me-1" />Create Payment</button></div></div>
     {(error || paymentsError) && !modal && <div className="alert alert-warning" role="alert">{error || paymentsError}</div>}
     <div className="row g-3 mb-4"><div className="col-sm-6 col-xl-3"><div className="card ciit-stat-card"><div className="card-body"><span>Payment Records</span><strong>{filtered.length}</strong><small>Filtered transactions</small></div></div></div><div className="col-sm-6 col-xl-3"><div className="card ciit-stat-card"><div className="card-body"><span>Total Collected</span><strong>{money(total)}</strong><small>Based on current filters</small></div></div></div><div className="col-sm-6 col-xl-3"><div className="card ciit-stat-card"><div className="card-body"><span>Students</span><strong>{uniqueStudents.length}</strong><small>With matching payments</small></div></div></div></div>
     <div className="card ciit-data-card mb-4"><div className="card-header"><div><h2 className="h6 mb-1">Payment Filters</h2><span className="small text-muted">Search, date range and payment mode</span></div><button className="btn btn-sm btn-light" onClick={clearFilters}><i className="bi bi-x-circle me-1" />Clear Filters</button></div><div className="card-body"><div className="row g-3"><div className="col-lg-4"><label className="form-label">Search</label><div className="ciit-table-search w-100"><i className="bi bi-search" /><input className="form-control" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Student, payment ID, registration..." /></div></div><div className="col-sm-6 col-lg-2"><label className="form-label">From Date</label><input type="date" className="form-control" value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></div><div className="col-sm-6 col-lg-2"><label className="form-label">To Date</label><input type="date" className="form-control" value={toDate} min={fromDate || undefined} onChange={(e) => setToDate(e.target.value)} /></div><div className="col-sm-6 col-lg-2"><label className="form-label">Payment Mode</label><select className="form-select" value={mode} onChange={(e) => setMode(e.target.value)}><option value="">All Modes</option>{['Cash', 'UPI', 'Online', 'Card', 'Bank Transfer', 'Cheque'].map((m) => <option key={m}>{m}</option>)}</select></div></div></div></div>
