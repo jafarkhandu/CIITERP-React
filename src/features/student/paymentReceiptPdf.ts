@@ -315,29 +315,29 @@ async function renderReceipt(receipt: ReceiptData): Promise<void> {
   const innerWidth = width - edge * 2;
 
   doc.setFillColor(...BLUE);
-  doc.rect(edge, 12, innerWidth, 1.5, 'F');
+  doc.rect(edge, 10, innerWidth, 1.5, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...NAVY);
   doc.setFontSize(21);
-  doc.text('CIIT Training Institute', edge, 24);
+  doc.text('CIIT Training Institute', edge, 21);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...MUTED);
   doc.setFontSize(9);
   const addressLines = doc.splitTextToSize(receipt.branchName + ' | ' + receipt.branchAddress, innerWidth) as string[];
-  doc.text(addressLines, edge, 31);
+  doc.text(addressLines, edge, 27);
 
   const contact = [
     receipt.gstNumber ? 'GSTIN: ' + receipt.gstNumber : '',
     receipt.branchEmail ? 'Email: ' + receipt.branchEmail : '',
     receipt.branchMobile ? 'Tel: ' + receipt.branchMobile : '',
   ].filter(Boolean).join('  |  ');
-  const contactY = 31 + addressLines.length * 4.5;
+  const contactY = 27 + addressLines.length * 4.5;
   if (contact) {
     fitText(doc, contact, innerWidth, 8.5);
     doc.text(contact, edge, contactY);
   }
 
-  const titleY = contactY + 14;
+  const titleY = contactY + 11;
   doc.setDrawColor(...BORDER);
   doc.line(edge, titleY - 6, right, titleY - 6);
   doc.setTextColor(...NAVY);
@@ -357,7 +357,7 @@ async function renderReceipt(receipt: ReceiptData): Promise<void> {
     textColor: NAVY,
     lineColor: BORDER,
     lineWidth: 0.18,
-    cellPadding: 3.2,
+    cellPadding: { top: 2.2, bottom: 2.2, left: 3.2, right: 3.2 },
     overflow: 'linebreak' as const,
   };
   const headerStyles = {
@@ -369,7 +369,7 @@ async function renderReceipt(receipt: ReceiptData): Promise<void> {
   const margin = { left: edge, right: edge, top: 16, bottom: 16 };
 
   autoTable(doc, {
-    startY: titleY + 12,
+    startY: titleY + 10,
     theme: 'grid',
     margin,
     head: [[{ content: 'STUDENT & REGISTRATION DETAILS', colSpan: 4 }]],
@@ -393,7 +393,7 @@ async function renderReceipt(receipt: ReceiptData): Promise<void> {
   const tableEnd = () => (doc as TableDoc).lastAutoTable?.finalY ?? 0;
 
   autoTable(doc, {
-    startY: tableEnd() + 8,
+    startY: tableEnd() + 5,
     theme: 'grid',
     margin,
     head: [['PAYMENT DETAILS', 'AMOUNT (INR)']],
@@ -423,7 +423,7 @@ async function renderReceipt(receipt: ReceiptData): Promise<void> {
   });
 
   autoTable(doc, {
-    startY: tableEnd() + 6,
+    startY: tableEnd() + 4,
     theme: 'grid',
     margin,
     body: [
@@ -437,7 +437,7 @@ async function renderReceipt(receipt: ReceiptData): Promise<void> {
     rowPageBreak: 'avoid',
   });
 
-  let footerY = tableEnd() + 10;
+  let footerY = tableEnd() + 7;
   if (footerY > 270) {
     doc.addPage();
     footerY = 20;
@@ -447,11 +447,11 @@ async function renderReceipt(receipt: ReceiptData): Promise<void> {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(...MUTED);
-  doc.text('Computer-generated receipt based on CIIT ERP payment records.', edge, footerY + 6);
+  doc.text('Computer-generated receipt based on CIIT ERP payment records.', edge, footerY + 5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...NAVY);
   doc.setFontSize(10);
-  doc.text('Thank you for your payment.', edge, footerY + 13);
+  doc.text('Thank you for your payment.', edge, footerY + 11);
 
   doc.save('CIIT-Payment-Receipt-' + receipt.paymentId + '.pdf');
 }
