@@ -1709,6 +1709,8 @@ html[data-theme="dark"] select optgroup {
 .ciit-registration-form-page {
   width: 100%;
   min-width: 0;
+  container-name: student-registration;
+  container-type: inline-size;
   padding: clamp(12px, 1.5vw, 24px);
   border: 1px solid rgba(155, 190, 230, .48);
   border-radius: 22px;
@@ -1772,20 +1774,20 @@ html[data-theme="dark"] .ciit-registration-form-page .ciit-fee-summary { backgro
 .ciit-registration-form-page .ciit-registration-columns {
   display: grid;
   grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr);
+  grid-template-areas:
+    "personal course"
+    "personal academic";
   align-items: start;
   gap: 14px;
 }
 .ciit-registration-form-page .ciit-registration-columns > .ciit-registration-course {
-  grid-column: 2;
-  grid-row: 1;
+  grid-area: course;
 }
 .ciit-registration-form-page .ciit-registration-columns > .ciit-registration-academic {
-  grid-column: 2;
-  grid-row: 2;
+  grid-area: academic;
 }
 .ciit-registration-form-page .ciit-registration-columns > .ciit-registration-personal {
-  grid-column: 1;
-  grid-row: 1 / span 2;
+  grid-area: personal;
 }
 .ciit-registration-form-page .ciit-registration-columns > .ciit-form-section {
   min-width: 0;
@@ -1820,8 +1822,96 @@ html[data-theme="dark"] .ciit-registration-form-page .ciit-fee-summary { backgro
 .ciit-registration-form-page .ciit-registration-columns + .alert {
   margin-top: 10px !important;
 }
-@media (max-width: 1050px) {
+/* Keep every field within its own section, including native date inputs. */
+.ciit-registration-form-page .ciit-registration-columns > .ciit-form-section {
+  container-name: registration-section;
+  container-type: inline-size;
+}
+.ciit-registration-form-page .ciit-registration-columns .row > * {
+  min-width: 0;
+}
+.ciit-registration-form-page .ciit-registration-columns .form-control,
+.ciit-registration-form-page .ciit-registration-columns .form-select {
+  min-width: 0;
+  max-width: 100%;
+}
+.ciit-registration-form-page .ciit-page-heading > div,
+.ciit-registration-form-page > .ciit-data-card > .card-body {
+  min-width: 0;
+}
+.ciit-registration-form-page .ciit-page-heading > .btn {
+  max-width: 100%;
+  white-space: normal;
+}
+.ciit-registration-form-page form > .alert {
+  overflow-wrap: anywhere;
+}
+.ciit-registration-form-page .ciit-fee-summary > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Use workspace width rather than viewport width: sidebar and zoom matter. */
+@container student-registration (max-width: 960px) {
   .ciit-registration-form-page .ciit-registration-columns {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "personal"
+      "course"
+      "academic";
+  }
+}
+@container registration-section (max-width: 480px) {
+  .ciit-registration-form-page .ciit-registration-columns .row > :is(.col-md-3, .col-md-4, .col-md-6) {
+    flex: 0 0 auto;
+    width: 50%;
+  }
+}
+@container registration-section (max-width: 340px) {
+  .ciit-registration-form-page .ciit-registration-columns .row > :is(.col-md-3, .col-md-4, .col-md-6) {
+    width: 100%;
+  }
+}
+@container student-registration (max-width: 520px) {
+  .ciit-registration-form-page > .ciit-page-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .ciit-registration-form-page > .ciit-page-heading > .btn {
+    width: 100%;
+  }
+  .ciit-registration-form-page > .ciit-data-card > .card-body {
+    padding: 10px;
+  }
+  .ciit-registration-form-page .ciit-registration-columns > .ciit-form-section {
+    padding: 10px;
+  }
+  .ciit-registration-form-page form > .d-flex {
+    flex-wrap: wrap;
+  }
+  .ciit-registration-form-page form > .d-flex > .btn {
+    flex: 1 1 auto;
+    max-width: 100%;
+    white-space: normal;
+  }
+}
+/* Fallback for browsers without container queries. */
+@supports not (container-type: inline-size) {
+  @media (max-width: 1250px) {
+    .ciit-registration-form-page .ciit-registration-columns {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas:
+        "personal"
+        "course"
+        "academic";
+    }
+  }
+}
+@media (max-width: 575.98px) {
+  .ciit-registration-form-page {
+    padding: 8px;
+  }
+  .ciit-registration-form-page > .ciit-data-card > .card-body {
+    padding: 8px;
   }
 }
