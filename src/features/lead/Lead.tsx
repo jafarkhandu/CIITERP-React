@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/core/http/errors';
 import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import RowActionsMenu from '@/components/RowActionsMenu';
@@ -99,10 +100,10 @@ export default function Lead() {
     try {
       const data = await leadApi.getAll();
       if (version === loadVersion.current) setLeads(data.map(normalizeLead));
-    } catch {
+    } catch (requestError) {
       if (version === loadVersion.current) {
         setLeads([]);
-        setError('Unable to load leads. Please retry.');
+        setError(apiErrorMessage(requestError, 'Unable to load leads. Please retry.'));
       }
     } finally {
       if (version === loadVersion.current) setLoading(false);
@@ -154,7 +155,7 @@ export default function Lead() {
         trainingType: item.trainingType || 'Online', description: item.description, status: item.status || 'New', leadDate: localDateValue(new Date(item.leadDate)),
         sourceId: item.sourceId, sourceName: item.sourceName || '' });
       setShowForm(true);
-    } catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to load lead for editing.'); }
+    } catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to load lead for editing.')); }
     finally { setSaving(false); }
   }
 
@@ -162,13 +163,13 @@ export default function Lead() {
     if (!window.confirm(`Delete lead for ${lead.candidateName}?`)) return;
     setSaving(true); setError('');
     try { await leadApi.remove(lead.leadId); await loadData(); }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to delete lead.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to delete lead.')); }
     finally { setSaving(false); }
   }
   async function restoreLead(lead: LeadRecord) {
     setSaving(true); setError('');
     try { await leadApi.restore(lead.leadId); await loadData(); }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to restore lead.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to restore lead.')); }
     finally { setSaving(false); }
   }
 
@@ -199,7 +200,7 @@ export default function Lead() {
       setShowForm(false);
       await loadData();
     } catch (requestError: any) {
-      setFormError(requestError?.response?.data?.message || 'Unable to save the lead.');
+      setFormError(apiErrorMessage(requestError, 'Unable to save the lead.'));
     } finally { setSaving(false); }
   }
 

@@ -93,7 +93,7 @@ export default function StudentRegistration() {
       } catch (requestError) {
         if (dataRevision.current !== revision) return;
         console.error('Student data refresh failed:', requestError);
-        setRecordsError('Some student data could not be refreshed. Successfully loaded records remain visible.');
+        setRecordsError(apiErrorMessage(requestError, 'Some student data could not be refreshed. Successfully loaded records remain visible.'));
       } finally {
         if (dataRevision.current === revision) finish();
       }
@@ -218,7 +218,7 @@ export default function StudentRegistration() {
       } catch (requestError) {
         if (feeRevision.current !== revision) return;
         console.error('Course fee lookup failed:', requestError);
-        setError('Could not load the selected course fees. Please retry.');
+        setError(apiErrorMessage(requestError, 'Could not load the selected course fees. Please retry.'));
       } finally {
         if (feeRevision.current === revision) setFeeLoading(false);
       }
@@ -282,7 +282,7 @@ export default function StudentRegistration() {
         `Hello ${student?.studentName ?? 'Student'},\n\nYou have been enrolled in ${course?.courseName ?? 'your selected course'} at CIIT Training Institute.\n\nCIIT Training Institute`,
       );
       setSuccess('Existing student enrolled successfully.'); setModal(null); await loadData();
-    } catch (err) { console.error('Existing student registration failed:', err); setError('Could not register this student for the selected course.'); }
+    } catch (err) { console.error('Existing student registration failed:', err); setError(apiErrorMessage(err, 'Could not register this student for the selected course.')); }
     finally { setSaving(false); }
   }
 

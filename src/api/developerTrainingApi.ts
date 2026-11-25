@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/core/http/errors';
 import { http } from '@/core/http/httpClient';
 import { API_ENDPOINTS } from '@/core/config/api-endpoints';
 
@@ -118,10 +119,7 @@ function mapping(item: ApiRecord): TrainingCourseTopic {
 }
 
 export function trainingError(error: unknown, fallback: string): string {
-  const response = record(error)?.response;
-  const body = record(record(response)?.data);
-  const message = body && field(body, 'message', 'error', 'title');
-  return typeof message === 'string' && message.trim() ? message : fallback;
+  return apiErrorMessage(error, fallback);
 }
 
 export const trainingTopicApi = {

@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/core/http/errors';
 import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -84,7 +85,7 @@ function TrainerBatch({ batchId }: { batchId: number }) {
     } catch (err) {
       if (version === attendanceVersion.current) {
         console.error('Attendance roster load failed:', err);
-        setError('Unable to load the attendance roster.');
+        setError(apiErrorMessage(err, 'Unable to load the attendance roster.'));
       }
     } finally {
       if (version === attendanceVersion.current) setAttendanceLoading(false);
@@ -126,7 +127,7 @@ function TrainerBatch({ batchId }: { batchId: number }) {
       setSuccess('Attendance submitted successfully.');
       closeAttendance();
       await loadBatch();
-    } catch (err) { console.error('Attendance submission failed:', err); setError('Attendance could not be submitted. Please verify the date and try again.'); }
+    } catch (err) { console.error('Attendance submission failed:', err); setError(apiErrorMessage(err, 'Attendance could not be submitted. Please verify the date and try again.')); }
     finally { setSaving(false); }
   }
 

@@ -7,7 +7,7 @@ import { useSession } from '@/core/auth/hooks';
 import { readTokenIdentity } from '@/core/auth/tokenIdentity';
 import { tokenService } from '@/core/services/tokenService';
 import { studentApi } from '@/api/studentApi';
-import { httpStatus } from '@/core/http/errors';
+import { apiErrorMessage, httpStatus } from '@/core/http/errors';
 import { downloadPremiumPaymentReceipt } from './paymentReceiptPdf';
 import { API_ORIGINS } from '@/core/config/api-services';
 import StudentProfileEditor from './StudentProfileEditor';
@@ -143,7 +143,7 @@ export default function StudentAccount() {
       }
     } catch (error) {
       console.error('Student invoice download failed:', error);
-      setInvoiceError({ paymentId, message: 'Receipt PDF could not be generated. Please try again.' });
+      setInvoiceError({ paymentId, message: apiErrorMessage(error, 'Receipt PDF could not be generated. Please try again.') });
     } finally {
       setInvoiceDownloadingId(null);
     }
@@ -196,7 +196,7 @@ export default function StudentAccount() {
               if (revision === photoRevision.current) setProfilePhoto(localPhoto);
             }
           } else {
-            setDetailsError('Editable student details are currently unavailable.');
+            setDetailsError(apiErrorMessage(detailsResult.reason, 'Editable student details are currently unavailable.'));
             if (revision === photoRevision.current) setProfilePhoto(localPhoto);
           }
         })
@@ -252,9 +252,9 @@ export default function StudentAccount() {
           if (details) setStudentDetails(details);
         })
         .catch(() => { /* Upload already succeeded; the local preview remains visible. */ });
-    } catch {
+    } catch (error) {
       if (revision === photoRevision.current) {
-        setPhotoMessage('Photo upload failed. No new photo was saved.');
+        setPhotoMessage(apiErrorMessage(error, 'Photo upload failed. No new photo was saved.'));
       }
     } finally {
       photoUploadLock.current = false;
@@ -305,8 +305,8 @@ export default function StudentAccount() {
         }
         setStudentRecord(record);
       })
-      .catch(() => {
-        if (active) setRecordError('Registration details are currently unavailable.');
+      .catch((error: unknown) => {
+        if (active) setRecordError(apiErrorMessage(error, 'Registration details are currently unavailable.'));
       })
       .finally(() => {
         if (active) setRecordLoading(false);
@@ -351,11 +351,11 @@ export default function StudentAccount() {
         if (!active) return;
         console.error('Student batch lookup failed:', error);
         const status = httpStatus(error);
-        setBatchesError(status === 404
+        setBatchesError(apiErrorMessage(error, status === 404
           ? 'The batch service could not find your assigned batch (404). Please retry or contact your institute.'
           : status === 403
             ? 'The batch service did not allow access to your assigned batches (403).'
-            : 'Your assigned batches could not be loaded. Please try again.');
+            : 'Your assigned batches could not be loaded. Please try again.'));
       })
       .finally(() => {
         if (active) setBatchesLoading(false);

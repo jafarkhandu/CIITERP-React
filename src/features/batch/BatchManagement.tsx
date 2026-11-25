@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/core/http/errors';
 import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import RowActionsMenu from '@/components/RowActionsMenu';
@@ -235,7 +236,7 @@ export default function BatchManagement() {
       setBatches(mapped);
     } catch (requestError: any) {
       if (version !== loadVersion.current) return;
-      setError(requestError?.response?.data?.message || 'Unable to load batches.');
+      setError(apiErrorMessage(requestError, 'Unable to load batches.'));
       setLoading(false);
       setLoadingCounts(false);
       return;
@@ -261,7 +262,7 @@ export default function BatchManagement() {
       const unavailableCounts: Record<number, number | null> = {};
       mapped.filter((row) => !deleted(row)).forEach((row) => { unavailableCounts[row.batchId] = null; });
       setCounts(unavailableCounts);
-      setError(requestError?.response?.data?.message || 'Loaded batches, but student counts could not be retrieved.');
+      setError(apiErrorMessage(requestError, 'Loaded batches, but student counts could not be retrieved.'));
     }
     setLoadingCounts(false);
   }
@@ -338,7 +339,7 @@ export default function BatchManagement() {
       });
       setStartTime(to24(timeParts[0] ?? '09:00 AM')); setEndTime(to24(timeParts[1] ?? '11:00 AM'));
       setShowCreate(true);
-    } catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to load batch for editing.'); }
+    } catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to load batch for editing.')); }
     finally { setSaving(false); }
   }
 
@@ -389,7 +390,7 @@ export default function BatchManagement() {
       }
       setShowCreate(false); setSuccess(editingBatchId ? 'Batch updated successfully.' : 'Batch created successfully.');
       setTab('active'); await load();
-    } catch (requestError: any) { setError(requestError?.response?.data?.message || (editingBatchId ? 'Unable to update batch.' : 'Unable to create batch.')); }
+    } catch (requestError: any) { setError(apiErrorMessage(requestError, (editingBatchId ? 'Unable to update batch.' : 'Unable to create batch.'))); }
     finally { setSaving(false); }
   }
 
@@ -397,13 +398,13 @@ export default function BatchManagement() {
     if (!window.confirm(`Remove batch “${row.batchName}”?`)) return;
     setSaving(true); setError('');
     try { await batchApi.remove(row.batchId); setSuccess('Batch removed successfully.'); await load(); }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to remove batch.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to remove batch.')); }
     finally { setSaving(false); }
   }
   async function restoreBatch(row: BatchRow) {
     setSaving(true); setError('');
     try { await batchApi.restore(row.batchId); setSuccess('Batch restored successfully.'); await load(); }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to restore batch.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to restore batch.')); }
     finally { setSaving(false); }
   }
 
@@ -466,7 +467,7 @@ export default function BatchManagement() {
     } catch (requestError: any) {
       if (version !== scheduleVersion.current) return;
       setScheduleCounts(previous => ({ ...previous, [tab]: undefined }));
-      setScheduleError(requestError?.response?.data?.message || 'Unable to load this batch section.');
+      setScheduleError(apiErrorMessage(requestError, 'Unable to load this batch section.'));
     } finally {
       if (version === scheduleVersion.current) setLoadingSchedule(false);
     }
@@ -493,7 +494,7 @@ export default function BatchManagement() {
         .catch((notificationError: unknown) => console.warn('Generated schedule notification lookup failed:', notificationError));
       await viewSchedule(row);
     }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to generate schedule.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to generate schedule.')); }
     finally { setSaving(false); }
   }
 
@@ -509,7 +510,7 @@ export default function BatchManagement() {
       } else if (scheduleBatch) {
         setCounts((previous) => ({ ...previous, [scheduleBatch.batchId]: Math.max(0, (previous[scheduleBatch.batchId] ?? 1) - 1) }));
       }
-    } catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to remove student from batch.'); }
+    } catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to remove student from batch.')); }
     finally { setSaving(false); }
   }
 
@@ -533,7 +534,7 @@ export default function BatchManagement() {
         studentName: String(read(item, 'student_name', 'studentName', 'candidateName', 'firstName', 'first_name') ?? 'Student'),
         selected: false,
       })).filter((item) => item.registrationId > 0 && !alreadyAdded.has(item.registrationId)));
-    } catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to load eligible registrations.'); }
+    } catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to load eligible registrations.')); }
     finally { setSaving(false); }
   }
 
@@ -548,7 +549,7 @@ export default function BatchManagement() {
       const assigned = selected.filter((_, index) => outcomes[index].status === 'fulfilled');
       const successes = assigned.length;
       const partialFailure = successes !== selected.length
-        ? `${successes} of ${selected.length} students added. Some requests failed; check eligible list and retry.`
+        ? [`${successes} of ${selected.length} students added.`, ...new Set(outcomes.flatMap(outcome => outcome.status === 'rejected' ? [apiErrorMessage(outcome.reason, 'Student assignment failed; check eligible list and retry.')] : []))].join(' ')
         : '';
       if (!partialFailure) setSuccess(`${successes} students added to ${studentBatch.batchName}.`);
       setStudentBatch(null);
@@ -574,7 +575,7 @@ export default function BatchManagement() {
             setError((previous) => [previous, 'Batch assignment saved, but email notifications could not be completed.'].filter(Boolean).join(' '));
           });
       }
-    } catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to add students.'); }
+    } catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to add students.')); }
     finally { setSaving(false); }
   }
 
@@ -593,7 +594,7 @@ export default function BatchManagement() {
         studentName: String(read(item, 'student_name', 'studentName', 'candidateName', 'name') ?? 'Student'),
         isPresent: true,
       })).filter((item) => item.registrationId > 0));
-    } catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to load attendance data.'); }
+    } catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to load attendance data.')); }
     finally { setSaving(false); }
   }
 
@@ -616,7 +617,7 @@ export default function BatchManagement() {
         schedule_attendance_id: sessionId, registration_id: student.registrationId, is_present: student.isPresent ? 1 : 0,
       })));
       const failed = outcomes.filter((item) => item.status === 'rejected').length;
-      if (failed) throw new Error(`Attendance session saved, but ${failed} student attendance entries failed.`);
+      if (failed) throw new Error([`Attendance session saved, but ${failed} student attendance entries failed.`, ...new Set(outcomes.flatMap(item => item.status === 'rejected' ? [apiErrorMessage(item.reason, 'Attendance entry failed.')] : []))].join(' '));
       sendUniqueAutomaticEmails(
         attendanceStudents.filter((student) => !student.isPresent),
         'CIIT attendance notification',
@@ -624,7 +625,7 @@ export default function BatchManagement() {
       );
       setSuccess(`Attendance saved. Present: ${attendanceStudents.filter((item) => item.isPresent).length}; absent: ${attendanceStudents.filter((item) => !item.isPresent).length}.`);
       setAttendanceBatch(null);
-    } catch (requestError: any) { setError(requestError?.response?.data?.message || requestError?.message || 'Unable to save attendance.'); }
+    } catch (requestError: any) { setError(apiErrorMessage(requestError, requestError instanceof Error && !('response' in requestError) ? requestError.message : 'Unable to save attendance.')); }
     finally { setSaving(false); }
   }
 
@@ -650,7 +651,7 @@ export default function BatchManagement() {
       setEditingScheduleId(0);
       if (scheduleBatch) await viewSchedule(scheduleBatch);
     }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to update schedule.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to update schedule.')); }
     finally { setSaving(false); }
   }
   async function removeSchedule(row: Row) {
@@ -658,14 +659,14 @@ export default function BatchManagement() {
     if (!id || !window.confirm('Delete this schedule entry?')) return;
     setSaving(true); setError('');
     try { await batchScheduleApi.remove(id); if (scheduleBatch) await viewSchedule(scheduleBatch); }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to delete schedule.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to delete schedule.')); }
     finally { setSaving(false); }
   }
   async function restoreSchedule(row: Row) {
     const id = Number(read(row, 'batch_schedule_id', 'batchScheduleId', 'id') ?? 0);
     setSaving(true); setError('');
     try { await batchScheduleApi.restore(id); if (scheduleBatch) await viewSchedule(scheduleBatch); }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to restore schedule.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to restore schedule.')); }
     finally { setSaving(false); }
   }
 
@@ -679,7 +680,7 @@ export default function BatchManagement() {
       await batchScheduleAttendanceApi.update(editingSessionId, { ...row, attendance_date: new Date(`${sessionEditDate}T00:00:00`).toISOString() });
       setEditingSessionId(0);
       if (scheduleBatch) await viewSchedule(scheduleBatch);
-    } catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to update attendance session.'); }
+    } catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to update attendance session.')); }
     finally { setSaving(false); }
   }
   async function removeSession(row: Row) {
@@ -687,14 +688,14 @@ export default function BatchManagement() {
     if (!id || !window.confirm('Delete this attendance session?')) return;
     setSaving(true); setError('');
     try { await batchScheduleAttendanceApi.remove(id); if (scheduleBatch) await viewSchedule(scheduleBatch); }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to delete attendance session.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to delete attendance session.')); }
     finally { setSaving(false); }
   }
   async function restoreSession(row: Row) {
     const id = Number(read(row, 'schedule_attendance_id', 'scheduleAttendanceId', 'id') ?? 0);
     setSaving(true); setError('');
     try { await batchScheduleAttendanceApi.restore(id); if (scheduleBatch) await viewSchedule(scheduleBatch); }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to restore attendance session.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to restore attendance session.')); }
     finally { setSaving(false); }
   }
   async function toggleStudentAttendance(row: Row) {
@@ -705,7 +706,7 @@ export default function BatchManagement() {
     try {
       await scheduleAttendanceApi.update(id, { ...row, is_present: present ? 0 : 1 });
       if (scheduleBatch) await viewSchedule(scheduleBatch);
-    } catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to update student attendance.'); }
+    } catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to update student attendance.')); }
     finally { setSaving(false); }
   }
   async function removeStudentAttendance(row: Row) {
@@ -713,14 +714,14 @@ export default function BatchManagement() {
     if (!id || !window.confirm('Delete this student attendance record?')) return;
     setSaving(true); setError('');
     try { await scheduleAttendanceApi.remove(id); if (scheduleBatch) await viewSchedule(scheduleBatch); }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to delete student attendance.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to delete student attendance.')); }
     finally { setSaving(false); }
   }
   async function restoreStudentAttendance(row: Row) {
     const id = Number(read(row, 'attendance_id', 'attendanceId', 'id') ?? 0);
     setSaving(true); setError('');
     try { await scheduleAttendanceApi.restore(id); if (scheduleBatch) await viewSchedule(scheduleBatch); }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to restore student attendance.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to restore student attendance.')); }
     finally { setSaving(false); }
   }
 

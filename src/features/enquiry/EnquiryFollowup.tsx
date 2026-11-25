@@ -110,7 +110,7 @@ function EnquiryFollowupPage({ enquiryId }: { enquiryId: number }) {
       });
       setNewFollowupExpanded(true);
     } catch (requestError: any) {
-      setError(requestError?.response?.data?.message || 'Unable to load follow-up for editing.');
+      setError(apiErrorMessage(requestError, 'Unable to load follow-up for editing.'));
     } finally { setSaving(false); }
   }
 
@@ -135,18 +135,9 @@ function EnquiryFollowupPage({ enquiryId }: { enquiryId: number }) {
       resetForm();
       history.refresh();
     } catch (requestError: any) {
-      const serverData = requestError?.response?.data;
-      const validationMessages = serverData?.errors && typeof serverData.errors === 'object'
-        ? Object.values(serverData.errors as Record<string, unknown>)
-            .flatMap((value) => Array.isArray(value) ? value : [value])
-            .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-        : [];
-      const serverMessage = validationMessages.join(' ')
-        || [serverData?.message, serverData?.detail, serverData?.title]
-            .find((value): value is string => typeof value === 'string' && value.trim().length > 0);
       const fallback = editingId ? 'Unable to update follow-up' : 'Unable to create follow-up';
       const status = requestError?.response?.status;
-      setError(serverMessage || `${fallback}${status ? ` (HTTP ${status})` : ''}.`);
+      setError(apiErrorMessage(requestError, `${fallback}${status ? ` (HTTP ${status})` : ''}.`));
     } finally { setSaving(false); }
   }
 
@@ -155,14 +146,14 @@ function EnquiryFollowupPage({ enquiryId }: { enquiryId: number }) {
     if (!id || !window.confirm(`Delete follow-up for ${String(item.candidateName ?? enquiry?.candidateName ?? 'candidate')}?`)) return;
     setSaving(true); setError('');
     try { await enquiryFollowupApi.remove(id); history.refresh(); }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to delete follow-up.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to delete follow-up.')); }
     finally { setSaving(false); }
   }
   async function restore(item: Record<string, unknown>) {
     const id = idOf(item);
     setSaving(true); setError('');
     try { await enquiryFollowupApi.restore(id); history.refresh(); }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to restore follow-up.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to restore follow-up.')); }
     finally { setSaving(false); }
   }
 

@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/core/http/errors';
 import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -154,7 +155,7 @@ function EnquiryFormPage({ enquiryId }: { enquiryId: number }) {
       }
       navigate('/main/enquiry');
     } catch (requestError: any) {
-      setError(requestError?.response?.data?.message || (editMode ? 'Unable to update enquiry.' : 'Unable to create enquiry.'));
+      setError(apiErrorMessage(requestError, (editMode ? 'Unable to update enquiry.' : 'Unable to create enquiry.')));
     } finally {
       setSaving(false);
     }

@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/core/http/errors';
 import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -29,7 +30,7 @@ export default function TrainerBatches() {
         batchTime: String(read(row, 'batchTime', 'batch_time') ?? ''),
         studentCount: Number(read(row, 'studentCount', 'student_count', 'totalStudents') ?? 0),
       })).filter((batch) => batch.batchId > 0));
-    } catch (err) { console.error('Trainer batches load failed:', err); setError('Unable to load assigned batches. Check the API request and your session, then retry.'); }
+    } catch (err) { console.error('Trainer batches load failed:', err); setError(apiErrorMessage(err, 'Unable to load assigned batches. Check the API request and your session, then retry.')); }
     finally { setLoading(false); }
   }
   useEffect(() => { void load(); }, []);

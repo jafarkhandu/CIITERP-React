@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/core/http/errors';
 import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -84,7 +85,7 @@ function LeadFollowupPage({ leadId }: { leadId: number }) {
       setDescription(String(record.description ?? item.description ?? ''));
       setNextFollowupDate(String(record.nextFollowupDate ?? item.nextFollowupDate ?? '').slice(0, 10));
       setExpandedForm(true);
-    } catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to load follow-up.'); }
+    } catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to load follow-up.')); }
     finally { setSaving(false); }
   }
 
@@ -93,14 +94,14 @@ function LeadFollowupPage({ leadId }: { leadId: number }) {
     if (!id || !window.confirm('Delete this lead follow-up?')) return;
     setSaving(true); setError('');
     try { await leadApi.removeFollowup(id); history.refresh(); }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to delete follow-up.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to delete follow-up.')); }
     finally { setSaving(false); }
   }
   async function restoreFollowup(item: LeadFollowupRecord) {
     const id = Number(item.leadFollowupId ?? 0);
     setSaving(true); setError('');
     try { await leadApi.restoreFollowup(id); history.refresh(); }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to restore follow-up.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to restore follow-up.')); }
     finally { setSaving(false); }
   }
 
@@ -123,7 +124,7 @@ function LeadFollowupPage({ leadId }: { leadId: number }) {
       setFollowupDate(toLocalDateTime()); setFollowupBy(userSession.employeeName || userSession.username || ''); setNextFollowupDate(toLocalDate());
       history.refresh();
     } catch (requestError: any) {
-      setError(requestError?.response?.data?.message || 'Unable to save follow-up.');
+      setError(apiErrorMessage(requestError, 'Unable to save follow-up.'));
     } finally { setSaving(false); }
   }
 

@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/core/http/errors';
 import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
@@ -42,7 +43,7 @@ export default function Course() {
     setError('');
     try { setCourses(await courseApi.getAll()); }
     catch (requestError: any) {
-      setError(requestError?.response?.data?.message || 'Unable to load courses.');
+      setError(apiErrorMessage(requestError, 'Unable to load courses.'));
     } finally { setLoading(false); }
   }
 
@@ -100,7 +101,7 @@ export default function Course() {
       setModalOpen(false); setForm(EMPTY_FORM); setSuccess(editingId === null ? 'Course created successfully.' : 'Course updated successfully.');
       await loadCourses();
     } catch (requestError: any) {
-      setError(requestError?.response?.data?.message || 'Unable to save the course.');
+      setError(apiErrorMessage(requestError, 'Unable to save the course.'));
     } finally { setSaving(false); }
   }
 
@@ -108,13 +109,13 @@ export default function Course() {
     if (!window.confirm(`Delete course "${course.courseName}"?`)) return;
     setError(''); setSuccess('');
     try { await courseApi.remove(course.courseId); setSuccess('Course deleted.'); await loadCourses(); }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Course deletion failed.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Course deletion failed.')); }
   }
   async function restore(course: TrainingCourseRecord) {
     if (!window.confirm(`Restore course "${course.courseName}"?`)) return;
     setError(''); setSuccess('');
     try { await courseApi.restore(course.courseId); setSuccess('Course restored.'); await loadCourses(); }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Course restore failed.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Course restore failed.')); }
   }
 
   return <section className="course-page">

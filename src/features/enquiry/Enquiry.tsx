@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/core/http/errors';
 import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import RowActionsMenu from '@/components/RowActionsMenu';
@@ -67,10 +68,10 @@ export default function Enquiry() {
     try {
       const data = await enquiryApi.getAll();
       if (version === loadVersion.current) setEnquiries(data.map(normalizeEnquiry));
-    } catch {
+    } catch (requestError) {
       if (version === loadVersion.current) {
         setEnquiries([]);
-        setError('Unable to load enquiries. Please retry.');
+        setError(apiErrorMessage(requestError, 'Unable to load enquiries. Please retry.'));
       }
     } finally {
       if (version === loadVersion.current) setLoading(false);
@@ -101,14 +102,14 @@ export default function Enquiry() {
     if (!window.confirm(`Delete enquiry for ${item.candidateName}?`)) return;
     setSavingId(item.enquiryId); setError('');
     try { await enquiryApi.remove(item.enquiryId); await load(); }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to delete enquiry.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to delete enquiry.')); }
     finally { setSavingId(0); }
   }
 
   async function restoreEnquiry(item: EnquiryRecord) {
     setSavingId(item.enquiryId); setError('');
     try { await enquiryApi.restore(item.enquiryId); await load(); }
-    catch (requestError: any) { setError(requestError?.response?.data?.message || 'Unable to restore enquiry.'); }
+    catch (requestError: any) { setError(apiErrorMessage(requestError, 'Unable to restore enquiry.')); }
     finally { setSavingId(0); }
   }
 

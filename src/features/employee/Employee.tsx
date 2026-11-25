@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/core/http/errors';
 import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import RowActionsMenu from '@/components/RowActionsMenu';
@@ -66,10 +67,10 @@ export default function Employee() {
     try {
       const records = await getAllUsers();
       if (request === listRequest.current) setUsers(normalizeUsers(records));
-    } catch {
+    } catch (requestError) {
       if (request === listRequest.current) {
         setUsers([]);
-        setError('Unable to load employee records. Please retry.');
+        setError(apiErrorMessage(requestError, 'Unable to load employee records. Please retry.'));
       }
     } finally {
       if (request === listRequest.current) setLoading(false);
@@ -182,7 +183,7 @@ export default function Employee() {
       setSuccess('Employee account created successfully.');
       await loadData();
     } catch (requestError: any) {
-      setFormError(requestError?.response?.data?.message || 'Unable to create the employee account.');
+      setFormError(apiErrorMessage(requestError, 'Unable to create the employee account.'));
     } finally {
       setSaving(false);
     }

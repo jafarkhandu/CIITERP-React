@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { studentApi } from '@/api/studentApi';
-import { httpStatus } from '@/core/http/errors';
+import { apiErrorMessage, httpStatus } from '@/core/http/errors';
 import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { normalizeStudentAttendance, type StudentAttendanceEntry } from './studentAttendanceData';
 
@@ -40,11 +40,11 @@ export default function StudentBatchAttendance({ batchId, studentId, registratio
         const status = httpStatus(error);
         setState({
           status: 'error',
-          message: status === 404
+          message: apiErrorMessage(error, status === 404
             ? 'The attendance service could not find this batch (ID ' + batchId + ').'
             : status === 403
               ? 'The attendance service did not allow access to this batch.'
-              : 'Your attendance could not be loaded or verified.',
+              : 'Your attendance could not be loaded or verified.'),
         });
       });
 

@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/core/http/errors';
 import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -134,8 +135,8 @@ export default function StudentProfileEditor({ studentId, profile, registration,
       setEditing(false);
       setDraft(null);
       setMessage('Profile updated successfully.');
-    } catch {
-      setMessage('Profile update failed. Your existing details were not changed.');
+    } catch (error) {
+      setMessage(apiErrorMessage(error, 'Profile update failed. Your existing details were not changed.'));
     } finally {
       setSaving(false);
     }

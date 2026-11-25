@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/core/http/errors';
 import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import RowActionsMenu from '@/components/RowActionsMenu';
@@ -105,7 +106,7 @@ export default function StudentPayments() {
     } catch (requestError) {
       if (loadRevision.current !== revision) return;
       console.error('Payment page data load failed:', requestError);
-      setPaymentsError('Payment records could not be refreshed. Refresh to try again.');
+      setPaymentsError(apiErrorMessage(requestError, 'Payment records could not be refreshed. Refresh to try again.'));
       setPaymentStatus('failed');
     }
   }, []);
@@ -224,7 +225,7 @@ export default function StudentPayments() {
     } catch (requestError) {
       if (feeRevision.current !== revision) return;
       console.error('Payment fee lookup failed:', requestError);
-      setError(message);
+      setError(apiErrorMessage(requestError, message));
     } finally {
       if (feeRevision.current === revision) setFeeLoading(false);
     }
@@ -261,7 +262,7 @@ export default function StudentPayments() {
       });
     } catch (err) {
       console.error('Payment detail lookup failed:', err);
-      setDetailsError('Could not load the latest payment details. Showing the available list information.');
+      setDetailsError(apiErrorMessage(err, 'Could not load the latest payment details. Showing the available list information.'));
     } finally {
       setDetailsLoading(false);
     }
@@ -332,7 +333,7 @@ export default function StudentPayments() {
       await loadPayments();
     } catch (err) {
       console.error('Payment update failed:', err);
-      setError('Payment could not be updated. Verify the details and try again.');
+      setError(apiErrorMessage(err, 'Payment could not be updated. Verify the details and try again.'));
     } finally {
       setSaving(false);
     }
@@ -355,7 +356,7 @@ export default function StudentPayments() {
       await loadPayments();
     } catch (err) {
       console.error('Payment deletion failed:', err);
-      setError('Payment could not be deleted. Please retry.');
+      setError(apiErrorMessage(err, 'Payment could not be deleted. Please retry.'));
     } finally {
       setSaving(false);
     }
@@ -375,7 +376,7 @@ export default function StudentPayments() {
       setModal(null);
       await loadPayments();
     }
-    catch (err) { console.error('Payment creation failed:', err); setError('Payment could not be saved. Verify the details and try again.'); }
+    catch (err) { console.error('Payment creation failed:', err); setError(apiErrorMessage(err, 'Payment could not be saved. Verify the details and try again.')); }
     finally { setSaving(false); }
   }
   async function downloadReceipt(payment: PaymentRow) {
@@ -392,7 +393,7 @@ export default function StudentPayments() {
       if (result === 'official') {
         setError('The official receipt was downloaded because the full premium receipt details were unavailable.');
       }
-    } catch (err) { console.error('Receipt download failed:', err); setError('Receipt PDF could not be generated. Please retry.'); }
+    } catch (err) { console.error('Receipt download failed:', err); setError(apiErrorMessage(err, 'Receipt PDF could not be generated. Please retry.')); }
     finally { setReceiptLoading(false); }
   }
   const clearFilters = () => { setSearch(''); setFromDate(''); setToDate(''); setMode(''); };

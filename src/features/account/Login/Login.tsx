@@ -176,9 +176,12 @@ export default function Login() {
 
   function showLoginError(error: unknown) {
     const status = httpStatus(error);
-    if (status === 401) setErrormessage(`Invalid ${loginField} or password. Please check your credentials.`);
-    else if (status === 0) setErrormessage('Unable to connect to the server. Please try again.');
-    else setErrormessage(apiErrorMessage(error, 'Login failed. Please try again.'));
+    const fallback = status === 401
+      ? `Invalid ${loginField} or password. Please check your credentials.`
+      : status === 0
+        ? 'Unable to connect to the server. Please try again.'
+        : 'Login failed. Please try again.';
+    setErrormessage(apiErrorMessage(error, fallback));
     setIsLoading(false);
   }
 

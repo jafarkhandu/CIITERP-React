@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/core/http/errors';
 import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -40,7 +41,7 @@ export default function EditUserRoles() {
         setOriginal(selectedIds);
         setSelected(selectedIds);
       } catch (requestError: any) {
-        if (!cancelled) setError(requestError?.response?.data?.message || 'Unable to load user roles.');
+        if (!cancelled) setError(apiErrorMessage(requestError, 'Unable to load user roles.'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -75,7 +76,7 @@ export default function EditUserRoles() {
       setSuccess('Roles updated successfully.');
       window.setTimeout(() => navigate('/main/user'), 700);
     } catch (requestError: any) {
-      setError(requestError?.response?.data?.message || 'Role update failed. Some changes may have saved; reload roles before retrying.');
+      setError(apiErrorMessage(requestError, 'Role update failed. Some changes may have saved; reload roles before retrying.'));
     } finally {
       setSaving(false);
     }
