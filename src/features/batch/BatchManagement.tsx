@@ -298,7 +298,7 @@ export default function BatchManagement() {
         if (branchResult.status === 'fulfilled') setBranches(branchResult.value);
         if ([topicResult, employeeResult, branchResult].some(result => result.status === 'rejected')) {
           optionsRequested.current = false;
-          setOptionError('Some batch form options could not be loaded.');
+          setOptionError([...new Set([topicResult, employeeResult, branchResult].flatMap(result => result.status === 'rejected' ? [apiErrorMessage(result.reason, 'Some batch form options could not be loaded.')] : []))].join(' '));
         }
         setLoadingOptions(false);
       });

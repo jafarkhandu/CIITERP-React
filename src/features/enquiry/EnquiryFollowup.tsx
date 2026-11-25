@@ -62,7 +62,7 @@ function EnquiryFollowupPage({ enquiryId }: { enquiryId: number }) {
   const [detailsError, setDetailsError] = useState('');
   const [detailsRevision, setDetailsRevision] = useState(0);
   const [sourcesRequested, setSourcesRequested] = useState(false);
-  const { rows: sources, loading: sourcesLoading, error: sourcesError, retry: retrySources } = useEnquiryOptions(getEnquiryLeadSources, sourcesRequested);
+  const { rows: sources, loading: sourcesLoading, error: sourcesError, errorMessage: sourcesErrorMessage, retry: retrySources } = useEnquiryOptions(getEnquiryLeadSources, sourcesRequested);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useAutoDismissMessage();
   const [editingId, setEditingId] = useState(0);
@@ -205,7 +205,7 @@ function EnquiryFollowupPage({ enquiryId }: { enquiryId: number }) {
         </div></div><span className="enquiry-accordion-expand">{newFollowupExpanded ? '−' : '+'}</span>
       </button>
       {newFollowupExpanded && <div className="enquiry-accordion-content">
-        {sourcesError && <AutoDismissAlert className="enquiry-alert" message="Unable to load lead sources."><button type="button" onClick={retrySources}>Retry</button></AutoDismissAlert>}
+        {sourcesError && <AutoDismissAlert className="enquiry-alert" message={sourcesErrorMessage || 'Unable to load lead sources.'}><button type="button" onClick={retrySources}>Retry</button></AutoDismissAlert>}
         <form onSubmit={submit}>
           <div className="enquiry-followup-form-grid">
             <label>Candidate Name *<input required value={editingId ? form.candidateName : String(enquiry?.candidateName ?? '')} readOnly /></label>

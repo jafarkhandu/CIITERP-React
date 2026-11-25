@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/core/http/errors';
 import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { useOutletContext } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
@@ -51,6 +52,7 @@ export default function StudentPortal() {
     setPortalStudents: (students: { studentId: number; name: string }[]) => void;
   }>();
   const [statuses, setStatuses] = useState(initialStatuses);
+  const [sourceErrors, setSourceErrors] = useState<Partial<Record<Source, string>>>({});
 
   useEffect(() => {
     let active = true;
@@ -59,8 +61,9 @@ export default function StudentPortal() {
         if (!active) return;
         update(rows);
         setStatuses(previous => ({ ...previous, [source]: 'ready' }));
-      }, () => {
+      }, (error) => {
         if (!active) return;
+        setSourceErrors(previous => ({ ...previous, [source]: apiErrorMessage(error, `Unable to load ${sourceLabels[source]}.`) }));
         setStatuses(previous => ({ ...previous, [source]: 'error' }));
       });
     }
@@ -102,11 +105,11 @@ export default function StudentPortal() {
   const batchStatus = combineStatuses(statuses.registrations, statuses.batches, statuses.assignments);
   const paymentStatus = combineStatuses(statuses.registrations, statuses.payments);
   const partialPayments = statuses.registrations === 'error' && statuses.payments === 'ready' && myPayments.length > 0;
-  const errors = (Object.keys(sourceLabels) as Source[]).filter(source => statuses[source] === 'error').map(source => sourceLabels[source]);
+  const errors = (Object.keys(sourceLabels) as Source[]).filter(source => statuses[source] === 'error').map(source => sourceErrors[source] || `Unable to load ${sourceLabels[source]}.`);
 
   return <main className="ciit-student-portal">
     {statuses.students === 'loading' && <div className="sp-panel" role="status">Loading student records…</div>}
-    {!!errors.length && <AutoDismissAlert className="sp-alert" message={`Could not load: ${errors.join(', ')}. Some information may be unavailable. Refresh to retry.`} />}
+    {!!errors.length && <AutoDismissAlert className="sp-alert" message={[...new Set(errors)].join(' ')} />}
     {statuses.students === 'ready' && !students.length && <div className="sp-panel">No student records are available for this account.</div>}
     {!!students.length && !student && <div className="sp-panel sp-empty">Select a student above to view their profile, courses, batches and payments.</div>}
     {student && <div className="sp-content">

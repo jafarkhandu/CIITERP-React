@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/core/http/errors';
 import { useEffect, useState } from 'react';
 import { leadApi } from '@/api/leadApi';
 
@@ -10,6 +11,7 @@ export function useEnquiryOptions<Row>(load: () => Promise<Row[]>, enabled = tru
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [revision, setRevision] = useState(0);
 
   useEffect(() => {
@@ -17,16 +19,17 @@ export function useEnquiryOptions<Row>(load: () => Promise<Row[]>, enabled = tru
     let active = true;
     void load().then(
       (nextRows) => { if (active) setRows(nextRows); },
-      () => { if (active) setError(true); },
+      (cause) => { if (active) { setError(true); setErrorMessage(apiErrorMessage(cause, '')); } },
     ).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [enabled, load, revision]);
 
   function retry() {
     setError(false);
+    setErrorMessage('');
     setLoading(true);
     setRevision((current) => current + 1);
   }
 
-  return { rows, loading, error, retry };
+  return { rows, loading, error, errorMessage, retry };
 }

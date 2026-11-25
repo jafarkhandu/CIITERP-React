@@ -66,7 +66,7 @@ function LeadFollowupPage({ leadId }: { leadId: number }) {
     let active = true;
     void leadApi.getById(leadId).then(
       (record) => { if (active) setLead(record); },
-      () => { if (active) setError('Unable to load lead details.'); },
+      (cause) => { if (active) setError(apiErrorMessage(cause, 'Unable to load lead details.')); },
     ).finally(() => { if (active) setLeadLoading(false); });
     return () => { active = false; };
   }, [leadId, validLeadId]);
@@ -168,7 +168,7 @@ function LeadFollowupPage({ leadId }: { leadId: number }) {
         <span><strong>◷ Previous Lead Follow-ups</strong><small>View complete follow-up communication history</small></span><b>{expandedHistory ? '−' : '+'}</b>
       </button>
       {expandedHistory && <>
-        {history.error != null && <AutoDismissAlert className="lead-alert" message="Unable to load follow-up history."><button type="button" onClick={history.refresh}>Retry</button></AutoDismissAlert>}
+        {history.error != null && <AutoDismissAlert className="lead-alert" message={apiErrorMessage(history.error, 'Unable to load follow-up history.')}><button type="button" onClick={history.refresh}>Retry</button></AutoDismissAlert>}
         {history.pending && history.rows.length > 0 && <p role="status">Loading remaining follow-ups…</p>}
         <div className="lead-table-scroll"><table className="lead-table">
         <thead><tr><th>#</th><th>Follow-up Date</th><th>Follow-up By</th><th>Status</th><th>Description</th><th>Next Follow-up</th><th>Actions</th></tr></thead>

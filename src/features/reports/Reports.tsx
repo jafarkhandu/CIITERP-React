@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/core/http/errors';
 import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -53,6 +54,7 @@ export default function Reports() {
   const [courseFilter, setCourseFilter] = useState<FilterOption>('All');
   const [counsellorFilter, setCounsellorFilter] = useState<FilterOption>('All');
   const [sourceStatus, setSourceStatus] = useState<Partial<Record<ReportSource, 'ready' | 'failed'>>>({});
+  const [sourceErrors, setSourceErrors] = useState<Partial<Record<ReportSource, string>>>({});
   const reportRequest = useRef(0);
   const [exporting, setExporting] = useState<`${ReportKind}-${ExportFormat}` | null>(null);
   const [exportError, setExportError] = useAutoDismissMessage();
@@ -60,6 +62,7 @@ export default function Reports() {
   const loadReports = useCallback(() => {
     const request = ++reportRequest.current;
     setSourceStatus({});
+    setSourceErrors({});
 
     async function loadSource<T>(source: ReportSource, fetch: () => Promise<T>, apply: (data: T) => void) {
       try {
@@ -67,8 +70,9 @@ export default function Reports() {
         if (request !== reportRequest.current) return;
         apply(rows);
         setSourceStatus((status) => ({ ...status, [source]: 'ready' }));
-      } catch {
+      } catch (error) {
         if (request === reportRequest.current) {
+          setSourceErrors(current => ({ ...current, [source]: apiErrorMessage(error, `Unable to load ${source}.`) }));
           setSourceStatus((status) => ({ ...status, [source]: 'failed' }));
         }
       }
@@ -319,7 +323,7 @@ export default function Reports() {
       </section>
       {exportError && <div className="error" role="alert">{exportError}</div>}
       {failedSources.length > 0 &&
-        <AutoDismissAlert className="error" message={`Some report data could not be loaded (${failedSources.join(', ')}).`}>
+        <AutoDismissAlert className="error" message={[...new Set(failedSources.map(source => sourceErrors[source] || `Unable to load ${source}.`))].join(' ')}>
           <button type="button" onClick={loadReports}>Retry</button>
         </AutoDismissAlert>}
       {leadFollowupStatus !== 'ready' ? <PendingSection label="lead follow-up report" status={leadFollowupStatus} /> : (

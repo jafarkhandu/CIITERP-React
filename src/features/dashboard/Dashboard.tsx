@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/core/http/errors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from '@/core/auth/hooks';
@@ -324,7 +325,7 @@ export default function Dashboard() {
           update((current) => {
             const data = { ...current.data };
             delete data[key];
-            return { ...current, data, failedSources: [...current.failedSources, label] };
+            return { ...current, data, failedSources: [...current.failedSources, apiErrorMessage(error, `Unable to load ${label}.`)] };
           });
         }
       })());
@@ -413,7 +414,7 @@ export default function Dashboard() {
       {failedSources.length > 0 && (
         <div className="dashboard-data-warning" role="status">
           <i className="bi bi-exclamation-triangle" aria-hidden="true" />
-          <span>Some dashboard data could not be loaded: {failedSources.join(', ')}. Available metrics are still shown.</span>
+          <span>{[...new Set(failedSources)].join(' ')} Available metrics are still shown.</span>
           <button type="button" onClick={() => void loadDashboard()} disabled={loading}>Retry</button>
         </div>
       )}

@@ -12,7 +12,7 @@ import { directoryApi, type BranchOption, type RoleOption } from '@/api/director
 import type { User } from '@/types/user';
 import './Employee.css';
 
-type Lookup<T> = { status: 'loading' | 'error' } | { status: 'ready'; items: T[] };
+type Lookup<T> = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; items: T[] };
 
 function normalizeUsers(value: any): User[] {
   let data = value;
@@ -90,16 +90,16 @@ export default function Employee() {
     setRoleLookup({ status: 'loading' });
     void directoryApi.getBranches().then((items) => {
       if (active) setBranchLookup({ status: 'ready', items });
-    }).catch(() => {
-      if (active) setBranchLookup({ status: 'error' });
+    }).catch((cause) => {
+      if (active) setBranchLookup({ status: 'error', message: apiErrorMessage(cause, 'Unable to load branches.') });
     });
     void directoryApi.getRoles().then((items) => {
       if (active) {
         setRoleLookup({ status: 'ready', items });
         setSelectedRoleId((roleId) => items.some((role) => role.roleId === roleId) ? roleId : '');
       }
-    }).catch(() => {
-      if (active) setRoleLookup({ status: 'error' });
+    }).catch((cause) => {
+      if (active) setRoleLookup({ status: 'error', message: apiErrorMessage(cause, 'Unable to load roles.') });
     });
     return () => { active = false; };
   }, [showCreate, lookupAttempt]);
@@ -274,7 +274,7 @@ export default function Employee() {
           </select></label>
         </div>
         {(branchLookup.status === 'error' || roleLookup.status === 'error') &&
-          <AutoDismissAlert className="employee-alert error" message="Some registration options could not be loaded.">
+          <AutoDismissAlert className="employee-alert error" message={[...new Set([branchLookup.status === 'error' ? branchLookup.message : '', roleLookup.status === 'error' ? roleLookup.message : ''].filter(Boolean))].join(' ')}>
             <button type="button" onClick={() => setLookupAttempt((attempt) => attempt + 1)}>Retry</button>
           </AutoDismissAlert>}
         {formError && <div className="employee-alert error" role="alert">{formError}</div>}
