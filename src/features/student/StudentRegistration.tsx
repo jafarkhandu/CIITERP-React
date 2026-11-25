@@ -1,3 +1,4 @@
+import { dateOfBirthError, localToday, MIN_BIRTH_DATE } from '@/core/validation/dateOfBirth';
 import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import RowActionsMenu from '@/components/RowActionsMenu';
@@ -253,6 +254,8 @@ export default function StudentRegistration() {
   async function submitNew(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); setError('');
     if (!form.studentName.trim() || !form.lastName.trim() || !form.branchId || !form.courseId || !form.gender || !form.birthDate) { setError('Complete all required student, branch, course, gender and date fields.'); return; }
+    const birthError = dateOfBirthError(form.birthDate);
+    if (birthError) { setError(birthError); return; }
     if (!/^\d{10}$/.test(form.mobileNumber)) { setError('Mobile number must contain exactly 10 digits.'); return; }
     if (form.whatsappNumber && !/^\d{10}$/.test(form.whatsappNumber)) { setError('WhatsApp number must contain exactly 10 digits.'); return; }
     if (form.parentNumber && !/^\d{10}$/.test(form.parentNumber)) { setError('Parent number must contain exactly 10 digits.'); return; }
@@ -326,7 +329,17 @@ export default function StudentRegistration() {
           <div className="col-md-6"><label className="form-label">First Name *</label><input className="form-control" required value={form.studentName} onChange={(e) => setField('studentName', e.target.value)} /></div>
           <div className="col-md-6"><label className="form-label">Last Name *</label><input className="form-control" required value={form.lastName} onChange={(e) => setField('lastName', e.target.value)} /></div>
           <div className="col-md-4"><label className="form-label">Gender *</label><select className="form-select" required value={form.gender} onChange={(e) => setField('gender', e.target.value)}><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div>
-          <div className="col-md-4"><label className="form-label">Date of Birth *</label><input type="date" required className="form-control" value={form.birthDate} onChange={(e) => setField('birthDate', e.target.value)} /></div>
+          <div className="col-md-4">
+            <label className="form-label" htmlFor="student-birth-date">Date of Birth *</label>
+            <input id="student-birth-date" type="date" required className="form-control"
+              min={MIN_BIRTH_DATE} max={localToday()} value={form.birthDate}
+              onChange={(e) => setField('birthDate', e.target.value)}
+              aria-invalid={Boolean(form.birthDate && dateOfBirthError(form.birthDate))}
+              aria-describedby={form.birthDate && dateOfBirthError(form.birthDate) ? 'student-birth-date-error' : undefined} />
+            {form.birthDate && dateOfBirthError(form.birthDate) && (
+              <small id="student-birth-date-error" className="text-danger" role="alert">{dateOfBirthError(form.birthDate)}</small>
+            )}
+          </div>
           <div className="col-md-4"><label className="form-label">Mobile *</label><input required maxLength={10} inputMode="numeric" className="form-control" value={form.mobileNumber} onChange={(e) => setField('mobileNumber', e.target.value.replace(/\D/g, '').slice(0, 10))} /></div>
           <div className="col-md-6"><label className="form-label">Email</label><input type="email" className="form-control" value={form.emailAddress} onChange={(e) => setField('emailAddress', e.target.value)} /></div>
           <div className="col-md-6"><label className="form-label">WhatsApp</label><input maxLength={10} className="form-control" value={form.whatsappNumber} onChange={(e) => setField('whatsappNumber', e.target.value.replace(/\D/g, '').slice(0, 10))} /></div>

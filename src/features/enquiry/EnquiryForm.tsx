@@ -1,3 +1,4 @@
+import { dateOfBirthError, localToday, MIN_BIRTH_DATE } from '@/core/validation/dateOfBirth';
 import { apiErrorMessage } from '@/core/http/errors';
 import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { AutoDismissAlert } from '@/components/AutoDismissAlert';
@@ -121,6 +122,10 @@ function EnquiryFormPage({ enquiryId }: { enquiryId: number }) {
       setError('Enter a valid 10-digit Indian mobile number.');
       return;
     }
+    if (form.birthDate) {
+      const birthError = dateOfBirthError(form.birthDate);
+      if (birthError) { setError(birthError); return; }
+    }
     const selectedSourceNames = form.leadSources.split(',').map((name) => name.trim()).filter(Boolean);
     const matchingSources = selectedSourceNames.map((name) =>
       leadSources.find((source) => source.sourceName.trim().toLowerCase() === name.toLowerCase())
@@ -206,7 +211,15 @@ function EnquiryFormPage({ enquiryId }: { enquiryId: number }) {
                 <small id="enquiry-mobile-error" className="enquiry-field-error" role="alert">{mobileError}</small>
               )}
             </label>
-            <label>Birth Date:<input type="date" value={form.birthDate} onChange={(e) => change('birthDate', e.target.value)} /></label>
+            <label>Birth Date:
+              <input type="date" min={MIN_BIRTH_DATE} max={localToday()} value={form.birthDate}
+                onChange={(e) => change('birthDate', e.target.value)}
+                aria-invalid={Boolean(form.birthDate && dateOfBirthError(form.birthDate))}
+                aria-describedby={form.birthDate && dateOfBirthError(form.birthDate) ? 'enquiry-birth-date-error' : undefined} />
+              {form.birthDate && dateOfBirthError(form.birthDate) && (
+                <small id="enquiry-birth-date-error" className="enquiry-field-error" role="alert">{dateOfBirthError(form.birthDate)}</small>
+              )}
+            </label>
             <label>Qualification:<select required disabled={qualificationOptions.loading || qualificationOptions.error} value={form.qualificationId} onChange={(e) => {
               const selected = qualifications.find((item) => Number(item.qualificationId ?? item.qualification_Id ?? item.qualification_id ?? item.QualificationId ?? item.id) === Number(e.target.value));
               change('qualificationId', Number(e.target.value));
