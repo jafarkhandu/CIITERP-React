@@ -102,6 +102,8 @@ const PUBLIC_URLS = [
   '/api/Auth/login',
   '/api/Auth/refresh',
   '/api/StudentLogin/login',
+  '/api/StudentLogin/forgot-password',
+  '/api/StudentLogin/reset-password',
   '/api/account/forgot-password',
   '/api/account/reset-password',
 ];
@@ -224,6 +226,12 @@ http.interceptors.response.use(
     }
 
     requireCurrentSession(session);
+    // A wrong current password can return 401. Do not turn that validation
+    // failure into a staff-token refresh or logout while the student token is valid.
+    if (config.url === `${API_ENDPOINTS.studentLogin}/change-password` &&
+        config.method?.toLowerCase() === 'post' && !tokenService.isAccessTokenExpired()) {
+      throw error;
+    }
     config._retried = true;
     const currentToken = tokenService.getAccessToken();
     // Another request may have already refreshed the token since this request was sent.

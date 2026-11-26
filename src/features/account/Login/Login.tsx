@@ -348,7 +348,7 @@ export default function Login() {
                 <div className="form-group">
                   <div className="label-row">
                     <label htmlFor="password">Password</label>
-                    <Link to="/forgot-password">Forgot password?</Link>
+                    <Link to={studentMode ? "/student-forgot-password" : "/forgot-password"}>Forgot password?</Link>
                   </div>
                   <div className={`input-wrapper${passwordInvalid ? ' input-invalid' : ''}`}>
                     <svg className="field-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">

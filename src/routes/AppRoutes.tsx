@@ -10,6 +10,8 @@ const MainLayout = lazy(loadMainLayout);
 const Reports = lazy(() => import('@/features/reports/Reports'));
 const ForgotPassword = lazy(() => import('@/features/account/ForgotPassword/ForgotPassword'));
 const ResetPassword = lazy(() => import('@/features/account/ResetPassword/ResetPassword'));
+const StudentForgotPassword = lazy(() => import('@/features/student/StudentPasswordRecovery').then(module => ({ default: module.StudentForgotPassword })));
+const StudentResetPassword = lazy(() => import('@/features/student/StudentPasswordRecovery').then(module => ({ default: module.StudentResetPassword })));
 const ChangePassword = lazy(() => import('@/features/account/ChangePassword/ChangePassword'));
 const Profile = lazy(() => import('@/features/account/Profile/Profile'));
 const Dashboard = lazy(loadDashboard);
@@ -51,6 +53,8 @@ export default function AppRoutes() {
     <Route path="/student-portal/:page?" element={guarded(<StudentAccount />, { roles: ['Student'] })} />
     <Route path="/forgot-password" element={<ForgotPassword />} />
     <Route path="/reset-password" element={<ResetPassword />} />
+    <Route path="/student-forgot-password" element={<StudentForgotPassword />} />
+    <Route path="/student-reset-password" element={<StudentResetPassword />} />
     <Route path="/main" element={guarded(<MainLayout />)}>
       <Route path="dashboard" element={guarded(<Dashboard />, { permission: PERMISSIONS.DASHBOARD_VIEW })} />
       <Route path="user" element={guarded(<Employee />, { permission: PERMISSIONS.USER_VIEW })} />

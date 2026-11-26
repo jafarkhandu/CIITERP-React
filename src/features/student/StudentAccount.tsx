@@ -11,6 +11,7 @@ import { apiErrorMessage, httpStatus } from '@/core/http/errors';
 import { downloadPremiumPaymentReceipt } from './paymentReceiptPdf';
 import { API_ORIGINS } from '@/core/config/api-services';
 import StudentProfileEditor from './StudentProfileEditor';
+import StudentChangePassword from './StudentChangePassword';
 import { studentBatchApi } from '@/api/batchApi';
 import { loadStudentPhoto, removeStudentPhoto, saveStudentPhoto } from './studentPhotoStorage';
 import StudentDashboard from './StudentDashboard';
@@ -567,7 +568,7 @@ export default function StudentAccount() {
                   onSaved={updated => setStudentDetails(current => current ? { ...current, ...updated } : current)}
                 />
               </section>
-              <section className="sp-panel"><h2>Change Password</h2><p className="sp-muted">Student password changes are not yet available. The existing ERP change-password API belongs to staff accounts and cannot safely be used for student credentials.</p></section>
+              <StudentChangePassword key={session.generation} />
             </div>
           )}
           {activeSection === 'student-overview' && (
