@@ -10,6 +10,7 @@ export default function StudentChangePassword() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
+  const [visible, setVisible] = useState({ current: false, next: false, confirm: false });
   const pending = useRef(false);
   const [error, setError] = useAutoDismissMessage();
   const [success, setSuccess] = useAutoDismissMessage();
@@ -18,6 +19,7 @@ export default function StudentChangePassword() {
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
+    setVisible({ current: false, next: false, confirm: false });
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -53,21 +55,48 @@ export default function StudentChangePassword() {
       {editing ? (
         <form className="sp-profile-edit-form" onSubmit={submit} noValidate>
           <div className="sp-profile-edit-grid">
-            <label className="sp-profile-edit-field">
-              <span>Current Password</span>
-              <input type="password" autoComplete="current-password" value={currentPassword}
-                onChange={event => setCurrentPassword(event.target.value)} required disabled={saving} />
-            </label>
-            <label className="sp-profile-edit-field">
-              <span>New Password</span>
-              <input type="password" autoComplete="new-password" value={newPassword}
-                onChange={event => setNewPassword(event.target.value)} required disabled={saving} />
-            </label>
-            <label className="sp-profile-edit-field">
-              <span>Confirm New Password</span>
-              <input type="password" autoComplete="new-password" value={confirmPassword}
-                onChange={event => setConfirmPassword(event.target.value)} required disabled={saving} />
-            </label>
+            <div className="sp-profile-edit-field">
+              <label htmlFor="sp-password-current">Current Password</label>
+              <div className="sp-password-input">
+                <input id="sp-password-current" type={visible.current ? 'text' : 'password'}
+                  autoComplete="current-password" value={currentPassword}
+                  onChange={event => setCurrentPassword(event.target.value)} required disabled={saving} />
+                <button type="button" className="sp-password-toggle"
+                  aria-label={visible.current ? 'Hide current password' : 'Show current password'}
+                  aria-pressed={visible.current} aria-controls="sp-password-current" disabled={saving}
+                  onClick={() => setVisible(previous => ({ ...previous, current: !previous.current }))}>
+                  <i className={visible.current ? 'bi bi-eye-slash' : 'bi bi-eye'} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+            <div className="sp-profile-edit-field">
+              <label htmlFor="sp-password-next">New Password</label>
+              <div className="sp-password-input">
+                <input id="sp-password-next" type={visible.next ? 'text' : 'password'}
+                  autoComplete="new-password" value={newPassword}
+                  onChange={event => setNewPassword(event.target.value)} required disabled={saving} />
+                <button type="button" className="sp-password-toggle"
+                  aria-label={visible.next ? 'Hide new password' : 'Show new password'}
+                  aria-pressed={visible.next} aria-controls="sp-password-next" disabled={saving}
+                  onClick={() => setVisible(previous => ({ ...previous, next: !previous.next }))}>
+                  <i className={visible.next ? 'bi bi-eye-slash' : 'bi bi-eye'} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+            <div className="sp-profile-edit-field">
+              <label htmlFor="sp-password-confirm">Confirm New Password</label>
+              <div className="sp-password-input">
+                <input id="sp-password-confirm" type={visible.confirm ? 'text' : 'password'}
+                  autoComplete="new-password" value={confirmPassword}
+                  onChange={event => setConfirmPassword(event.target.value)} required disabled={saving} />
+                <button type="button" className="sp-password-toggle"
+                  aria-label={visible.confirm ? 'Hide confirm new password' : 'Show confirm new password'}
+                  aria-pressed={visible.confirm} aria-controls="sp-password-confirm" disabled={saving}
+                  onClick={() => setVisible(previous => ({ ...previous, confirm: !previous.confirm }))}>
+                  <i className={visible.confirm ? 'bi bi-eye-slash' : 'bi bi-eye'} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
           </div>
           {error && <div className="alert alert-danger mb-0" role="alert">{error}</div>}
           <div className="sp-profile-edit-actions">

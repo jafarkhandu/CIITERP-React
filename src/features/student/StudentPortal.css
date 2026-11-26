@@ -1237,3 +1237,37 @@ html[data-theme="dark"] .ciit-student-public-shell .sp-batch-attendance-badge.is
   background: var(--ciit-surface, #fff);
   cursor: pointer;
 }
+
+/* Independent password visibility controls in the student profile. */
+.ciit-student-public-shell .sp-password-input {
+  position: relative;
+  min-width: 0;
+}
+.ciit-student-public-shell .sp-profile-edit-field .sp-password-input input {
+  padding-inline-end: 46px;
+}
+.ciit-student-public-shell .sp-password-toggle {
+  position: absolute;
+  inset-inline-end: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ciit-text, #25364d);
+  font-size: 17px;
+  cursor: pointer;
+}
+.ciit-student-public-shell .sp-password-toggle:hover:not(:disabled) {
+  background: rgba(127, 157, 193, .15);
+}
+.ciit-student-public-shell .sp-password-toggle:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
