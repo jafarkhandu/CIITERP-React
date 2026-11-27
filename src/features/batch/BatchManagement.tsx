@@ -860,17 +860,39 @@ export default function BatchManagement() {
       <div className="batch-tabs"><button type="button" className={tab === 'active' ? 'active' : ''} onClick={() => setTab('active')}>Active Batches <span>{active.length}</span></button><button type="button" className={tab === 'deleted' ? 'active' : ''} onClick={() => setTab('deleted')}>Deleted Batches <span>{removed.length}</span></button></div>
       <section className="batch-table-card"><div className="batch-table-heading"><div><h2>{tab === 'active' ? 'Active Batches' : 'Deleted Batches'}</h2><p>Batch overview and quick actions</p></div><span className="batch-count">{displayed.length} records</span></div>
         <div className="batch-table-scroll"><table className="batch-table"><thead><tr><th>#</th><th>Batch Name</th><th>Topic Name</th><th>Trainer Name</th><th>Start Date</th><th>End Date</th><th>Batch Time</th><th># Students</th><th>Action</th></tr></thead><tbody>
-          {loading ? <tr><td colSpan={9} className="batch-empty">Loading batches...</td></tr> : pageRows.map((row, i) => <tr key={row.batchId}><td>{pagination.firstRow + i}</td><td><strong>{row.batchName}</strong><small>ID: {row.batchId}</small></td><td>{String(read(row, 'topic_name', 'topicName') ?? `Topic #${read(row, 'topic_id', 'topicId') ?? '—'}`)}</td><td>{String(read(row, 'employee_name', 'employeeName') ?? `Employee #${read(row, 'employee_id', 'employeeId') ?? '—'}`)}</td><td>{formatDate(read(row, 'start_date', 'startDate'))}</td><td>{formatDate(read(row, 'end_date', 'endDate'))}</td><td>{String(read(row, 'batch_time', 'batchTime') ?? '—')}</td><td><span className="batch-student-count" aria-label={loadingCounts ? 'Loading student count' : undefined}>{loadingCounts ? '…' : counts[row.batchId] ?? '—'}</span></td><td><RowActionsMenu label={`Actions for batch ${row.batchName}`} disabled={saving} actions={tab === 'active' ? [
-              { label: 'View schedule', onSelect: () => void viewSchedule(row) },
-              { label: 'Add students', onSelect: () => void openAddStudents(row) },
-              { label: 'Attendance', onSelect: () => void openAttendance(row) },
-              { label: 'View details', onSelect: () => setDetailsBatch(row) },
-              { label: 'Generate schedule', onSelect: () => void generateSchedule(row) },
-              { label: 'Edit batch', onSelect: () => void openEdit(row) },
-              { label: 'Remove batch', danger: true, onSelect: () => void removeBatch(row) },
-            ] : [
-              { label: 'Restore batch', onSelect: () => void restoreBatch(row) },
-            ]} /></td></tr>)}
+          {loading ? <tr><td colSpan={9} className="batch-empty">Loading batches...</td></tr> : pageRows.map((row, i) => <tr key={row.batchId}><td>{pagination.firstRow + i}</td><td><strong>{row.batchName}</strong><small>ID: {row.batchId}</small></td><td>{String(read(row, 'topic_name', 'topicName') ?? `Topic #${read(row, 'topic_id', 'topicId') ?? '—'}`)}</td><td>{String(read(row, 'employee_name', 'employeeName') ?? `Employee #${read(row, 'employee_id', 'employeeId') ?? '—'}`)}</td><td>{formatDate(read(row, 'start_date', 'startDate'))}</td><td>{formatDate(read(row, 'end_date', 'endDate'))}</td><td>{String(read(row, 'batch_time', 'batchTime') ?? '—')}</td><td><span className="batch-student-count" aria-label={loadingCounts ? 'Loading student count' : undefined}>{loadingCounts ? '…' : counts[row.batchId] ?? '—'}</span></td><td>
+              <div className="batch-actions batch-list-actions" role="group" aria-label={`Actions for batch ${row.batchName}`}>
+                {tab === 'active' ? (
+                  <>
+                    <button type="button" disabled={saving} onClick={() => void viewSchedule(row)}>
+                      <i className="bi bi-calendar-week" aria-hidden="true" /> View schedule
+                    </button>
+                    <button type="button" disabled={saving} onClick={() => void openAddStudents(row)}>
+                      <i className="bi bi-person-plus" aria-hidden="true" /> Add students
+                    </button>
+                    <button type="button" disabled={saving} onClick={() => void openAttendance(row)}>
+                      <i className="bi bi-clipboard-check" aria-hidden="true" /> Attendance
+                    </button>
+                    <button type="button" disabled={saving} onClick={() => setDetailsBatch(row)}>
+                      <i className="bi bi-eye" aria-hidden="true" /> View details
+                    </button>
+                    <button type="button" disabled={saving} onClick={() => void generateSchedule(row)}>
+                      <i className="bi bi-calendar-plus" aria-hidden="true" /> Generate schedule
+                    </button>
+                    <button type="button" disabled={saving} onClick={() => void openEdit(row)}>
+                      <i className="bi bi-pencil-square" aria-hidden="true" /> Edit batch
+                    </button>
+                    <button type="button" className="remove" disabled={saving} onClick={() => void removeBatch(row)}>
+                      <i className="bi bi-trash" aria-hidden="true" /> Remove batch
+                    </button>
+                  </>
+                ) : (
+                  <button type="button" className="restore" disabled={saving} onClick={() => void restoreBatch(row)}>
+                    <i className="bi bi-arrow-counterclockwise" aria-hidden="true" /> Restore batch
+                  </button>
+                )}
+              </div>
+            </td></tr>)}
           {!loading && !displayed.length && <tr><td colSpan={9} className="batch-empty">{tab === 'active' ? 'No active batches found.' : 'No deleted batches found.'}</td></tr>}
         </tbody></table></div>
         {!loading && <TablePagination {...pagination} label="batches" />}

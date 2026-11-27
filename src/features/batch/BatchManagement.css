@@ -226,6 +226,38 @@
 .batch-actions button.remove { border-color: rgba(220,53,69,.22); color: #b42335; background: #fff1f2; }
 .batch-actions button.restore { border-color: rgba(22,163,74,.2); color: #16723b; background: #f0fdf4; }
 .batch-actions button:disabled { opacity: .5; cursor: wait; }
+
+.batch-actions.batch-list-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 6px;
+  min-width: 248px;
+}
+.batch-list-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  min-height: 32px;
+  padding: 5px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.batch-list-actions button i {
+  font-size: 13px;
+  line-height: 1;
+}
+.batch-list-actions button.remove,
+.batch-list-actions button.restore {
+  grid-column: 1 / -1;
+  justify-content: center;
+}
+.batch-list-actions button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
 .batch-empty { padding: 30px !important; color: var(--batch-muted) !important; text-align: center; white-space: normal !important; }
 
 .batch-modal-backdrop {
@@ -384,6 +416,15 @@ html[data-theme="dark"] .batch-actions button {
 }
 html[data-theme="dark"] .batch-actions button.remove { color: #fecdd3; background: rgba(190,24,93,.16); }
 html[data-theme="dark"] .batch-actions button.restore { color: #bbf7d0; background: rgba(22,163,74,.14); }
+html[data-theme="dark"] .batch-list-actions button:hover:not(:disabled) {
+  background: rgba(37,99,235,.28);
+}
+html[data-theme="dark"] .batch-list-actions button.remove:hover:not(:disabled) {
+  background: rgba(190,24,93,.28);
+}
+html[data-theme="dark"] .batch-list-actions button.restore:hover:not(:disabled) {
+  background: rgba(22,163,74,.24);
+}
 html[data-theme="dark"] .batch-modal {
   border-color: rgba(148,176,210,.2);
   color: #e6eefb;

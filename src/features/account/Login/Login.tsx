@@ -5,7 +5,7 @@ import { authApi } from '@/api/authApi';
 import { resolveCurrentUser } from '@/api/userApi';
 import { authService } from '@/core/auth/authService';
 import { userSession } from '@/core/auth/session';
-import { isStaffRole, isStudentOnlyAccount, readTokenIdentity, type TokenIdentity } from '@/core/auth/tokenIdentity';
+import { hasStudentRole, isStaffRole, isStudentOnlyAccount, readTokenIdentity } from '@/core/auth/tokenIdentity';
 import { apiErrorMessage, httpStatus } from '@/core/http/errors';
 import { preloadStaffHome, preloadStudentHome } from '@/routes/homeLoaders';
 import type { LoginResponse } from '@/types/user';
@@ -15,6 +15,8 @@ const REMEMBERED_USERNAME_KEY = 'rememberedUsername';
 const REMEMBERED_STUDENT_CODE_KEY = 'rememberedStudentCode';
 const LOGIN_MODE_KEY = 'ciit-login-mode';
 type LoginMode = 'employee' | 'student';
+
+class LoginModeMismatchError extends Error {}
 
 function rememberedLoginKey(mode: LoginMode) {
   return mode === 'student' ? REMEMBERED_STUDENT_CODE_KEY : REMEMBERED_USERNAME_KEY;
@@ -57,11 +59,7 @@ export default function Login() {
     setErrormessage('');
   }
 
-  async function signInStudent(
-    loginUsername: string,
-    loginPassword: string,
-    fallbackIdentity?: Pick<TokenIdentity, 'username' | 'displayName' | 'email'>,
-  ) {
+  async function signInStudent(loginUsername: string, loginPassword: string) {
     const request = authApi.studentLogin({ studentCode: loginUsername, password: loginPassword });
     preloadStudentHome();
     const studentLogin = await request;
@@ -73,31 +71,26 @@ export default function Login() {
     }
 
     const identity = readTokenIdentity(studentToken);
+    if (identity.roles.some(isStaffRole) && !hasStudentRole(identity.roles)) {
+      throw new LoginModeMismatchError('Please select Employee login for this account.');
+    }
+
     userSession.clear();
     authService.saveLoginData(studentToken, '');
     localStorage.setItem('username', loginUsername);
     localStorage.setItem(LOGIN_MODE_KEY, 'student');
-    if (mode === 'employee') {
-      localStorage.removeItem(REMEMBERED_USERNAME_KEY);
-      if (rememberMe) localStorage.setItem(REMEMBERED_STUDENT_CODE_KEY, loginUsername);
-      else localStorage.removeItem(REMEMBERED_STUDENT_CODE_KEY);
-    }
     userSession.setUser({
       studentId,
-      userName: identity.username || fallbackIdentity?.username || loginUsername,
-      employeeName: identity.displayName || fallbackIdentity?.displayName || loginUsername,
-      emailAddress: identity.email || fallbackIdentity?.email || '',
+      userName: identity.username || loginUsername,
+      employeeName: identity.displayName || loginUsername,
+      emailAddress: identity.email,
       roleName: 'Student',
       roles: ['Student'],
     });
     navigate(studentLoginPath, { replace: true });
   }
 
-  async function loadUserAndNavigate(
-    loginUsername: string,
-    loginPassword: string,
-    response: LoginResponse,
-  ) {
+  async function loadUserAndNavigate(loginUsername: string, response: LoginResponse) {
     if (typeof response?.token !== 'string' || !response.token.trim()) {
       throw new Error('Login response did not include a valid token.');
     }
@@ -121,12 +114,7 @@ export default function Login() {
     const roles = [...identity.roles, ...responseRoles];
 
     if (isStudentOnlyAccount(roles)) {
-      await signInStudent(loginUsername, loginPassword, {
-        username: identity.username,
-        displayName: identity.displayName || userField('studentName') || userField('employeeName'),
-        email: identity.email || userField('emailAddress'),
-      });
-      return;
+      throw new LoginModeMismatchError('Please select Student login for this account.');
     }
 
     userSession.clear();
@@ -159,13 +147,7 @@ export default function Login() {
       currentUser.roleName || currentUser.role || '',
     ].filter((role): role is string => typeof role === 'string');
     if (isStudentOnlyAccount(currentRoles)) {
-      authService.clearSession();
-      await signInStudent(loginUsername, loginPassword, {
-        username: currentUser.userName || identity.username,
-        displayName: currentUser.employeeName || identity.displayName,
-        email: currentUser.emailAddress || identity.email,
-      });
-      return;
+      throw new LoginModeMismatchError('Please select Student login for this account.');
     }
 
     if (!currentRoles.some(isStaffRole)) throw new Error('Login profile did not include a supported role.');
@@ -175,6 +157,13 @@ export default function Login() {
   }
 
   function showLoginError(error: unknown) {
+    if (error instanceof LoginModeMismatchError) {
+      authService.clearSession();
+      setErrormessage(error.message);
+      setIsLoading(false);
+      return;
+    }
+
     const status = httpStatus(error);
     const fallback = status === 401
       ? `Invalid ${loginField} or password. Please check your credentials.`
@@ -223,8 +212,12 @@ export default function Login() {
     }
 
     try {
-      await loadUserAndNavigate(username, password, response);
+      await loadUserAndNavigate(username, response);
     } catch (error) {
+      if (error instanceof LoginModeMismatchError) {
+        showLoginError(error);
+        return;
+      }
       authService.clearSession();
       console.error('Login processing error.', error instanceof Error ? error.message : '');
       setErrormessage('Login could not be completed. Please try again.');
