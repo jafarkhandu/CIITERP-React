@@ -1,12 +1,14 @@
 import { apiErrorMessage } from '@/core/http/errors';
 import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import RowActionsMenu from '@/components/RowActionsMenu';
+import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { courseApi, type TrainingCourseRecord } from '@/api/courseApi';
 import { PERMISSIONS, permissionService } from '@/core/services/permissionService';
 import { usePermissionVersion } from '@/core/auth/hooks';
 import './Course.css';
+import './CourseDetails.css';
 
 type CourseForm = {
   courseName: string;
@@ -131,10 +133,10 @@ export default function Course() {
       <thead><tr><th>#</th><th>Course Name</th><th>Fees Amount</th><th>Fees Change Date</th><th>Installment %</th><th>Action</th></tr></thead>
       <tbody>{loading ? <tr><td colSpan={6} className="course-empty">Loading courses...</td></tr> :
         filtered.map((course, index) => <tr key={course.courseId}><td>{index + 1}</td><td className="course-name">{course.courseName}</td><td>{course.feesAmount == null ? '—' : course.feesAmount.toLocaleString('en-IN')}</td><td>{course.feesChangeDate ? new Date(course.feesChangeDate).toLocaleDateString('en-GB') : '—'}</td><td>{course.installmentPercentage == null ? '—' : `${course.installmentPercentage}%`}</td>
-          <td><RowActionsMenu label={`Actions for ${course.courseName}`} actions={course.deletedAt ? (canRestore ? [{ label: 'Restore', onSelect: () => void restore(course) }] : []) : [
+          <td><div className="course-view-actions"><Link className="course-view-link" to={`/main/course/${course.courseId}`}>View</Link><RowActionsMenu label={`Actions for ${course.courseName}`} actions={course.deletedAt ? (canRestore ? [{ label: 'Restore', onSelect: () => void restore(course) }] : []) : [
               ...(canUpdate ? [{ label: 'Edit', onSelect: () => openEdit(course) }] : []),
               ...(canDelete ? [{ label: 'Delete', danger: true, onSelect: () => void remove(course) }] : []),
-            ]} /></td></tr>)}
+            ]} /></div></td></tr>)}
         {!loading && filtered.length === 0 && <tr><td colSpan={6} className="course-empty">No courses found.</td></tr>}
       </tbody>
     </table></div></div>
