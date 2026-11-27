@@ -224,7 +224,7 @@ export default function MainLayout() {
     const assignedRoutes = new Set<string>();
 
     for (const menu of visibleMenus) {
-      if (menu.route === '/main/dashboard' || assignedRoutes.has(menu.route)) continue;
+      if (menu.route === '/main/dashboard' || menu.route === '/main/user' || assignedRoutes.has(menu.route)) continue;
       const eligibleRoles = (menu.roles ?? [])
         .map(roleAlias)
         .filter((role) => !excludedRoles.has(role));
@@ -393,7 +393,7 @@ export default function MainLayout() {
             <ul className="ciit-sidebar-list">
               {isSuperUser ? (
                 <>
-                  {visibleMenus.filter((menu) => menu.route === '/main/dashboard').map((menu) => (
+                  {visibleMenus.filter((menu) => menu.route === '/main/dashboard' || menu.route === '/main/user').map((menu) => (
                     <li key={menu.route}>
                       <NavLink
                         to={menu.route}
