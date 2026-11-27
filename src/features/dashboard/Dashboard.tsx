@@ -445,7 +445,7 @@ export default function Dashboard() {
         <div className="dashboard-no-metrics">
           <i className="bi bi-grid-1x2" aria-hidden="true" />
           <strong>{loading ? 'Loading your overview' : 'Your workspace is ready'}</strong>
-          <p>{loading ? 'Connecting to the modules available for this account.' : 'No live dashboard metrics are currently configured for this account. Your permitted modules are available below.'}</p>
+          <p>{loading ? 'Connecting to the modules available for this account.' : 'No live dashboard metrics are currently configured for this account. Your permitted modules are available in the sidebar.'}</p>
         </div>
       )}
 
@@ -513,7 +513,7 @@ export default function Dashboard() {
         </section>
       )}
 
-      {!roles.includes('super user') && (
+      {!roles.includes('superuser') && (
         <section className="dashboard-quick-section">
           <div className="dashboard-section-heading">
             <div><span>WORKSPACE</span><h2>Quick access</h2></div>
