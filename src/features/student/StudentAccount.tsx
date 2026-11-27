@@ -366,9 +366,11 @@ export default function StudentAccount() {
         const status = httpStatus(error);
         setBatchesError(apiErrorMessage(error, status === 404
           ? 'The batch service could not find your assigned batch (404). Please retry or contact your institute.'
-          : status === 403
-            ? 'The batch service did not allow access to your assigned batches (403).'
-            : 'Your assigned batches could not be loaded. Please try again.'));
+          : status === 401
+            ? 'The batch service could not authenticate your student session (401). Please retry or contact your institute.'
+            : status === 403
+              ? 'The batch service did not allow access to your assigned batches (403).'
+              : 'Your assigned batches could not be loaded. Please try again.'));
       })
       .finally(() => {
         if (active) setBatchesLoading(false);

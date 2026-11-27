@@ -11,6 +11,7 @@ import { API_ENDPOINTS } from '@/core/config/api-endpoints';
 import { tokenService } from '@/core/services/tokenService';
 import { authService } from '@/core/auth/authService';
 import { userSession } from '@/core/auth/session';
+import { isStudentOnlyAccount } from '@/core/auth/tokenIdentity';
 import { navigateTo } from '@/core/navigation';
 import type { LoginResponse } from '@/types/user';
 
@@ -232,6 +233,16 @@ http.interceptors.response.use(
         config.method?.toLowerCase() === 'post' && !tokenService.isAccessTokenExpired()) {
       throw error;
     }
+    // BatchManagement is a separate API and may reject the StudentLogin JWT
+    // even while the student service accepts it. Keep this optional lookup
+    // failure local; never retry it with staff credentials or grant access.
+    if (config.url === `${API_ENDPOINTS.batchManagement}/BatchStudent/my-batches` &&
+        config.method?.toLowerCase() === 'get' &&
+        isStudentOnlyAccount(userSession.roles) &&
+        !tokenService.isAccessTokenExpired()) {
+      throw error;
+    }
+
     config._retried = true;
     const currentToken = tokenService.getAccessToken();
     // Another request may have already refreshed the token since this request was sent.
