@@ -76,7 +76,6 @@ export default function MainLayout() {
   );
   const [expandedRole, setExpandedRole] = useState('');
   const profileMenuRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
 
   // Keep the existing theme keys and custom event contract.
   useEffect(() => {
@@ -96,10 +95,6 @@ export default function MainLayout() {
   useEffect(() => {
     setIsMobileSidebarOpen(false);
     setShowProfileMenu(false);
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-      contentRef.current.scrollLeft = 0;
-    }
   }, [location.pathname]);
 
   useEffect(() => {
@@ -230,7 +225,7 @@ export default function MainLayout() {
   const displayRole = roleNames.length > 0 ? roleNames.join(' · ') : 'User';
 
   return (
-    <div className={'cmp-main-layout ciit-app-shell ciit-staff-shell' + (isSidebarCollapsed ? ' is-sidebar-collapsed' : '')}>
+    <div className={'cmp-main-layout ciit-app-shell' + (isSidebarCollapsed ? ' is-sidebar-collapsed' : '')}>
       <header className="ciit-topbar">
         <div className="ciit-topbar-left">
           <button
@@ -487,7 +482,7 @@ export default function MainLayout() {
         </aside>
 
         <main className="ciit-workspace">
-          <div className="ciit-content" ref={contentRef}>
+          <div className="ciit-content">
             <div className="ciit-page-transition" key={location.pathname}>
               <Outlet context={{ portalStudentId, setPortalStudentId, setPortalStudents, portalTrainerId, setPortalTrainerId, setPortalTrainers }} />
             </div>
