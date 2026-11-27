@@ -167,11 +167,6 @@ function CourseDetailView({ courseId, canTopics, canBatches }: { courseId: numbe
   }, [batches, canBatches, tab, countAttempt]);
 
   const topicRows = topics.status === 'ready' ? topics.data : [];
-  const allContentsLoaded = topics.status === 'ready' && topicRows.every(topic => contents[topic.topicId]?.status === 'ready');
-  const contentCount = allContentsLoaded ? topicRows.reduce((sum, topic) => {
-    const result = contents[topic.topicId];
-    return sum + (result?.status === 'ready' ? result.data.length : 0);
-  }, 0) : null;
   const batchRows = batches.status === 'ready' ? batches.data : [];
   const countErrors = [...new Set(Object.values(counts).flatMap(result => result.status === 'error' ? [result.message] : []))];
 
@@ -182,14 +177,9 @@ function CourseDetailView({ courseId, canTopics, canBatches }: { courseId: numbe
         : course.status === 'error' ? <LoadError message={course.message} retry={retry} />
         : <>
           <header className="course-header cd-header">
-            <div><p className="cd-eyebrow">COURSE MANAGEMENT / COURSE DETAILS</p><h1>{course.data.courseName}</h1><p>Course overview, curriculum and related batches.</p></div>
+            <h1>{course.data.courseName}</h1>
             <span className={'cd-status' + (course.data.deletedAt ? ' is-inactive' : '')}>{course.data.deletedAt ? 'Deleted' : 'Active'}</span>
           </header>
-          <div className="cd-stats">
-            <div><span>Total Topics</span><strong>{canTopics && topics.status === 'ready' ? topicRows.length : '—'}</strong></div>
-            <div><span>Total Contents</span><strong>{canTopics ? contentCount ?? '—' : '—'}</strong></div>
-            <div><span>Related Batches</span><strong>{canTopics && canBatches && batches.status === 'ready' ? batchRows.length : '—'}</strong></div>
-          </div>
           <div className="cd-panel">
             <nav className="cd-tabs" aria-label="Course details sections">
               {([['overview', 'Overview'], ['topics', 'Topics & Content'], ['batches', 'Batches']] as const).map(([value, label]) => (
@@ -201,9 +191,7 @@ function CourseDetailView({ courseId, canTopics, canBatches }: { courseId: numbe
               <h2>Course information</h2>
               <dl className="cd-overview">
                 <div><dt>Course Name</dt><dd>{course.data.courseName}</dd></div>
-                <div><dt>Course ID</dt><dd>{course.data.courseId}</dd></div>
                 <div><dt>Fees Amount</dt><dd>{course.data.feesAmount == null ? '—' : '₹' + numericLabel(course.data.feesAmount)}</dd></div>
-                <div><dt>Fees Change Date</dt><dd>{dateLabel(course.data.feesChangeDate)}</dd></div>
                 <div><dt>Installment Percentage</dt><dd>{numericLabel(course.data.installmentPercentage, '%')}</dd></div>
                 <div><dt>Status</dt><dd>{course.data.deletedAt ? 'Deleted' : 'Active'}</dd></div>
               </dl>
