@@ -19,6 +19,7 @@ interface SidebarMenu {
 const MENUS: SidebarMenu[] = [
   { label: 'Dashboard', route: '/main/dashboard', icon: 'bi-grid-1x2-fill', permission: PERMISSIONS.DASHBOARD_VIEW },
   { label: 'Employee', route: '/main/user', icon: 'bi-people-fill', permission: PERMISSIONS.USER_VIEW, roles: ['Admin', 'Super User'] },
+  { label: 'Trainer Portal', route: '/main/trainer-portal', icon: 'bi-person-video3', permission: PERMISSIONS.GROUP_LEADER_BATCH_VIEW, roles: ['Super User'] },
   { label: 'Lead', route: '/main/lead', icon: 'bi-person-lines-fill', permission: PERMISSIONS.LEAD_VIEW, roles: ['Super User', 'Admin', 'Counsellor'] },
   { label: 'Enquiry', route: '/main/enquiry', icon: 'bi-chat-square-text-fill', permission: PERMISSIONS.ENQUIRY_VIEW, roles: ['Super User', 'Admin', 'Counsellor'] },
   { label: 'Course', route: '/main/course', icon: 'bi-journal-bookmark-fill', permission: PERMISSIONS.COURSE_VIEW, roles: ['Super User', 'Admin', 'Counsellor', 'Developer'] },
@@ -66,6 +67,9 @@ export default function MainLayout() {
   const [portalStudents, setPortalStudents] = useState<{ studentId: number; name: string }[]>([]);
   const [portalStudentId, setPortalStudentId] = useState(0);
   const isStudentPortal = location.pathname === '/main/student-portal';
+  const [portalTrainers, setPortalTrainers] = useState<{ employeeId: number; name: string }[]>([]);
+  const [portalTrainerId, setPortalTrainerId] = useState(0);
+  const isTrainerPortal = location.pathname === '/main/trainer-portal';
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     () => localStorage.getItem('ciit-sidebar-collapsed') === 'true',
@@ -224,7 +228,7 @@ export default function MainLayout() {
     const assignedRoutes = new Set<string>();
 
     for (const menu of visibleMenus) {
-      if (menu.route === '/main/dashboard' || menu.route === '/main/user' || assignedRoutes.has(menu.route)) continue;
+      if (menu.route === '/main/dashboard' || menu.route === '/main/user' || menu.route === '/main/trainer-portal' || assignedRoutes.has(menu.route)) continue;
       const eligibleRoles = (menu.roles ?? [])
         .map(roleAlias)
         .filter((role) => !excludedRoles.has(role));
@@ -315,6 +319,15 @@ export default function MainLayout() {
         </div>
 
         <div className="ciit-topbar-actions">
+          {isTrainerPortal && (
+            <label className="ciit-portal-topbar-picker">
+              <span>Trainer</span>
+              <select aria-label="Select trainer" value={portalTrainerId || ''} onChange={event => setPortalTrainerId(Number(event.target.value))}>
+                <option value="">Select trainer</option>
+                {portalTrainers.map(trainer => <option key={trainer.employeeId} value={trainer.employeeId}>{trainer.name}</option>)}
+              </select>
+            </label>
+          )}
           {isStudentPortal && (
             <label className="ciit-portal-topbar-picker">
               <span>Student</span>
@@ -393,7 +406,7 @@ export default function MainLayout() {
             <ul className="ciit-sidebar-list">
               {isSuperUser ? (
                 <>
-                  {visibleMenus.filter((menu) => menu.route === '/main/dashboard' || menu.route === '/main/user').map((menu) => (
+                  {visibleMenus.filter((menu) => menu.route === '/main/dashboard' || menu.route === '/main/user' || menu.route === '/main/trainer-portal').map((menu) => (
                     <li key={menu.route}>
                       <NavLink
                         to={menu.route}
@@ -502,7 +515,7 @@ export default function MainLayout() {
         <main className="ciit-workspace">
           <div className="ciit-content">
             <div className="ciit-page-transition" key={location.pathname}>
-              <Outlet context={{ portalStudentId, setPortalStudentId, setPortalStudents }} />
+              <Outlet context={{ portalStudentId, setPortalStudentId, setPortalStudents, portalTrainerId, setPortalTrainerId, setPortalTrainers }} />
             </div>
           </div>
         </main>
