@@ -5,7 +5,6 @@ import { usePermissionVersion, useSession } from '@/core/auth/hooks';
 import { userSession } from '@/core/auth/session';
 import { authService } from '@/core/auth/authService';
 import { PERMISSIONS, permissionService, type Permission } from '@/core/services/permissionService';
-import { directoryApi, type RoleOption } from '@/api/directoryApi';
 import { preloadWorkspacePage } from '@/routes/homeLoaders';
 import './MainLayout.css';
 
@@ -30,7 +29,7 @@ const MENUS: SidebarMenu[] = [
   { label: 'Student Payments', route: '/main/student-payments', icon: 'bi-wallet2', roles: ['Accountant', 'Admin', 'Super User'] },
   { label: 'Student Portal', route: '/main/student-portal', icon: 'bi-person-vcard', roles: ['Accountant', 'Admin', 'Super User'] },
   { label: 'Manage Batch', route: '/main/batch', icon: 'bi-calendar2-week-fill', roles: ['Super User', 'Admin', 'Group Leader'], permission: PERMISSIONS.GROUP_LEADER_BATCH_VIEW },
-  { label: 'My Batches', route: '/main/trainer', icon: 'bi-easel2-fill', roles: ['Trainer', 'Admin'], permission: PERMISSIONS.TRAINER_BATCH_VIEW },
+  { label: 'My Batches', route: '/main/trainer', icon: 'bi-easel2-fill', roles: ['Trainer', 'Admin', 'Super User'], permission: PERMISSIONS.TRAINER_BATCH_VIEW },
   { label: 'Reports', route: '/main/reports', icon: 'bi-graph-up-arrow', permission: PERMISSIONS.REPORTS_VIEW, roles: ['Admin', 'Super User'] },
   { label: 'Function Management', route: '/main/function-management', icon: 'bi-sliders2', permission: PERMISSIONS.FUNCTION_MANAGEMENT_VIEW, roles: ['Admin', 'Super User'] },
 ];
@@ -75,35 +74,8 @@ export default function MainLayout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     () => localStorage.getItem('ciit-sidebar-collapsed') === 'true',
   );
-  const [availableRoles, setAvailableRoles] = useState<RoleOption[]>([]);
   const [expandedRole, setExpandedRole] = useState('');
   const profileMenuRef = useRef<HTMLDivElement>(null);
-
-  // Load backend-defined role names only for Super User role grouping.
-  useEffect(() => {
-    if (!isSuperUser) {
-      setAvailableRoles([]);
-      setExpandedRole('');
-      return undefined;
-    }
-
-    let cancelled = false;
-    directoryApi.getRoles()
-      .then((roles) => {
-        if (cancelled) return;
-        const uniqueRoles = roles.filter((role, index, all) =>
-          all.findIndex((item) => item.roleId === role.roleId) === index);
-        setAvailableRoles(uniqueRoles);
-      })
-      .catch((error) => {
-        console.warn('Sidebar role directory load failed:', error);
-        if (!cancelled) setAvailableRoles([]);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isSuperUser]);
 
   // Keep the existing theme keys and custom event contract.
   useEffect(() => {
@@ -201,50 +173,25 @@ export default function MainLayout() {
   });
 
   const roleMenuGroups = useMemo(() => {
-    const normalizeRole = (value: string) => value.trim().toLowerCase().replace(/[\s_-]+/g, '');
-    const excludedRoles = new Set(['superuser', 'student', 'hr']);
-    // A module has one navigation home; this does not change authorization.
-    const preferredRoleByRoute: Record<string, string> = {
-      '/main/user': 'admin',
-      '/main/lead': 'counsellor',
-      '/main/enquiry': 'counsellor',
-      '/main/course': 'developer',
-      '/main/topics': 'developer',
-      '/main/course-mapping': 'developer',
-      '/main/student-registration': 'accountant',
-      '/main/student-payments': 'accountant',
-      '/main/batch': 'groupleader',
-      '/main/trainer': 'trainer',
-      '/main/reports': 'admin',
-      '/main/function-management': 'admin',
-    };
-    const groups = availableRoles
-      .filter((role) => !excludedRoles.has(normalizeRole(role.roleName)))
-      .map((role) => ({ ...role, menus: [] as SidebarMenu[] }));
-    const roleAlias = (name: string) => {
-      const normalized = normalizeRole(name);
-      return normalized === 'counciler' ? 'counsellor' : normalized;
-    };
-    const groupByName = new Map(groups.map((group) => [roleAlias(group.roleName), group]));
-    const assignedRoutes = new Set<string>();
+    // Super User navigation categories are independent of the role directory.
+    // Existing menu permissions and route guards still control access.
+    const groups = [
+      { roleId: 'developer', roleName: 'Developer', routes: ['/main/course', '/main/topics', '/main/course-mapping'] },
+      { roleId: 'accountant', roleName: 'Accountant', routes: ['/main/student-registration', '/main/student-payments', '/main/student-portal'] },
+      { roleId: 'groupleader', roleName: 'Group Leader', routes: ['/main/batch', '/main/trainer-portal', '/main/trainer'] },
+      { roleId: 'counsellor', roleName: 'Counselor', routes: ['/main/lead', '/main/enquiry'] },
+    ];
 
-    for (const menu of visibleMenus) {
-      if (menu.route === '/main/dashboard' || menu.route === '/main/user' || menu.route === '/main/trainer-portal' || assignedRoutes.has(menu.route)) continue;
-      const eligibleRoles = (menu.roles ?? [])
-        .map(roleAlias)
-        .filter((role) => !excludedRoles.has(role));
-      const preferred = preferredRoleByRoute[menu.route];
-      const destination = (preferred && eligibleRoles.includes(preferred)
-        ? groupByName.get(preferred)
-        : undefined)
-        ?? eligibleRoles.map((role) => groupByName.get(role)).find((group) => group !== undefined);
-      if (!destination) continue;
-      destination.menus.push(menu);
-      assignedRoutes.add(menu.route);
-    }
-
-    return groups.filter((group) => group.menus.length > 0);
-  }, [availableRoles, visibleMenus.map((menu) => menu.route).join('|')]);
+    return groups.map(({ roleId, roleName, routes }) => ({
+      roleId,
+      roleName,
+      menus: routes.flatMap((route) => {
+        const menu = visibleMenus.find((item) => item.route === route);
+        if (!menu) return [];
+        return [{ ...menu, label: route === '/main/trainer' ? 'Trainer Batches' : menu.label }];
+      }),
+    }));
+  }, [visibleMenus.map((menu) => menu.route).join('|')]);
 
   useEffect(() => {
     if (!isSuperUser) return;
@@ -407,7 +354,7 @@ export default function MainLayout() {
             <ul className="ciit-sidebar-list">
               {isSuperUser ? (
                 <>
-                  {visibleMenus.filter((menu) => menu.route === '/main/dashboard' || menu.route === '/main/user' || menu.route === '/main/trainer-portal').map((menu) => (
+                  {visibleMenus.filter((menu) => menu.route === '/main/dashboard' || menu.route === '/main/user').map((menu) => (
                     <li key={menu.route}>
                       <NavLink
                         to={menu.route}
@@ -481,9 +428,24 @@ export default function MainLayout() {
                       </li>
                     );
                   })}
-                  {roleMenuGroups.length === 0 && (
-                    <li className="ciit-sidebar-empty">Role list is not available right now.</li>
-                  )}
+                  {visibleMenus.filter((menu) => menu.route === '/main/reports' || menu.route === '/main/function-management').map((menu) => (
+                    <li key={menu.route}>
+                      <NavLink
+                        to={menu.route}
+                        onMouseEnter={() => preloadWorkspacePage(menu.route)}
+                        onFocus={() => preloadWorkspacePage(menu.route)}
+                        end={menu.route === '/main/dashboard'}
+                        aria-label={menu.label}
+                        title={isSidebarCollapsed ? menu.label : undefined}
+                        onClick={() => setIsMobileSidebarOpen(false)}
+                        className={({ isActive }) => (isActive ? 'active-link' : '')}
+                      >
+                        <i className={'bi ' + menu.icon} aria-hidden="true" />
+                        <span className="ciit-menu-label">{menu.label}</span>
+                        <span className="ciit-menu-active-mark" aria-hidden="true" />
+                      </NavLink>
+                    </li>
+                  ))}
                 </>
               ) : (
                 <>
