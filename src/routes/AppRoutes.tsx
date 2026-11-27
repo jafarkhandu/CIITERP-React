@@ -32,6 +32,7 @@ const StudentPayments = lazy(() => import('@/features/student/StudentPayments'))
 const StudentPortal = lazy(loadStudentPortal);
 const StudentAccount = lazy(loadStudentAccount);
 const TrainerBatches = lazy(() => import('@/features/trainer/TrainerBatches'));
+const TrainerPortal = lazy(() => import('@/features/trainer/TrainerPortal'));
 const TrainerBatchDetails = lazy(() => import('@/features/trainer/TrainerBatchDetails'));
 const BatchManagement = lazy(() => import('@/features/batch/BatchManagement'));
 
@@ -65,6 +66,7 @@ export default function AppRoutes() {
       <Route path="change-password" element={guarded(<ChangePassword />)} />
       <Route path="batch" element={guarded(<BatchManagement />, { roles: ['Admin', 'Super User', 'Group Leader'], permission: PERMISSIONS.GROUP_LEADER_BATCH_VIEW })} />
       <Route path="trainer" element={guarded(<TrainerBatches />, { roles: ['Admin', 'Super User', 'Trainer'], permission: PERMISSIONS.TRAINER_BATCH_VIEW })} />
+      <Route path="trainer-portal" element={guarded(<TrainerPortal />, { roles: ['Super User'], permission: PERMISSIONS.GROUP_LEADER_BATCH_VIEW })} />
       <Route path="trainer/batches/:batchId" element={guarded(<TrainerBatchDetails />, { roles: ['Admin', 'Super User', 'Trainer'], permissions: [PERMISSIONS.TRAINER_BATCH_VIEW, PERMISSIONS.TRAINER_ATTENDANCE_VIEW] })} />
       <Route path="profile" element={guarded(<Profile />)} />
       <Route path="enquiry" element={guarded(<Enquiry />, { permission: PERMISSIONS.ENQUIRY_VIEW })} />
