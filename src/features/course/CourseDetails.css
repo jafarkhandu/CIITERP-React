@@ -8,17 +8,26 @@
   text-decoration: none; white-space: nowrap;
 }
 .course-view-link:hover, .cd-back:hover { border-color: var(--ciit-primary, #1769d2); color: var(--ciit-primary, #1769d2); }
-.cd-page { min-width: 0; }
+.cd-page {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  /* Match the existing workspace's minimum height minus its padding and border. */
+  max-height: max(240px, calc(100dvh - 128px - 2 * clamp(14px, 1.8vw, 24px) - 2px));
+}
 .cd-page .cd-back {
   margin-bottom: 12px;
+  align-self: flex-start;
+  flex: 0 0 auto;
 }
 
 .cd-page .cd-header {
   flex-direction: row;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
-  padding: 16px 18px;
+  flex: 0 0 auto;
+  margin-bottom: 12px;
+  padding: 9px 14px;
   border: 1px solid var(--ciit-border, #dce6f2);
   border-inline-start: 4px solid var(--ciit-primary, #1769d2);
   border-radius: 12px;
@@ -28,7 +37,7 @@
 
 .cd-page .cd-header h1 {
   min-width: 0;
-  font-size: clamp(20px, 2.1vw, 28px);
+  font-size: clamp(18px, 1.6vw, 22px);
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
@@ -38,6 +47,10 @@
 }
 
 .cd-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  min-height: 0;
   min-width: 0;
   border: 1px solid var(--ciit-border, #dce6f2);
   border-radius: 14px;
@@ -52,6 +65,7 @@
 }
 .cd-tabs {
   display: flex;
+  flex: 0 0 auto;
   flex-wrap: wrap;
   gap: 6px;
   padding: 8px 12px;
@@ -83,8 +97,13 @@
 }
 
 .cd-section {
-  padding: 18px;
+  flex: 0 1 auto;
+  min-height: 0;
   min-width: 0;
+  padding: 18px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  border-radius: 0 0 13px 13px;
 }
 
 .cd-section h2 {
@@ -150,9 +169,19 @@
 .cd-status.is-inactive { background: #fee2e2; color: #991b1b; }
 .cd-retry { margin-inline-start: 10px; }
 .cd-page .course-alert { overflow-wrap: anywhere; }
+@media (max-width: 991.98px) {
+  .cd-page {
+    max-height: max(240px, calc(100dvh - 105px - 32px - 2px));
+  }
+}
+@media (max-width: 575.98px) {
+  .cd-page {
+    max-height: max(240px, calc(100dvh - 105px - 24px - 2px));
+  }
+}
 @media (max-width: 640px) {
   .cd-page .cd-header {
-    padding: 12px;
+    padding: 8px 12px;
     flex-wrap: wrap;
   }
   .cd-section { padding: 12px; }
