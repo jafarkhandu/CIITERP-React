@@ -12,7 +12,7 @@ const studentKeys = ['studentId', 'student_Id', 'student_id', 'StudentId'];
 const registrationKeys = ['registrationId', 'registration_Id', 'registration_id', 'RegistrationId', 'studentRegistrationId', 'student_registration_id'];
 const batchKeys = ['batchId', 'batch_Id', 'batch_id', 'BatchId'];
 const sessionKeys = ['sessionId', 'session_id', 'scheduleAttendanceId', 'schedule_attendance_id', 'batchScheduleAttendanceId', 'batch_schedule_attendance_id', 'batchScheduleId', 'batch_schedule_id'];
-const dateKeys = ['attendanceDate', 'attendance_date', 'attendance_Date', 'sessionDate', 'session_date', 'date', 'actualDate', 'actual_date'];
+const dateKeys = ['attendanceDate', 'attendance_date', 'attendance_Date', 'sessionDate', 'session_date', 'date', 'actualDate', 'actual_date', 'expectedDate', 'expected_date'];
 const topicKeys = ['contentName', 'content_name', 'topicName', 'topic_name', 'topic', 'sessionName', 'session_name', 'content'];
 const statusKeys = ['isPresent', 'is_present', 'IsPresent', 'present', 'attendanceStatus', 'attendance_status', 'status'];
 const childKeys = ['data', 'result', 'attendance', 'attendanceRecords', 'attendance_records', 'attendanceDetails', 'attendanceList', 'sessions', 'records', 'items', '$values', 'list'];
@@ -59,11 +59,11 @@ export function normalizeStudentAttendance(
   let recognized = false;
   let rejected = false;
 
-  function visit(value: unknown, depth: number): void {
+  function visit(value: unknown, depth: number, path = 'root', lectureIndex?: number): void {
     if (depth > 6) return;
     if (Array.isArray(value)) {
       if (!value.length) recognized = true;
-      for (const item of value) visit(item, depth + 1);
+      value.forEach((item, index) => visit(item, depth + 1, `${path}.${index}`));
       return;
     }
     const row = asRow(value);
@@ -82,18 +82,31 @@ export function normalizeStudentAttendance(
     const date = scalar(read(row, dateKeys));
     const topic = scalar(read(row, topicKeys));
     const status = read(row, statusKeys);
-    const children = childKeys.map(key => row[key]).filter(child => Array.isArray(child) || asRow(child) !== null);
+    // The student endpoint returns a batch summary with its lecture rows.
+    // Unmarked lectures have no attendanceId, so keep each array position distinct.
+    if (Array.isArray(row.lectures)) {
+      if (!row.lectures.length) recognized = true;
+      row.lectures.forEach((lecture, index) =>
+        visit(lecture, depth + 1, `${path}.lectures.${index}`, index),
+      );
+      return;
+    }
+    const children = childKeys.filter(key => Array.isArray(row[key]) || asRow(row[key]) !== null);
     if (children.length) {
-      for (const child of children) visit(child, depth + 1);
+      for (const key of children) visit(row[key], depth + 1, `${path}.${key}`);
       return;
     }
     // Require a recognizable session/date, not a summary count or arbitrary object.
     if (!session && !date) return;
     if (status === undefined && !Object.keys(row).some(key => statusKeys.includes(key))) return;
     recognized = true;
+    const attendanceId = scalar(read(row, ['attendanceId', 'attendance_id']));
+    const key = lectureIndex !== undefined
+      ? attendanceId ? 'attendance-' + attendanceId : 'lecture-' + path
+      : session ? 'session-' + session : 'date-' + date + '-' + topic;
     const entry: StudentAttendanceEntry = {
-      key: session ? 'session-' + session : 'date-' + date + '-' + topic,
-      session,
+      key,
+      session: session || (lectureIndex !== undefined ? String(lectureIndex + 1) : ''),
       date,
       topic,
       status: statusOf(status),

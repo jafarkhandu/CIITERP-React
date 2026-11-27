@@ -61,14 +61,17 @@ export default function StudentBatchAttendance({ batchId, studentId, registratio
 
   const present = state.rows.filter(row => row.status === 'Present').length;
   const absent = state.rows.filter(row => row.status === 'Absent').length;
-  const marked = present + absent;
+  // The API calculates attendance against all lectures, including unmarked ones.
+  const total = state.rows.length;
+  const notMarked = total - present - absent;
   return (
     <div className="sp-batch-attendance-content">
       <div className="sp-batch-attendance-summary">
-        <span>Sessions <strong>{state.rows.length}</strong></span>
+        <span>Sessions <strong>{total}</strong></span>
         <span>Present <strong>{present}</strong></span>
         <span>Absent <strong>{absent}</strong></span>
-        <span>Attendance <strong>{marked ? Math.round(present / marked * 100) + '%' : '—'}</strong></span>
+        <span>Not marked <strong>{notMarked}</strong></span>
+        <span>Attendance <strong>{Math.round(present / total * 100) + '%'}</strong></span>
       </div>
       <div className="sp-batch-attendance-scroll">
         <table className="sp-batch-attendance-table">
