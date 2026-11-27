@@ -1,7 +1,7 @@
 import { useAutoDismissMessage } from '@/core/notifications/useAutoDismissMessage';
 import { AutoDismissAlert } from '@/components/AutoDismissAlert';
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { authService } from '@/core/auth/authService';
 import { useSession } from '@/core/auth/hooks';
 import { readTokenIdentity } from '@/core/auth/tokenIdentity';
@@ -89,8 +89,18 @@ function nestedRows(row: StudentRecord | null, ...keys: string[]): StudentRecord
   return Array.isArray(entries) ? entries.filter((item): item is StudentRecord => asRecord(item) !== null) : [];
 }
 
-const currency = (amount: number) =>
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+const currencyFormatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+const currency = (amount: number) => currencyFormatter.format(amount);
+
+function courseDetailKey(row: StudentRecord, index: number): string {
+  return `course-${String(readField(row, 'registrationId', 'registration_Id') ?? index)}`;
+}
+
+function coursePaymentIds(row: StudentRecord): number[] {
+  return [...new Set(nestedRows(row, 'payments', 'Payments')
+    .map(payment => Number(readField(payment, 'paymentId', 'payment_Id'))))]
+    .filter(id => Number.isInteger(id) && id > 0);
+}
 
 export default function StudentAccount() {
   const session = useSession();
@@ -110,7 +120,7 @@ export default function StudentAccount() {
   const [registrationLookupAttempt, setRegistrationLookupAttempt] = useState(0);
   const [coursePaymentDetails, setCoursePaymentDetails] = useState<{
     registration: StudentRecord;
-    rows: StudentRecord[];
+    rowsByCourse: Record<string, StudentRecord[]>;
   } | null>(null);
   const [expandedDetail, setExpandedDetail] = useState<string | null>(null);
   const [expandedAttendanceBatch, setExpandedAttendanceBatch] = useState<string | null>(null);
@@ -162,7 +172,9 @@ export default function StudentAccount() {
     setExpandedAttendanceBatch(null);
   }, [activeSection, studentId, session.generation]);
   const showingBatches = activeSection === 'student-batch' || activeSection === 'student-overview';
-  const paymentDetails = coursePaymentDetails?.registration === studentRecord ? coursePaymentDetails.rows : null;
+  const paymentDetails = coursePaymentDetails?.registration === studentRecord && expandedDetail
+    ? coursePaymentDetails.rowsByCourse[expandedDetail]
+    : undefined;
 
   // Start each routed page at the top, even when navigating from a scrolled view.
   useEffect(() => { window.scrollTo(0, 0); }, [page, hash]);
@@ -365,33 +377,52 @@ export default function StudentAccount() {
     return () => { active = false; };
   }, [showingBatches, studentId, studentRecord, myBatchResult?.studentId, batchLookupAttempt]);
 
+  // Fee and balance enrichment is only rendered for an expanded course.
+  // Keep the results scoped to the verified registration snapshot and card.
   useEffect(() => {
-    if (!showingCourses || !studentId || !studentRecord || paymentDetails) return;
+    if (!showingCourses || !studentId || !studentRecord || !expandedDetail?.startsWith('course-') ||
+        paymentDetails !== undefined) return;
 
-    const owned = nestedRows(studentRecord, 'registrations', 'Registrations').filter(row => {
-      const owner = readField(row, 'studentId', 'student_Id');
+    const record = studentRecord;
+    const key = expandedDetail;
+    const owned = nestedRows(record, 'registrations', 'Registrations').filter(row => {
+      const owner = readField(row, 'studentId', 'student_Id', 'student_id', 'StudentId');
       return owner === null || Number(owner) === studentId;
     });
-    const registrationIds = new Set(owned.map(row => Number(readField(row, 'registrationId', 'registration_Id'))));
-    const paymentIds = [...new Set(owned.flatMap(row =>
-      nestedRows(row, 'payments', 'Payments').map(payment => Number(readField(payment, 'paymentId', 'payment_Id'))),
-    ))].filter(id => Number.isInteger(id) && id > 0);
-    if (!paymentIds.length) return;
+    const selected = owned.find((row, index) => courseDetailKey(row, index) === key);
+    if (!selected) return;
+    const registrationId = Number(readField(selected, 'registrationId', 'registration_Id'));
+    const paymentIds = coursePaymentIds(selected);
+    if (!Number.isInteger(registrationId) || registrationId <= 0 || !paymentIds.length) return;
 
     let active = true;
-    Promise.allSettled(paymentIds.map(id => studentApi.getPaymentById(id))).then(results => {
+    async function loadPaymentDetails() {
+      const verified: StudentRecord[] = [];
+      // Bound concurrent requests while preserving payment ordering.
+      for (let index = 0; active && index < paymentIds.length; index += 4) {
+        const results = await Promise.allSettled(paymentIds.slice(index, index + 4).map(id => studentApi.getPaymentById(id)));
+        if (!active) return;
+        for (const result of results) {
+          if (result.status !== 'fulfilled') continue;
+          const payment = asRecord(result.value);
+          if (!payment || Number(readField(payment, 'studentId', 'student_Id')) !== studentId ||
+              Number(readField(payment, 'registrationId', 'registration_Id')) !== registrationId) continue;
+          verified.push(payment);
+        }
+      }
       if (!active) return;
-      const verified = results.flatMap(result => {
-        if (result.status !== 'fulfilled') return [];
-        const payment = asRecord(result.value);
-        if (!payment || Number(readField(payment, 'studentId', 'student_Id')) !== studentId ||
-            !registrationIds.has(Number(readField(payment, 'registrationId', 'registration_Id')))) return [];
-        return [payment];
-      });
-      setCoursePaymentDetails({ registration: studentRecord, rows: verified });
-    });
+      setCoursePaymentDetails(previous => ({
+        registration: record,
+        rowsByCourse: {
+          ...(previous?.registration === record ? previous.rowsByCourse : {}),
+          [key]: verified,
+        },
+      }));
+    }
+
+    void loadPaymentDetails();
     return () => { active = false; };
-  }, [showingCourses, studentId, studentRecord, paymentDetails]);
+  }, [showingCourses, studentId, studentRecord, expandedDetail, paymentDetails]);
 
   const studentName = display(
     readField(studentDetails, 'studentName', 'student_Name', 'name') ||
@@ -413,46 +444,49 @@ export default function StudentAccount() {
   ) ?? readField(qualifications[0] ?? null, 'qualification_Name', 'qualificationName', 'qualification_name', 'QualificationName');
 
   const studentCode = identity.username || session.username;
-  const belongsToStudent = (row: StudentRecord): boolean => {
-    const explicitId = readField(row, 'studentId', 'student_Id', 'student_id', 'StudentId');
-    return explicitId === null || Number(explicitId) === studentId;
-  };
-  const registrations = nestedRows(studentRecord, 'registrations', 'Registrations')
-    .filter(belongsToStudent);
-  const courseRows = registrations.length ? registrations :
-    studentRecord && (
-      readField(studentRecord, 'registrationId', 'registration_Id') ||
-      readField(studentRecord, 'courseName', 'course_Name')
-    ) ? [studentRecord] : [];
-  const paymentRows = [
-    ...nestedRows(studentRecord, 'payments', 'Payments'),
-    ...courseRows.flatMap((row) => nestedRows(row, 'payments', 'Payments')),
-  ].filter(belongsToStudent);
-  // A failed batch lookup must not hide assignments already returned by
-  // the verified student registration response.
-  const registrationMatchesStudent = !!studentId &&
-    Number(readField(studentRecord, 'studentId', 'student_Id', 'student_id', 'StudentId')) === studentId;
-  const ownedRegistrationIds = new Set(
-    [...courseRows, ...(studentRecord ? [studentRecord] : [])]
-      .filter(belongsToStudent)
-      .map(row => Number(readField(row, 'registrationId', 'registration_Id', 'registration_id', 'RegistrationId')))
-      .filter(id => Number.isSafeInteger(id) && id > 0),
-  );
-  const batchRows = myBatchResult?.studentId === studentId
-    ? myBatchResult.rows
-    : registrationMatchesStudent
-      ? [
-          ...nestedRows(studentRecord, 'batches', 'Batches'),
-          ...courseRows.flatMap((row) => nestedRows(row, 'batches', 'Batches')),
-        ].filter(row => {
-          if (!belongsToStudent(row)) return false;
-          const registrationId = readField(row, 'registrationId', 'registration_Id', 'registration_id', 'RegistrationId');
-          return registrationId === null || ownedRegistrationIds.has(Number(registrationId));
-        })
-      : [];
+  const { registrations, courseRows, paymentRows, batchRows, ownedRegistrationIds } = useMemo(() => {
+    const belongsToStudent = (row: StudentRecord): boolean => {
+      const explicitId = readField(row, 'studentId', 'student_Id', 'student_id', 'StudentId');
+      return explicitId === null || Number(explicitId) === studentId;
+    };
+    const registrations = nestedRows(studentRecord, 'registrations', 'Registrations')
+      .filter(belongsToStudent);
+    const courseRows = registrations.length ? registrations :
+      studentRecord && (
+        readField(studentRecord, 'registrationId', 'registration_Id') ||
+        readField(studentRecord, 'courseName', 'course_Name')
+      ) ? [studentRecord] : [];
+    const paymentRows = [
+      ...nestedRows(studentRecord, 'payments', 'Payments'),
+      ...courseRows.flatMap((row) => nestedRows(row, 'payments', 'Payments')),
+    ].filter(belongsToStudent);
+    // A failed batch lookup must not hide assignments already returned by
+    // the verified student registration response.
+    const registrationMatchesStudent = !!studentId &&
+      Number(readField(studentRecord, 'studentId', 'student_Id', 'student_id', 'StudentId')) === studentId;
+    const ownedRegistrationIds = new Set(
+      [...courseRows, ...(studentRecord ? [studentRecord] : [])]
+        .filter(belongsToStudent)
+        .map(row => Number(readField(row, 'registrationId', 'registration_Id', 'registration_id', 'RegistrationId')))
+        .filter(id => Number.isSafeInteger(id) && id > 0),
+    );
+    const batchRows = myBatchResult?.studentId === studentId
+      ? myBatchResult.rows
+      : registrationMatchesStudent
+        ? [
+            ...nestedRows(studentRecord, 'batches', 'Batches'),
+            ...courseRows.flatMap((row) => nestedRows(row, 'batches', 'Batches')),
+          ].filter(row => {
+            if (!belongsToStudent(row)) return false;
+            const registrationId = readField(row, 'registrationId', 'registration_Id', 'registration_id', 'RegistrationId');
+            return registrationId === null || ownedRegistrationIds.has(Number(registrationId));
+          })
+        : [];
+    return { registrations, courseRows, paymentRows, batchRows, ownedRegistrationIds };
+  }, [studentId, studentRecord, myBatchResult]);
   const totalPaid = paymentRows.reduce((sum, row) =>
     sum + (Number(readField(row, 'paymentAmount', 'payment_Amount')) || 0), 0);
-  const newestPayments = [...paymentRows].sort(comparePaymentsNewestFirst);
+  const newestPayments = useMemo(() => [...paymentRows].sort(comparePaymentsNewestFirst), [paymentRows]);
 
   function toggleTheme() {
     const next = !isDarkTheme;
@@ -591,8 +625,11 @@ export default function StudentAccount() {
               {courseRows.length ? <div className="sp-stack">{courseRows.map((row, index) => {
                 const payments = nestedRows(row, 'payments', 'Payments');
                 const paid = payments.reduce((sum, payment) => sum + (Number(readField(payment, 'paymentAmount', 'payment_Amount')) || 0), 0);
-                const key = `course-${String(readField(row, 'registrationId', 'registration_Id') ?? index)}`;
+                const key = courseDetailKey(row, index);
                 const expanded = expandedDetail === key;
+                const registrationId = Number(readField(row, 'registrationId', 'registration_Id'));
+                const detailsPending = expanded && paymentDetails === undefined && coursePaymentIds(row).length > 0 &&
+                  Number.isInteger(registrationId) && registrationId > 0 && registrations.includes(row);
                 return <article className="sp-entry sp-student-detail-card" key={key}>
                   <button type="button" className="sp-student-detail-toggle" aria-expanded={expanded} aria-controls={`detail-${key}`} onClick={() => toggleDetail(key)}>
                     <span className="sp-student-detail-main"><strong>{display(readField(row, 'courseName', 'course_Name'))}</strong><small>Amount Paid: {currency(paid)}</small></span>
@@ -614,7 +651,7 @@ export default function StudentAccount() {
                         const totalPaid = readField(detail ?? null, 'totalPaid', 'total_Paid');
                         return currency((totalPaid !== null ? Number(totalPaid) : paid) + Number(balance));
                       }
-                      return 'Not available';
+                      return detailsPending ? 'Loading…' : 'Not available';
                     })()}</dd></div>
                     <div><dt>Discount</dt><dd>{currency(Number(readField(row, 'discount')) || 0)}</dd></div>
                     <div><dt>Amount Paid</dt><dd>{currency(paid)}</dd></div>
@@ -623,7 +660,7 @@ export default function StudentAccount() {
                       const detail = paymentDetails?.find(payment => Number(readField(payment, 'registrationId', 'registration_Id')) === registrationId);
                       const balance = readField(detail ?? null, 'remainingBalance', 'remaining_Balance') ??
                         readField(row, 'remainingBalance', 'remaining_Balance');
-                      return balance === null ? 'Not available' : currency(Number(balance));
+                      return balance === null ? (detailsPending ? 'Loading…' : 'Not available') : currency(Number(balance));
                     })()}</dd></div>
                   </dl>}
                 </article>;

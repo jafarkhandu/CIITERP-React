@@ -6,6 +6,7 @@ import { userSession } from '@/core/auth/session';
 import { authService } from '@/core/auth/authService';
 import { PERMISSIONS, permissionService, type Permission } from '@/core/services/permissionService';
 import { directoryApi, type RoleOption } from '@/api/directoryApi';
+import { preloadWorkspacePage } from '@/routes/homeLoaders';
 import './MainLayout.css';
 
 interface SidebarMenu {
@@ -410,6 +411,8 @@ export default function MainLayout() {
                     <li key={menu.route}>
                       <NavLink
                         to={menu.route}
+                        onMouseEnter={() => preloadWorkspacePage(menu.route)}
+                        onFocus={() => preloadWorkspacePage(menu.route)}
                         end
                         aria-label={menu.label}
                         title={isSidebarCollapsed ? menu.label : undefined}
@@ -457,6 +460,8 @@ export default function MainLayout() {
                               <li key={menu.route}>
                                 <NavLink
                                   to={menu.route}
+                                  onMouseEnter={() => preloadWorkspacePage(menu.route)}
+                                  onFocus={() => preloadWorkspacePage(menu.route)}
                                   end={menu.route === '/main/dashboard'}
                                   aria-label={menu.label}
                                   title={isSidebarCollapsed ? menu.label : undefined}
@@ -486,6 +491,8 @@ export default function MainLayout() {
                     <li key={menu.route}>
                       <NavLink
                         to={menu.route}
+                        onMouseEnter={() => preloadWorkspacePage(menu.route)}
+                        onFocus={() => preloadWorkspacePage(menu.route)}
                         end={menu.route === '/main/dashboard'}
                         aria-label={menu.label}
                         title={isSidebarCollapsed ? menu.label : undefined}

@@ -4,10 +4,25 @@ import ProtectedRoute from '@/core/auth/ProtectedRoute';
 import { PERMISSIONS, type Permission } from '@/core/services/permissionService';
 import Login from '@/features/account/Login/Login';
 import ComingSoon from '@/features/placeholder/ComingSoon';
-import { loadDashboard, loadMainLayout, loadStudentAccount, loadStudentPortal } from './homeLoaders';
+import {
+  loadDashboard, loadMainLayout, loadStudentAccount, loadStudentPortal,
+  loadReports,
+  loadEmployee,
+  loadLead,
+  loadCourse,
+  loadTopics,
+  loadCourseMapping,
+  loadEnquiry,
+  loadFunctionManagement,
+  loadStudentRegistration,
+  loadStudentPayments,
+  loadTrainerBatches,
+  loadTrainerPortal,
+  loadBatchManagement,
+} from './homeLoaders';
 
 const MainLayout = lazy(loadMainLayout);
-const Reports = lazy(() => import('@/features/reports/Reports'));
+const Reports = lazy(loadReports);
 const ForgotPassword = lazy(() => import('@/features/account/ForgotPassword/ForgotPassword'));
 const ResetPassword = lazy(() => import('@/features/account/ResetPassword/ResetPassword'));
 const StudentForgotPassword = lazy(() => import('@/features/student/StudentPasswordRecovery').then(module => ({ default: module.StudentForgotPassword })));
@@ -15,26 +30,26 @@ const StudentResetPassword = lazy(() => import('@/features/student/StudentPasswo
 const ChangePassword = lazy(() => import('@/features/account/ChangePassword/ChangePassword'));
 const Profile = lazy(() => import('@/features/account/Profile/Profile'));
 const Dashboard = lazy(loadDashboard);
-const Employee = lazy(() => import('@/features/employee/Employee'));
+const Employee = lazy(loadEmployee);
 const EditUserRoles = lazy(() => import('@/features/employee/EditUserRoles'));
-const Lead = lazy(() => import('@/features/lead/Lead'));
+const Lead = lazy(loadLead);
 const LeadFollowup = lazy(() => import('@/features/lead/LeadFollowup'));
-const Course = lazy(() => import('@/features/course/Course'));
+const Course = lazy(loadCourse);
 const CourseDetails = lazy(() => import('@/features/course/CourseDetails'));
-const Topics = lazy(() => import('@/features/developer/Topics'));
-const CourseMapping = lazy(() => import('@/features/developer/CourseMapping'));
-const Enquiry = lazy(() => import('@/features/enquiry/Enquiry'));
+const Topics = lazy(loadTopics);
+const CourseMapping = lazy(loadCourseMapping);
+const Enquiry = lazy(loadEnquiry);
 const EnquiryForm = lazy(() => import('@/features/enquiry/EnquiryForm'));
 const EnquiryFollowup = lazy(() => import('@/features/enquiry/EnquiryFollowup'));
-const FunctionManagement = lazy(() => import('@/features/function-management/FunctionManagement'));
-const StudentRegistration = lazy(() => import('@/features/student/StudentRegistration'));
-const StudentPayments = lazy(() => import('@/features/student/StudentPayments'));
+const FunctionManagement = lazy(loadFunctionManagement);
+const StudentRegistration = lazy(loadStudentRegistration);
+const StudentPayments = lazy(loadStudentPayments);
 const StudentPortal = lazy(loadStudentPortal);
 const StudentAccount = lazy(loadStudentAccount);
-const TrainerBatches = lazy(() => import('@/features/trainer/TrainerBatches'));
-const TrainerPortal = lazy(() => import('@/features/trainer/TrainerPortal'));
+const TrainerBatches = lazy(loadTrainerBatches);
+const TrainerPortal = lazy(loadTrainerPortal);
 const TrainerBatchDetails = lazy(() => import('@/features/trainer/TrainerBatchDetails'));
-const BatchManagement = lazy(() => import('@/features/batch/BatchManagement'));
+const BatchManagement = lazy(loadBatchManagement);
 
 interface Guard { permission?: Permission; permissions?: Permission[]; roles?: string[]; }
 const moduleLoading = (

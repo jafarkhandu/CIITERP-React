@@ -8,6 +8,7 @@ import { enquiryApi } from '@/api/enquiryApi';
 import { courseApi } from '@/api/courseApi';
 import { batchApi, batchStudentApi, batchScheduleApi } from '@/api/batchApi';
 import { studentApi, trainerApi, type PaymentRow } from '@/api/studentApi';
+import { preloadWorkspacePage } from '@/routes/homeLoaders';
 import './Dashboard.css';
 
 type DashboardCard = {
@@ -294,7 +295,7 @@ export default function Dashboard() {
   const requestId = useRef(0);
   const [load, setLoad] = useState(initialLoad);
   const { data, failedSources, loading, updatedAt } = load.scope === scope ? load : initialLoad;
-  const snapshot = buildOverview(data, dashboardRole);
+  const snapshot = useMemo(() => buildOverview(data, dashboardRole), [data, dashboardRole]);
 
   const loadDashboard = useCallback(async () => {
     const id = ++requestId.current;
@@ -431,7 +432,7 @@ export default function Dashboard() {
       ) : hasLiveData ? (
         <div className="dashboard-metric-grid">
           {snapshot.metrics.map((metric) => (
-            <Link className={`dashboard-metric-card tone-${metric.tone}`} to={metric.route} key={metric.label}>
+            <Link className={`dashboard-metric-card tone-${metric.tone}`} to={metric.route} key={metric.label} onMouseEnter={() => preloadWorkspacePage(metric.route)} onFocus={() => preloadWorkspacePage(metric.route)}>
               <span className="dashboard-metric-icon"><i className={`bi ${metric.icon}`} aria-hidden="true" /></span>
               <span className="dashboard-metric-label">{metric.label}</span>
               <strong>{metric.format === 'currency' ? formatMoney(metric.value) : formatCount(metric.value)}</strong>
@@ -520,7 +521,7 @@ export default function Dashboard() {
           </div>
           <div className="dashboard-quick-grid">
             {cards.map((card) => (
-              <Link className="dashboard-quick-card" to={card.route} key={card.route}>
+              <Link className="dashboard-quick-card" to={card.route} key={card.route} onMouseEnter={() => preloadWorkspacePage(card.route)} onFocus={() => preloadWorkspacePage(card.route)}>
                 <span><i className={`bi ${card.icon}`} aria-hidden="true" /></span>
                 <div><strong>{card.title}</strong><small>{card.description}</small></div>
                 <i className="bi bi-arrow-up-right" aria-hidden="true" />

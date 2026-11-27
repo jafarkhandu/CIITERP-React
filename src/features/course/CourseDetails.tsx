@@ -57,6 +57,14 @@ function CourseDetailView({ courseId, canTopics, canBatches }: { courseId: numbe
     setExpanded(null);
 
     async function load() {
+      // Independent authorized catalogs can load together. Handle rejection
+      // immediately, even if the course lookup ends before we need the result.
+      const catalogRequest = canTopics
+        ? trainingCourseTopicApi.getCourses().then(
+            data => ({ ok: true, data } as const),
+            (error: unknown) => ({ ok: false, error } as const),
+          )
+        : null;
       let selected: TrainingCourseRecord;
       try {
         const records = await courseApi.getAll();
@@ -73,10 +81,12 @@ function CourseDetailView({ courseId, canTopics, canBatches }: { courseId: numbe
         return;
       }
 
-      if (!canTopics) return;
+      if (!catalogRequest) return;
       let mapped: TrainingCourseTopic[];
       try {
-        const catalog = await trainingCourseTopicApi.getCourses();
+        const result = await catalogRequest;
+        if (!result.ok) throw result.error;
+        const catalog = result.data;
         if (!active) return;
         const normalized = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
         const verified = catalog.some(item => item.courseId === courseId &&
